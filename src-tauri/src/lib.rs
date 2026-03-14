@@ -123,6 +123,14 @@ fn exit_app(app: tauri::AppHandle) {
 }
 
 #[tauri::command]
+fn open_url(url: String) {
+    #[cfg(target_os = "windows")]
+    std::process::Command::new("cmd").args(["/c", "start", &url]).spawn().ok();
+    #[cfg(target_os = "linux")]
+    std::process::Command::new("xdg-open").arg(&url).spawn().ok();
+}
+
+#[tauri::command]
 fn open_file_dialog(app: tauri::AppHandle) -> Result<Option<String>, String> {
     use tauri_plugin_dialog::DialogExt;
     let mut builder = app.dialog().file().add_filter("JSON", &["json"]);
@@ -164,6 +172,7 @@ pub fn run() {
             list_databases,
             debug_log,
             exit_app,
+            open_url,
             open_file_dialog
         ])
         .setup(|app| {

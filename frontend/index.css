@@ -327,6 +327,7 @@ select option {
     border-bottom: 2px solid transparent;
     margin-bottom: -1px;
     display: inline-block;
+    white-space: nowrap;
 }
 .view-tab.active {
     color: #ffffff;

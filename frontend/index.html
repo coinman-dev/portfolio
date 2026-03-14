@@ -122,12 +122,8 @@
 				<tr>
 					<td class="controls-tabs-cell">
 						<div class="view-tabs-row">
-							<div id="tab-current" class="view-tab active" onclick="switchView('current')">
-                                ❤ CURRENT
-                            </div>
-							<div id="tab-sold" class="view-tab" onclick="switchView('sold')">
-                                ─ SOLD ⚡
-                            </div>
+							<div id="tab-current" class="view-tab active" onclick="switchView('current')">❤ CURRENT</div>
+							<div id="tab-sold" class="view-tab" onclick="switchView('sold')">─ SOLD ⚡</div>
 						</div>
 					</td>
 					<!-- NEW: Portfolio info block (created + description) -->
@@ -691,9 +687,10 @@
 					<img src="images/coinman.dev.webp" alt="Logo" style="width: 64px; height: 64px; margin-bottom: 15px;"/>
 					<h2 style="margin: 0 0 10px 0; color: #ffffff;">CoinMan Portfolio</h2>
 					<p style="color: #888888; font-size: 14px; margin-bottom: 20px;">Version 0.1.0-alpha</p>
-					<p style="color: #cccccc; font-size: 14px; line-height: 1.5; margin-bottom: 20px;">
+					<p style="color: #cccccc; font-size: 14px; line-height: 1.5; margin-bottom: 16px;">
 						CoinMan Portfolio is a lightweight and secure desktop application designed to track and manage your cryptocurrency portfolios locally. Your data is stored securely on your machine.
 					</p>
+					<a href="#" onclick="AppBridge.invoke('open_url', { url: 'https://github.com/coinman-dev/portfolio' }); return false;" style="color: #e67e22; font-size: 13px; text-decoration: none;">github.com/coinman-dev/portfolio</a>
 				</div>
 				<div class="modal-footer">
 					<button class="btn btn-outline" onclick="closeModal('modal-about')">

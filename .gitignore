@@ -13,9 +13,6 @@ database/
 # Claude Code settings (local only)
 .claude/
 
-# Files staged for deletion
-delete/
-
 # OS files
 .DS_Store
 Thumbs.db
