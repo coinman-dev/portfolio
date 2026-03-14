@@ -1,0 +1,21 @@
+# Rust / Cargo build output
+target/
+
+# Tauri generated schemas (auto-regenerated on build)
+src-tauri/gen/
+
+# Debug log
+portfolio.debug.log
+
+# Database files (user data, not source)
+database/
+
+# Claude Code settings (local only)
+.claude/
+
+# Files staged for deletion
+delete/
+
+# OS files
+.DS_Store
+Thumbs.db

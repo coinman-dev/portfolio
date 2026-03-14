@@ -1,0 +1,6 @@
+[build]
+target-dir = "../target"
+
+# Static CRT was attempted for Windows MSVC release builds, but in this
+# environment Tauri/WebView2 release linking fails with unresolved CRT symbols.
+# Keep this file for future target-specific flags if the toolchain changes.
