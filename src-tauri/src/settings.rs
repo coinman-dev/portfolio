@@ -22,6 +22,8 @@ pub struct AppSettings {
     pub market_cache: Option<Value>,
     #[serde(default)]
     pub market_cache_saved_at: Option<u64>,
+    #[serde(default)]
+    pub active_portfolio_id: Option<Value>,
 }
 
 pub fn load<R: Runtime>(app: &AppHandle<R>) -> AppSettings {
@@ -43,6 +45,12 @@ pub fn update_market_cache<R: Runtime>(app: &AppHandle<R>, cache: Value, saved_a
     let mut settings = load(app);
     settings.market_cache = Some(cache);
     settings.market_cache_saved_at = Some(saved_at);
+    save(app, &settings);
+}
+
+pub fn update_active_portfolio_id<R: Runtime>(app: &AppHandle<R>, id: Value) {
+    let mut settings = load(app);
+    settings.active_portfolio_id = Some(id);
     save(app, &settings);
 }
 

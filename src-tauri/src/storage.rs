@@ -36,7 +36,6 @@ pub struct WindowState {
 #[serde(rename_all = "camelCase")]
 pub struct DbData {
     pub portfolios: Vec<Value>,
-    pub active_portfolio_id: Option<Value>,
     #[serde(default)]
     pub window_state: Option<WindowState>,
 }
@@ -45,7 +44,6 @@ impl Default for DbData {
     fn default() -> Self {
         Self {
             portfolios: Vec::new(),
-            active_portfolio_id: None,
             window_state: None,
         }
     }
@@ -190,10 +188,6 @@ fn build_db_file(data: DbData, password: Option<&str>) -> Result<Vec<u8>, String
         root.insert("encrypted".to_string(), Value::from(0u64));
         root.insert("encryptedData".to_string(), Value::Null);
         root.insert("portfolios".to_string(), Value::Array(data.portfolios));
-        root.insert(
-            "activePortfolioId".to_string(),
-            data.active_portfolio_id.unwrap_or(Value::Null),
-        );
         if let Some(ws) = data.window_state {
             if let Ok(v) = serde_json::to_value(ws) {
                 root.insert("windowState".to_string(), v);
@@ -212,10 +206,6 @@ fn serialize_inner_data(data: &DbData) -> Result<String, String> {
     inner.insert(
         "portfolios".to_string(),
         Value::Array(data.portfolios.clone()),
-    );
-    inner.insert(
-        "activePortfolioId".to_string(),
-        data.active_portfolio_id.clone().unwrap_or(Value::Null),
     );
     if let Some(ws) = &data.window_state {
         if let Ok(v) = serde_json::to_value(ws) {
@@ -323,7 +313,7 @@ pub fn save_db<R: Runtime>(
         fs::create_dir_all(parent).map_err(|e| format_file_error("create directory", parent, e))?;
     }
 
-    let payload = build_db_file(normalize_db_data(data), password)?;
+    let payload = build_db_file(data, password)?;
     fs::write(&path, payload).map_err(|e| format_file_error("write", &path, e))
 }
 
@@ -358,7 +348,7 @@ pub fn encrypt_db_file<R: Runtime>(
     // load_db returns Err("DB_ENCRYPTED") if already encrypted — propagate as-is.
     let data = load_db(app, user, None)?;
     let path = resolve_db_file_path(app, user)?;
-    let payload = build_db_file(normalize_db_data(data), Some(password))?;
+    let payload = build_db_file(data, Some(password))?;
     fs::write(&path, payload).map_err(|e| format_file_error("write", &path, e))
 }
 
@@ -371,7 +361,7 @@ pub fn decrypt_db_file<R: Runtime>(
     // load_db returns Err("WRONG_PASSWORD") if wrong password — propagate as-is.
     let data = load_db(app, user, Some(password))?;
     let path = resolve_db_file_path(app, user)?;
-    let payload = build_db_file(normalize_db_data(data), None)?;
+    let payload = build_db_file(data, None)?;
     fs::write(&path, payload).map_err(|e| format_file_error("write", &path, e))
 }
 
@@ -384,7 +374,7 @@ pub fn change_db_password<R: Runtime>(
 ) -> Result<(), String> {
     let data = load_db(app, user, Some(current_password))?;
     let path = resolve_db_file_path(app, user)?;
-    let payload = build_db_file(normalize_db_data(data), Some(new_password))?;
+    let payload = build_db_file(data, Some(new_password))?;
     fs::write(&path, payload).map_err(|e| format_file_error("write", &path, e))
 }
 
@@ -496,40 +486,10 @@ fn normalize_db_value(value: Value) -> DbData {
         Some(Value::Array(portfolios)) => portfolios,
         _ => Vec::new(),
     };
-    let active_portfolio_id = sanitize_active_id(object.remove("activePortfolioId"));
     let window_state = object
         .remove("windowState")
         .and_then(|v| serde_json::from_value(v).ok());
-    normalize_db_data(DbData {
-        portfolios,
-        active_portfolio_id,
-        window_state,
-    })
-}
-
-fn normalize_db_data(mut data: DbData) -> DbData {
-    data.active_portfolio_id = sanitize_active_id(data.active_portfolio_id);
-    if data.active_portfolio_id.is_none() {
-        data.active_portfolio_id = first_portfolio_id(&data.portfolios);
-    }
-    data
-}
-
-fn sanitize_active_id(value: Option<Value>) -> Option<Value> {
-    match value {
-        Some(Value::Null) | None => None,
-        Some(Value::Bool(v)) => Some(Value::Bool(v)),
-        Some(Value::Number(v)) => Some(Value::Number(v)),
-        Some(Value::String(v)) => Some(Value::String(v)),
-        _ => None,
-    }
-}
-
-fn first_portfolio_id(portfolios: &[Value]) -> Option<Value> {
-    portfolios.iter().find_map(|portfolio| match portfolio {
-        Value::Object(object) => sanitize_active_id(object.get("id").cloned()),
-        _ => None,
-    })
+    DbData { portfolios, window_state }
 }
 
 fn ensure_db_file<R: Runtime>(app: &AppHandle<R>, user: &str) -> Result<PathBuf, String> {

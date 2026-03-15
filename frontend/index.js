@@ -500,10 +500,6 @@ var ServerSync = {
                     ? payload.data.portfolios
                     : [];
                 portfolios = list;
-
-                if (payload.data.activePortfolioId !== undefined) {
-                    state.activePortfolioId = payload.data.activePortfolioId;
-                }
             });
         }
 
@@ -522,10 +518,6 @@ var ServerSync = {
                     ? payload.data.portfolios
                     : [];
                 portfolios = list;
-
-                if (payload.data.activePortfolioId !== undefined) {
-                    state.activePortfolioId = payload.data.activePortfolioId;
-                }
             });
     },
 
@@ -538,7 +530,6 @@ var ServerSync = {
         ServerSync.saveInProgress = true;
         var body = JSON.stringify({
             portfolios: portfolios,
-            activePortfolioId: state.activePortfolioId,
         });
 
         if (AppBridge.isTauri()) {
@@ -546,7 +537,6 @@ var ServerSync = {
                 user: ServerSync.user,
                 data: {
                     portfolios: portfolios,
-                    activePortfolioId: state.activePortfolioId,
                 },
             })
                 .then(function (payload) {
@@ -1547,6 +1537,9 @@ var Portfolio = {
         };
         portfolios.push(p);
         state.activePortfolioId = p.id;
+        if (AppBridge.isTauri()) {
+            AppBridge.invoke("save_active_portfolio", { id: p.id }).catch(function () {});
+        }
         Storage.save({ refreshMarket: false });
         return p;
     },
@@ -1577,12 +1570,18 @@ var Portfolio = {
             return p.id !== id;
         });
         state.activePortfolioId = portfolios[0].id;
+        if (AppBridge.isTauri()) {
+            AppBridge.invoke("save_active_portfolio", { id: portfolios[0].id }).catch(function () {});
+        }
         Storage.save();
         return true;
     },
 
     switch: function (id) {
         state.activePortfolioId = id;
+        if (AppBridge.isTauri()) {
+            AppBridge.invoke("save_active_portfolio", { id: id }).catch(function () {});
+        }
         Storage.save({ refreshMarket: false });
         renderApp();
     },
@@ -3890,6 +3889,9 @@ var DbSelector = {
                 if (AppBridge.isTauri()) {
                     AppBridge.invoke("load_app_settings")
                         .then(function (appSettings) {
+                            if (appSettings && appSettings.activePortfolioId !== undefined) {
+                                state.activePortfolioId = appSettings.activePortfolioId;
+                            }
                             if (appSettings && Array.isArray(appSettings.marketCache) && appSettings.marketCache.length) {
                                 Market.setStateMarketData(appSettings.marketCache);
                                 var ts = appSettings.marketCacheSavedAt
@@ -3992,11 +3994,7 @@ var DbEncryption = {
                 if (!payload || payload.ok !== true || !payload.data) {
                     throw new Error("Invalid DB payload");
                 }
-                var list = Array.isArray(payload.data.portfolios) ? payload.data.portfolios : [];
-                portfolios = list;
-                if (payload.data.activePortfolioId !== undefined) {
-                    state.activePortfolioId = payload.data.activePortfolioId;
-                }
+                portfolios = Array.isArray(payload.data.portfolios) ? payload.data.portfolios : [];
                 UI.closeModal("modal-unlock-database");
                 Market.setEncStatus(true);
                 var cb = DbEncryption._unlockCallback;
@@ -4223,6 +4221,9 @@ window.onload = function () {
                 if (AppBridge.isTauri()) {
                     AppBridge.invoke("load_app_settings")
                         .then(function (appSettings) {
+                            if (appSettings && appSettings.activePortfolioId !== undefined) {
+                                state.activePortfolioId = appSettings.activePortfolioId;
+                            }
                             if (appSettings && Array.isArray(appSettings.marketCache) && appSettings.marketCache.length) {
                                 Market.setStateMarketData(appSettings.marketCache);
                                 var ts = appSettings.marketCacheSavedAt

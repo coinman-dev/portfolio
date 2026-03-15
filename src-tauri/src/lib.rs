@@ -239,6 +239,11 @@ fn save_market_cache(app: tauri::AppHandle, cache: serde_json::Value, saved_at: 
 }
 
 #[tauri::command]
+fn save_active_portfolio(app: tauri::AppHandle, id: serde_json::Value) {
+    settings::update_active_portfolio_id(&app, id);
+}
+
+#[tauri::command]
 fn debug_log(message: String) {
     log::info!("{}", message);
 }
@@ -307,6 +312,7 @@ pub fn run() {
             change_database_password,
             load_app_settings,
             save_market_cache,
+            save_active_portfolio,
             debug_log,
             exit_app,
             open_url,
