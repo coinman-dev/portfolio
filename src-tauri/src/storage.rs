@@ -18,9 +18,6 @@ const APP_ID: &str = "coinman-portfolio";
 /// Encryption version: AES-256-GCM + Argon2id.
 const ENC_V1: u64 = 1;
 
-/// Legacy magic header used before the JSON format was introduced (read-only).
-const LEGACY_ENC_MAGIC: &[u8] = b"COINMAN_ENC_V1\n";
-
 const SALT_LEN: usize = 16;
 const NONCE_LEN: usize = 12;
 
@@ -166,15 +163,6 @@ fn decrypt_from_b64(b64: &str, password: &str) -> Result<String, String> {
     String::from_utf8(plaintext).map_err(|e| format!("UTF-8 decode error: {e}"))
 }
 
-/// Decrypt a file in the legacy format (COINMAN_ENC_V1 magic header + base64).
-fn legacy_decrypt(bytes: &[u8], password: &str) -> Result<String, String> {
-    let encoded_bytes = &bytes[LEGACY_ENC_MAGIC.len()..];
-    let b64 = std::str::from_utf8(encoded_bytes)
-        .map_err(|e| format!("Encoding error: {e}"))?
-        .trim_end();
-    decrypt_from_b64(b64, password)
-}
-
 // ─── File format ──────────────────────────────────────────────────────────────
 
 /// Build the on-disk JSON payload for the new file format.
@@ -270,14 +258,6 @@ pub fn load_bootstrap<R: Runtime>(
 
 /// Load DB from disk.
 ///
-/// Supported formats (in detection order):
-/// 1. Legacy encrypted (starts with `COINMAN_ENC_V1\n` magic)
-/// 2. New JSON format with `"appId": "coinman-portfolio"`
-///    - `"encrypted": 0` → plain
-///    - `"encrypted": 1` → AES-256-GCM v1
-/// 3. Legacy plain JSON (object with `"portfolios"` key but no `"appId"`)
-/// 4. Legacy plain JSON (root array of portfolios)
-///
 /// Returns:
 /// - `Err("DB_ENCRYPTED")` — file is encrypted and no password provided
 /// - `Err("WRONG_PASSWORD")` — password is incorrect
@@ -288,22 +268,8 @@ pub fn load_db<R: Runtime>(
     password: Option<&str>,
 ) -> Result<DbData, String> {
     let path = ensure_db_file(app, user)?;
-    let bytes = fs::read(&path).map_err(|e| format_file_error("read", &path, e))?;
+    let raw = fs::read_to_string(&path).map_err(|e| format_file_error("read", &path, e))?;
 
-    if bytes.is_empty() {
-        return Ok(DbData::default());
-    }
-
-    // ── Legacy encrypted format ──────────────────────────────────────────────
-    if bytes.starts_with(LEGACY_ENC_MAGIC) {
-        let pw = password.ok_or_else(|| "DB_ENCRYPTED".to_string())?;
-        let json = legacy_decrypt(&bytes, pw)?;
-        let decoded = serde_json::from_str::<Value>(&json).unwrap_or(Value::Null);
-        return Ok(normalize_db_value(decoded));
-    }
-
-    // ── JSON formats ─────────────────────────────────────────────────────────
-    let raw = String::from_utf8_lossy(&bytes);
     if raw.trim().is_empty() {
         return Ok(DbData::default());
     }
@@ -311,42 +277,30 @@ pub fn load_db<R: Runtime>(
     let root: Value = serde_json::from_str(&raw)
         .map_err(|_| "UNKNOWN_FORMAT".to_string())?;
 
-    match &root {
-        Value::Object(obj) => {
-            match obj.get("appId").and_then(|v| v.as_str()) {
-                Some(APP_ID) => {
-                    // New JSON format
-                    let enc = obj.get("encrypted").and_then(|v| v.as_u64()).unwrap_or(0);
-                    match enc {
-                        0 => Ok(normalize_db_value(root)),
-                        ENC_V1 => {
-                            let pw = password.ok_or_else(|| "DB_ENCRYPTED".to_string())?;
-                            let b64 = obj
-                                .get("encryptedData")
-                                .and_then(|v| v.as_str())
-                                .ok_or_else(|| "Corrupted: missing encryptedData".to_string())?;
-                            let inner_json = decrypt_from_b64(b64, pw)?;
-                            let inner: Value = serde_json::from_str(&inner_json)
-                                .map_err(|_| "Corrupted encrypted data".to_string())?;
-                            Ok(normalize_db_value(inner))
-                        }
-                        v => Err(format!("Unsupported encryption version: {v}")),
-                    }
-                }
-                None => {
-                    // Legacy plain JSON (no appId field)
-                    if obj.contains_key("portfolios") {
-                        Ok(normalize_db_value(root))
-                    } else {
-                        Err("UNKNOWN_FORMAT".to_string())
-                    }
-                }
-                Some(_) => Err("UNKNOWN_FORMAT".to_string()),
-            }
+    let obj = match &root {
+        Value::Object(obj) => obj,
+        _ => return Err("UNKNOWN_FORMAT".to_string()),
+    };
+
+    if obj.get("appId").and_then(|v| v.as_str()) != Some(APP_ID) {
+        return Err("UNKNOWN_FORMAT".to_string());
+    }
+
+    let enc = obj.get("encrypted").and_then(|v| v.as_u64()).unwrap_or(0);
+    match enc {
+        0 => Ok(normalize_db_value(root)),
+        ENC_V1 => {
+            let pw = password.ok_or_else(|| "DB_ENCRYPTED".to_string())?;
+            let b64 = obj
+                .get("encryptedData")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| "Corrupted: missing encryptedData".to_string())?;
+            let inner_json = decrypt_from_b64(b64, pw)?;
+            let inner: Value = serde_json::from_str(&inner_json)
+                .map_err(|_| "Corrupted encrypted data".to_string())?;
+            Ok(normalize_db_value(inner))
         }
-        // Legacy: root was an array of portfolios
-        Value::Array(_) => Ok(normalize_db_value(root)),
-        _ => Err("UNKNOWN_FORMAT".to_string()),
+        v => Err(format!("Unsupported encryption version: {v}")),
     }
 }
 
@@ -534,29 +488,23 @@ fn load_coin_catalog() -> Result<CoinCatalogConfig, String> {
 }
 
 fn normalize_db_value(value: Value) -> DbData {
-    match value {
-        Value::Array(portfolios) => normalize_db_data(DbData {
-            portfolios,
-            active_portfolio_id: None,
-            window_state: None,
-        }),
-        Value::Object(mut object) => {
-            let portfolios = match object.remove("portfolios") {
-                Some(Value::Array(portfolios)) => portfolios,
-                _ => Vec::new(),
-            };
-            let active_portfolio_id = sanitize_active_id(object.remove("activePortfolioId"));
-            let window_state = object
-                .remove("windowState")
-                .and_then(|v| serde_json::from_value(v).ok());
-            normalize_db_data(DbData {
-                portfolios,
-                active_portfolio_id,
-                window_state,
-            })
-        }
-        _ => DbData::default(),
-    }
+    let mut object = match value {
+        Value::Object(obj) => obj,
+        _ => return DbData::default(),
+    };
+    let portfolios = match object.remove("portfolios") {
+        Some(Value::Array(portfolios)) => portfolios,
+        _ => Vec::new(),
+    };
+    let active_portfolio_id = sanitize_active_id(object.remove("activePortfolioId"));
+    let window_state = object
+        .remove("windowState")
+        .and_then(|v| serde_json::from_value(v).ok());
+    normalize_db_data(DbData {
+        portfolios,
+        active_portfolio_id,
+        window_state,
+    })
 }
 
 fn normalize_db_data(mut data: DbData) -> DbData {
@@ -628,28 +576,16 @@ fn format_file_error(action: &str, path: &Path, error: std::io::Error) -> String
     format!("Cannot {action} `{}`: {error}", path.display())
 }
 
-/// Check whether the given file path contains an encrypted database.
-/// Handles both legacy (magic header) and new JSON format.
 fn is_path_encrypted(path: &Path) -> bool {
-    let bytes = match fs::read(path) {
-        Ok(b) => b,
+    let raw = match fs::read_to_string(path) {
+        Ok(s) => s,
         Err(_) => return false,
     };
-
-    // Legacy encrypted format
-    if bytes.starts_with(LEGACY_ENC_MAGIC) {
-        return true;
-    }
-
-    // New JSON format: parse and check "encrypted" field
-    if let Ok(raw) = std::str::from_utf8(&bytes) {
-        if let Ok(Value::Object(obj)) = serde_json::from_str::<Value>(raw) {
-            if obj.get("appId").and_then(|v| v.as_str()) == Some(APP_ID) {
-                return obj.get("encrypted").and_then(|v| v.as_u64()).unwrap_or(0) > 0;
-            }
+    if let Ok(Value::Object(obj)) = serde_json::from_str::<Value>(&raw) {
+        if obj.get("appId").and_then(|v| v.as_str()) == Some(APP_ID) {
+            return obj.get("encrypted").and_then(|v| v.as_u64()).unwrap_or(0) > 0;
         }
     }
-
     false
 }
 
@@ -667,7 +603,6 @@ fn count_coins_in_file(path: &Path) -> usize {
             Some(Value::Array(arr)) => arr.clone(),
             _ => return 0,
         },
-        Value::Array(arr) => arr.clone(),
         _ => return 0,
     };
     let mut symbols = std::collections::HashSet::new();
