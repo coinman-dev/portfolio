@@ -3917,6 +3917,10 @@ var DbSelector = {
                     });
                     return;
                 }
+                if (msg.indexOf("UNKNOWN_FORMAT") !== -1) {
+                    showDbUnreadableError(name);
+                    return;
+                }
                 console.error("Failed to load db", e);
                 Market.setStatus(
                     "Market data: Error loading database",
@@ -3927,6 +3931,12 @@ var DbSelector = {
 };
 
 document.addEventListener("keydown", DbSelector.onKey);
+
+function showDbUnreadableError(name) {
+    var el = document.getElementById("db-unreadable-name");
+    if (el) el.textContent = name ? name + ".json" : "";
+    UI.openModal("modal-db-unreadable");
+}
 
 window.handleMenuOpenDatabase = function () {
     window.closeAllDropdowns();
@@ -4250,6 +4260,11 @@ window.onload = function () {
                             DbEncryption.promptUnlock(function (pw) {
                                 doInitLoad(pw);
                             });
+                            return;
+                        }
+                        if (msg.indexOf("UNKNOWN_FORMAT") !== -1) {
+                            initUiAndRender({ locked: true });
+                            showDbUnreadableError(ServerSync.user);
                             return;
                         }
                         console.error("Load failed:", e);

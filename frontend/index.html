@@ -834,6 +834,22 @@
 		</div>
 	</div>
 
+	<div id="modal-db-unreadable" class="modal">
+		<div class="modal-content" style="max-width: 440px;">
+			<div class="modal-header">
+				<span>&#9888; Cannot Read Database File</span>
+			</div>
+			<div class="modal-body">
+				<p id="db-unreadable-name" style="color:#fff; font-weight:bold; word-break:break-all; margin-bottom:12px;"></p>
+				<p style="color:#ccc; line-height:1.5;">The file format is not recognized. This may not be a CoinMan database file, or the file may be corrupted.</p>
+				<p style="color:#ccc; line-height:1.5; margin-top:10px;">The file has <strong style="color:#fff;">not</strong> been modified.</p>
+			</div>
+			<div class="modal-footer">
+				<button class="btn btn-outline" onclick="closeModal('modal-db-unreadable')">OK</button>
+			</div>
+		</div>
+	</div>
+
 	<script src="index.js"></script>
 	</body>
 </html>

@@ -230,7 +230,8 @@ pub fn load_db<R: Runtime>(
     if raw.trim().is_empty() {
         return Ok(DbData::default());
     }
-    let decoded = serde_json::from_str::<Value>(&raw).unwrap_or(Value::Null);
+    let decoded = serde_json::from_str::<Value>(&raw)
+        .map_err(|_| "UNKNOWN_FORMAT".to_string())?;
     Ok(normalize_db_value(decoded))
 }
 
