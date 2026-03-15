@@ -487,11 +487,11 @@ var ServerSync = {
         );
     },
 
-    loadPortfolios: function () {
+    loadPortfolios: function (password) {
         if (AppBridge.isTauri()) {
-            return AppBridge.invoke("load_portfolios", {
-                user: ServerSync.user,
-            }).then(function (payload) {
+            var args = { user: ServerSync.user };
+            if (password) args.password = password;
+            return AppBridge.invoke("load_portfolios", args).then(function (payload) {
                 if (!payload || payload.ok !== true || !payload.data) {
                     throw new Error("Invalid DB payload");
                 }
@@ -934,6 +934,24 @@ var Market = {
         var el = document.getElementById("db-status");
         if (!el) return;
         el.textContent = "Database file: " + name + ".json";
+    },
+
+    setEncStatus: function (encrypted) {
+        var iconEl = document.getElementById("enc-lock-icon");
+        var labelEl = document.getElementById("enc-label");
+        if (iconEl) iconEl.innerHTML = encrypted ? "&#128274;" : "&#128275;";
+        if (labelEl) {
+            labelEl.textContent = encrypted ? "Encrypted" : "Not encrypted";
+            labelEl.style.color = encrypted ? "#e67e22" : "";
+        }
+        // Encrypt — active only when NOT encrypted
+        var encItem = document.getElementById("menu-encrypt-database");
+        if (encItem) encItem.classList.toggle("dropdown-item-disabled", !!encrypted);
+        // Decrypt and Change password — active only when encrypted
+        var decItem = document.getElementById("menu-decrypt-database");
+        if (decItem) decItem.classList.toggle("dropdown-item-disabled", !encrypted);
+        var chpwItem = document.getElementById("menu-change-password");
+        if (chpwItem) chpwItem.classList.toggle("dropdown-item-disabled", !encrypted);
     },
 
     getActiveCurrency: function () {
@@ -1466,6 +1484,12 @@ var Market = {
                     }),
                 );
                 MarketCache.set(symbols, vsCurrencies, state.marketData);
+                if (AppBridge.isTauri()) {
+                    AppBridge.invoke("save_market_cache", {
+                        cache: state.marketData,
+                        savedAt: Date.now(),
+                    }).catch(function () {});
+                }
 
                 Market.setStatus(
                     "Market data: loaded " +
@@ -3650,7 +3674,50 @@ window.closeAllDropdowns = function () {
             openDropdown.classList.remove("show");
         }
     }
+    // Clear keyboard focus highlight
+    var focused = document.querySelectorAll(".dropdown-item-focused");
+    for (var j = 0; j < focused.length; j++) {
+        focused[j].classList.remove("dropdown-item-focused");
+    }
 };
+
+// Keyboard navigation for top menu dropdowns
+document.addEventListener("keydown", function (e) {
+    var openMenu = document.querySelector(".dropdown-menu.show");
+    if (!openMenu) return;
+
+    var items = Array.prototype.slice.call(
+        openMenu.querySelectorAll(".dropdown-item:not(.dropdown-item-disabled)")
+    );
+    if (!items.length) return;
+
+    var focusedIdx = -1;
+    for (var i = 0; i < items.length; i++) {
+        if (items[i].classList.contains("dropdown-item-focused")) {
+            focusedIdx = i;
+            break;
+        }
+    }
+
+    if (e.key === "ArrowDown") {
+        e.preventDefault();
+        var next = focusedIdx < items.length - 1 ? focusedIdx + 1 : 0;
+        if (focusedIdx >= 0) items[focusedIdx].classList.remove("dropdown-item-focused");
+        items[next].classList.add("dropdown-item-focused");
+    } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        var prev = focusedIdx > 0 ? focusedIdx - 1 : items.length - 1;
+        if (focusedIdx >= 0) items[focusedIdx].classList.remove("dropdown-item-focused");
+        items[prev].classList.add("dropdown-item-focused");
+    } else if (e.key === "Enter") {
+        if (focusedIdx >= 0) {
+            e.preventDefault();
+            items[focusedIdx].click();
+        }
+    } else if (e.key === "Escape") {
+        window.closeAllDropdowns();
+    }
+});
 
 window.onclick = function (event) {
     if (!event.target.closest(".menu-item")) {
@@ -3719,11 +3786,15 @@ var DbSelector = {
                     minute: "2-digit",
                 });
 
+            var lockHtml = item.encrypted
+                ? '<span class="db-item-lock" title="Encrypted">&#128274;</span>'
+                : "";
             div.innerHTML =
                 '<span class="db-item-name">' +
                 item.name +
-                '</span><span class="db-item-coins">Total coins in database: ' +
-                item.coinCount +
+                lockHtml +
+                '</span><span class="db-item-coins">' +
+                (item.encrypted ? "Encrypted database" : "Total coins in database: " + item.coinCount) +
                 '</span><span class="db-item-date">' +
                 dateStr +
                 "</span>";
@@ -3784,10 +3855,21 @@ var DbSelector = {
         var item = DbSelector.items[DbSelector.selectedIndex];
         if (!item) return;
         UI.closeModal("modal-open-database");
-        DbSelector._loadByName(item.name);
+        if (item.encrypted) {
+            // We know the file is encrypted — update user context immediately,
+            // then ask for the password before attempting to load.
+            window.SERVER_CONFIG.user = item.name;
+            ServerSync.user = item.name;
+            Market.setDbStatus(item.name);
+            DbEncryption.promptUnlock(function (pw) {
+                DbSelector._loadByName(item.name, pw);
+            });
+        } else {
+            DbSelector._loadByName(item.name);
+        }
     },
 
-    _loadByName: function (name) {
+    _loadByName: function (name, password) {
         window.SERVER_CONFIG.user = name;
         ServerSync.user = name;
         Market.setDbStatus(name);
@@ -3795,13 +3877,46 @@ var DbSelector = {
             "Market data: loading database " + name + "...",
             "#888",
         );
-        ServerSync.loadPortfolios()
+        ServerSync.loadPortfolios(password || null)
             .then(function () {
+                if (AppBridge.isTauri()) {
+                    AppBridge.invoke("check_db_encrypted", { user: name })
+                        .then(function (enc) { Market.setEncStatus(!!enc); })
+                        .catch(function () {});
+                }
                 renderApp();
                 MarketCache.clear();
-                Market.scheduleRefresh(100);
+                // Restore market cache from settings.json, then schedule refresh
+                if (AppBridge.isTauri()) {
+                    AppBridge.invoke("load_app_settings")
+                        .then(function (appSettings) {
+                            if (appSettings && Array.isArray(appSettings.marketCache) && appSettings.marketCache.length) {
+                                Market.setStateMarketData(appSettings.marketCache);
+                                var ts = appSettings.marketCacheSavedAt
+                                    ? new Date(appSettings.marketCacheSavedAt).toLocaleString()
+                                    : "saved";
+                                Market.setStatus(
+                                    "Market data: restored from cache (" + ts + ")",
+                                    "#aaa",
+                                );
+                                renderApp();
+                            }
+                        })
+                        .catch(function () {})
+                        .finally(function () { Market.scheduleRefresh(100); });
+                } else {
+                    Market.scheduleRefresh(100);
+                }
             })
             .catch(function (e) {
+                var msg = String(e);
+                if (msg.indexOf("DB_ENCRYPTED") !== -1) {
+                    // Fallback: file turned out to be encrypted without us knowing
+                    DbEncryption.promptUnlock(function (pw) {
+                        DbSelector._loadByName(name, pw);
+                    });
+                    return;
+                }
                 console.error("Failed to load db", e);
                 Market.setStatus(
                     "Market data: Error loading database",
@@ -3837,6 +3952,206 @@ window.handleOpenSelectedDatabase = function () {
     DbSelector.load();
 };
 
+// ─── DB ENCRYPTION ────────────────────────────────────────────────────────────
+var DbEncryption = {
+    _unlockCallback: null,
+
+    // Open the unlock modal. onSuccess(password) is called when user unlocks.
+    promptUnlock: function (onSuccess) {
+        DbEncryption._unlockCallback = onSuccess;
+        var pwEl = document.getElementById("unlock-db-password");
+        var errEl = document.getElementById("unlock-db-error");
+        if (pwEl) pwEl.value = "";
+        if (errEl) errEl.classList.add("hidden");
+        UI.openModal("modal-unlock-database");
+        if (pwEl) setTimeout(function () { pwEl.focus(); }, 80);
+    },
+
+    doUnlock: function () {
+        var pwEl = document.getElementById("unlock-db-password");
+        var errEl = document.getElementById("unlock-db-error");
+        var pw = pwEl ? pwEl.value : "";
+        if (!pw) {
+            if (errEl) { errEl.textContent = "Please enter a password."; errEl.classList.remove("hidden"); }
+            return;
+        }
+        // Try loading with provided password
+        var user = ServerSync.user;
+        AppBridge.invoke("load_portfolios", { user: user, password: pw })
+            .then(function (payload) {
+                if (!payload || payload.ok !== true || !payload.data) {
+                    throw new Error("Invalid DB payload");
+                }
+                var list = Array.isArray(payload.data.portfolios) ? payload.data.portfolios : [];
+                portfolios = list;
+                if (payload.data.activePortfolioId !== undefined) {
+                    state.activePortfolioId = payload.data.activePortfolioId;
+                }
+                UI.closeModal("modal-unlock-database");
+                Market.setEncStatus(true);
+                var cb = DbEncryption._unlockCallback;
+                DbEncryption._unlockCallback = null;
+                if (cb) cb(pw);
+            })
+            .catch(function (e) {
+                var msg = String(e);
+                var text = msg.indexOf("WRONG_PASSWORD") !== -1
+                    ? "Wrong password. Please try again."
+                    : "Error: " + msg;
+                if (errEl) { errEl.textContent = text; errEl.classList.remove("hidden"); }
+                if (pwEl) { pwEl.select(); pwEl.focus(); }
+            });
+    },
+};
+
+window.handleUnlockKeydown = function (e) {
+    if (e.key === "Enter") handleDoUnlockDatabase();
+};
+
+window.handleEncryptKeydown = function (e) {
+    if (e.key === "Enter") handleDoEncryptDatabase();
+};
+
+window.handleDecryptKeydown = function (e) {
+    if (e.key === "Enter") handleDoDecryptDatabase();
+};
+
+window.handleChangePwKeydown = function (e) {
+    if (e.key === "Enter") handleDoChangePassword();
+};
+
+window.handleDoUnlockDatabase = function () {
+    DbEncryption.doUnlock();
+};
+
+window.handleMenuEncryptDatabase = function () {
+    window.closeAllDropdowns();
+    var menuItem = document.getElementById("menu-encrypt-database");
+    if (menuItem && menuItem.classList.contains("dropdown-item-disabled")) return;
+    var pwEl = document.getElementById("encrypt-db-password");
+    var cfEl = document.getElementById("encrypt-db-confirm");
+    var errEl = document.getElementById("encrypt-db-error");
+    if (pwEl) pwEl.value = "";
+    if (cfEl) cfEl.value = "";
+    if (errEl) errEl.classList.add("hidden");
+    UI.openModal("modal-encrypt-database");
+    if (pwEl) setTimeout(function () { pwEl.focus(); }, 80);
+};
+
+window.handleMenuDecryptDatabase = function () {
+    window.closeAllDropdowns();
+    var decItem = document.getElementById("menu-decrypt-database");
+    if (decItem && decItem.classList.contains("dropdown-item-disabled")) return;
+    var pwEl  = document.getElementById("decrypt-db-password");
+    var errEl = document.getElementById("decrypt-db-error");
+    if (pwEl)  pwEl.value = "";
+    if (errEl) errEl.classList.add("hidden");
+    UI.openModal("modal-decrypt-database");
+    if (pwEl) setTimeout(function () { pwEl.focus(); }, 80);
+};
+
+window.handleDoDecryptDatabase = function () {
+    var pwEl  = document.getElementById("decrypt-db-password");
+    var errEl = document.getElementById("decrypt-db-error");
+    var pw = pwEl ? pwEl.value : "";
+
+    function showErr(msg) {
+        if (errEl) { errEl.textContent = msg; errEl.classList.remove("hidden"); }
+    }
+    if (!pw) { showErr("Please enter your current password."); return; }
+
+    AppBridge.invoke("decrypt_database", { user: ServerSync.user, password: pw })
+        .then(function () {
+            UI.closeModal("modal-decrypt-database");
+            Market.setEncStatus(false);
+        })
+        .catch(function (e) {
+            var msg = String(e);
+            showErr(msg.indexOf("WRONG_PASSWORD") !== -1 ? "Wrong password. Please try again." : "Error: " + msg);
+            if (pwEl) { pwEl.select(); pwEl.focus(); }
+        });
+};
+
+window.handleMenuChangePassword = function () {
+    window.closeAllDropdowns();
+    var chpwItem = document.getElementById("menu-change-password");
+    if (chpwItem && chpwItem.classList.contains("dropdown-item-disabled")) return;
+    var curEl = document.getElementById("change-pw-current");
+    var newEl = document.getElementById("change-pw-new");
+    var cfEl  = document.getElementById("change-pw-confirm");
+    var errEl = document.getElementById("change-pw-error");
+    if (curEl) curEl.value = "";
+    if (newEl) newEl.value = "";
+    if (cfEl)  cfEl.value  = "";
+    if (errEl) errEl.classList.add("hidden");
+    UI.openModal("modal-change-password");
+    if (curEl) setTimeout(function () { curEl.focus(); }, 80);
+};
+
+window.handleDoChangePassword = function () {
+    var curEl = document.getElementById("change-pw-current");
+    var newEl = document.getElementById("change-pw-new");
+    var cfEl  = document.getElementById("change-pw-confirm");
+    var errEl = document.getElementById("change-pw-error");
+    var cur = curEl ? curEl.value : "";
+    var nw  = newEl ? newEl.value : "";
+    var cf  = cfEl  ? cfEl.value  : "";
+
+    function showErr(msg) {
+        if (errEl) { errEl.textContent = msg; errEl.classList.remove("hidden"); }
+    }
+    if (!cur) { showErr("Please enter your current password."); return; }
+    if (!nw)  { showErr("Please enter a new password."); return; }
+    if (nw.length < 4) { showErr("New password must be at least 4 characters."); return; }
+    if (nw !== cf) { showErr("New passwords do not match."); return; }
+
+    AppBridge.invoke("change_database_password", {
+        user: ServerSync.user,
+        currentPassword: cur,
+        newPassword: nw,
+    })
+        .then(function () {
+            UI.closeModal("modal-change-password");
+        })
+        .catch(function (e) {
+            var msg = String(e);
+            showErr(msg.indexOf("WRONG_PASSWORD") !== -1 ? "Wrong current password." : "Error: " + msg);
+            if (curEl) { curEl.select(); curEl.focus(); }
+        });
+};
+
+window.handleDoEncryptDatabase = function () {
+    var pwEl = document.getElementById("encrypt-db-password");
+    var cfEl = document.getElementById("encrypt-db-confirm");
+    var errEl = document.getElementById("encrypt-db-error");
+    var pw = pwEl ? pwEl.value : "";
+    var cf = cfEl ? cfEl.value : "";
+
+    if (!pw) {
+        if (errEl) { errEl.textContent = "Please enter a password."; errEl.classList.remove("hidden"); }
+        return;
+    }
+    if (pw.length < 4) {
+        if (errEl) { errEl.textContent = "Password must be at least 4 characters."; errEl.classList.remove("hidden"); }
+        return;
+    }
+    if (pw !== cf) {
+        if (errEl) { errEl.textContent = "Passwords do not match."; errEl.classList.remove("hidden"); }
+        return;
+    }
+
+    AppBridge.invoke("encrypt_database", { user: ServerSync.user, password: pw })
+        .then(function () {
+            UI.closeModal("modal-encrypt-database");
+            Market.setEncStatus(true);
+        })
+        .catch(function (e) {
+            var msg = String(e);
+            if (errEl) { errEl.textContent = "Encryption failed: " + msg; errEl.classList.remove("hidden"); }
+        });
+};
+// ─────────────────────────────────────────────────────────────────────────────
+
 window.onload = function () {
     AppSettings.init();
     AppBridge.bootstrap()
@@ -3851,7 +4166,12 @@ window.onload = function () {
             MarketCache.init();
             UI.fillCurrencySelects();
 
-            function initUiAndRender() {
+            // One-time UI setup — run only once, re-render calls just call renderApp()
+            var uiSetupDone = false;
+            function initUiSetup() {
+                if (uiSetupDone) return;
+                uiSetupDone = true;
+
                 Storage.load();
                 TimePicker.initAll();
                 UI.initRestrictions();
@@ -3872,39 +4192,95 @@ window.onload = function () {
                         UI.updateCounter(id, id + "-counter");
                     }
                 });
-
-                renderApp();
-                if (!portfolios.length) {
-                    openCreatePortfolioModal(true);
-                }
-                Market.scheduleRefresh(100);
             }
 
-            ServerSync.loadPortfolios()
-                .catch(function (e) {
-                    console.error("Load failed:", e);
-                    portfolios = [];
-                    Market.setStatus(
-                        "Market data: cannot load local portfolio data",
-                        "#D32F2F",
-                    );
-                })
-                .finally(function () {
+            // opts.locked = true → render empty state but don't open "Create portfolio" modal
+            function initUiAndRender(opts) {
+                initUiSetup();
+                renderApp();
+                if (!(opts && opts.locked) && !portfolios.length) {
+                    openCreatePortfolioModal(true);
+                }
+            }
+
+            function afterLoad() {
+                if (AppBridge.isTauri()) {
+                    AppBridge.invoke("check_db_encrypted", { user: ServerSync.user })
+                        .then(function (enc) { Market.setEncStatus(!!enc); })
+                        .catch(function () {});
+                }
+
+                if (AppBridge.isTauri()) {
+                    AppBridge.invoke("load_app_settings")
+                        .then(function (appSettings) {
+                            if (appSettings && Array.isArray(appSettings.marketCache) && appSettings.marketCache.length) {
+                                Market.setStateMarketData(appSettings.marketCache);
+                                var ts = appSettings.marketCacheSavedAt
+                                    ? new Date(appSettings.marketCacheSavedAt).toLocaleString()
+                                    : "saved";
+                                Market.setStatus(
+                                    "Market data: restored from cache (" + ts + ")",
+                                    "#aaa",
+                                );
+                                renderApp();
+                            }
+                        })
+                        .catch(function () {})
+                        .finally(function () {
+                            initUiAndRender();
+                            Market.scheduleRefresh(100);
+                        });
+                } else {
                     initUiAndRender();
-                    if (AppBridge.isTauri()) {
-                        AppBridge.invoke("list_databases")
-                            .then(function (result) {
-                                var files = result.files || [];
-                                if (files.length >= 2) {
-                                    if (Market.refreshTimer) {
-                                        window.clearTimeout(Market.refreshTimer);
-                                        Market.refreshTimer = null;
-                                    }
-                                    DbSelector.open(files, result.dbDir || "");
-                                }
-                            })
-                            .catch(function () {});
-                    }
-                });
+                    Market.scheduleRefresh(100);
+                }
+            }
+
+            function doInitLoad(password) {
+                ServerSync.loadPortfolios(password || null)
+                    .then(function () {
+                        afterLoad();
+                    })
+                    .catch(function (e) {
+                        var msg = String(e);
+                        if (msg.indexOf("DB_ENCRYPTED") !== -1) {
+                            Market.setEncStatus(true);
+                            // Render empty app (0/$0 everywhere) so placeholders are gone
+                            initUiAndRender({ locked: true });
+                            DbEncryption.promptUnlock(function (pw) {
+                                doInitLoad(pw);
+                            });
+                            return;
+                        }
+                        console.error("Load failed:", e);
+                        portfolios = [];
+                        Market.setStatus(
+                            "Market data: cannot load local portfolio data",
+                            "#D32F2F",
+                        );
+                        afterLoad();
+                    });
+            }
+
+            // Check how many DB files exist before loading anything.
+            // If 2+ files → show selector immediately so the user picks first.
+            // If 1 file (or non-Tauri) → load the default file directly.
+            if (AppBridge.isTauri()) {
+                AppBridge.invoke("list_databases")
+                    .then(function (result) {
+                        var files = result.files || [];
+                        if (files.length >= 2) {
+                            initUiAndRender({ locked: true });
+                            DbSelector.open(files, result.dbDir || "");
+                        } else {
+                            doInitLoad(null);
+                        }
+                    })
+                    .catch(function () {
+                        doInitLoad(null);
+                    });
+            } else {
+                doInitLoad(null);
+            }
         });
 };

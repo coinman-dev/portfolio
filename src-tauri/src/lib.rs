@@ -1,3 +1,4 @@
+mod settings;
 mod storage;
 
 use serde::Serialize;
@@ -11,6 +12,10 @@ use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 
 #[derive(Default)]
 struct StorageLock(Mutex<()>);
+
+/// Stores the current session password in memory (never written to disk).
+#[derive(Default)]
+struct SessionPassword(Mutex<Option<String>>);
 
 #[derive(Clone)]
 struct RuntimePaths {
@@ -33,6 +38,8 @@ struct WriteResponse {
     saved_at: u64,
 }
 
+// ─── Tauri commands ───────────────────────────────────────────────────────────
+
 #[tauri::command]
 fn bootstrap_app(app: tauri::AppHandle) -> Result<storage::BootstrapConfig, String> {
     let debug_mode = std::env::args()
@@ -40,18 +47,48 @@ fn bootstrap_app(app: tauri::AppHandle) -> Result<storage::BootstrapConfig, Stri
     storage::load_bootstrap(&app, debug_mode)
 }
 
+/// Load portfolios from disk.
+/// - If `password` is provided → use it and store in session on success.
+/// - If not provided → try session password, then try without password.
+/// - If file is encrypted and no password available → returns Err("DB_ENCRYPTED").
+/// - If password is wrong → returns Err("WRONG_PASSWORD").
+/// - If file is plain and loaded without a password → clears session password.
 #[tauri::command]
 fn load_portfolios(
     app: tauri::AppHandle,
     lock: tauri::State<'_, StorageLock>,
+    session: tauri::State<'_, SessionPassword>,
     user: Option<String>,
+    password: Option<String>,
 ) -> Result<LoadResponse, String> {
     let _guard = lock
         .0
         .lock()
         .map_err(|_| "Storage lock is poisoned".to_string())?;
     let user = storage::sanitize_user(user);
-    let data = storage::load_db(&app, &user)?;
+
+    // Resolve effective password: explicit > session
+    let session_pw = session
+        .0
+        .lock()
+        .ok()
+        .and_then(|g| g.clone());
+    let effective_pw = password.clone().or(session_pw);
+
+    let data = storage::load_db(&app, &user, effective_pw.as_deref())?;
+
+    // Update session password
+    if let Ok(mut sess) = session.0.lock() {
+        if let Some(ref pw) = password {
+            // Explicit password used and load succeeded → store in session
+            *sess = Some(pw.clone());
+        } else if effective_pw.is_none() {
+            // Loaded plain file without any password → clear session
+            *sess = None;
+        }
+        // else: used existing session password → keep it
+    }
+
     Ok(LoadResponse {
         ok: true,
         user,
@@ -63,6 +100,7 @@ fn load_portfolios(
 fn save_portfolios(
     app: tauri::AppHandle,
     lock: tauri::State<'_, StorageLock>,
+    session: tauri::State<'_, SessionPassword>,
     user: Option<String>,
     data: storage::DbData,
 ) -> Result<WriteResponse, String> {
@@ -71,7 +109,8 @@ fn save_portfolios(
         .lock()
         .map_err(|_| "Storage lock is poisoned".to_string())?;
     let user = storage::sanitize_user(user);
-    storage::save_db(&app, &user, data)?;
+    let pw = session.0.lock().ok().and_then(|g| g.clone());
+    storage::save_db(&app, &user, data, pw.as_deref())?;
     Ok(WriteResponse {
         ok: true,
         user,
@@ -83,6 +122,7 @@ fn save_portfolios(
 fn clear_portfolios(
     app: tauri::AppHandle,
     lock: tauri::State<'_, StorageLock>,
+    session: tauri::State<'_, SessionPassword>,
     user: Option<String>,
 ) -> Result<WriteResponse, String> {
     let _guard = lock
@@ -90,7 +130,8 @@ fn clear_portfolios(
         .lock()
         .map_err(|_| "Storage lock is poisoned".to_string())?;
     let user = storage::sanitize_user(user);
-    storage::clear_db(&app, &user)?;
+    let pw = session.0.lock().ok().and_then(|g| g.clone());
+    storage::clear_db(&app, &user, pw.as_deref())?;
     Ok(WriteResponse {
         ok: true,
         user,
@@ -110,6 +151,91 @@ fn list_databases(app: tauri::AppHandle) -> Result<ListDatabasesResponse, String
     let files = storage::list_db_files(&app)?;
     let db_dir = storage::get_db_dir_str(&app);
     Ok(ListDatabasesResponse { files, db_dir })
+}
+
+/// Check whether the given user's DB file is encrypted.
+#[tauri::command]
+fn check_db_encrypted(
+    app: tauri::AppHandle,
+    user: Option<String>,
+) -> Result<bool, String> {
+    let user = storage::sanitize_user(user);
+    storage::check_db_encrypted(&app, &user)
+}
+
+/// Encrypt an existing plain-text DB file with the given password.
+/// Stores the password in the session on success.
+#[tauri::command]
+fn encrypt_database(
+    app: tauri::AppHandle,
+    lock: tauri::State<'_, StorageLock>,
+    session: tauri::State<'_, SessionPassword>,
+    user: Option<String>,
+    password: String,
+) -> Result<(), String> {
+    let _guard = lock
+        .0
+        .lock()
+        .map_err(|_| "Storage lock is poisoned".to_string())?;
+    let user = storage::sanitize_user(user);
+    storage::encrypt_db_file(&app, &user, &password)?;
+    if let Ok(mut sess) = session.0.lock() {
+        *sess = Some(password);
+    }
+    Ok(())
+}
+
+/// Decrypt an encrypted DB file back to plain JSON. Clears session password.
+#[tauri::command]
+fn decrypt_database(
+    app: tauri::AppHandle,
+    lock: tauri::State<'_, StorageLock>,
+    session: tauri::State<'_, SessionPassword>,
+    user: Option<String>,
+    password: String,
+) -> Result<(), String> {
+    let _guard = lock
+        .0
+        .lock()
+        .map_err(|_| "Storage lock is poisoned".to_string())?;
+    let user = storage::sanitize_user(user);
+    storage::decrypt_db_file(&app, &user, &password)?;
+    if let Ok(mut sess) = session.0.lock() {
+        *sess = None;
+    }
+    Ok(())
+}
+
+/// Re-encrypt a DB file with a new password. Updates session password.
+#[tauri::command]
+fn change_database_password(
+    app: tauri::AppHandle,
+    lock: tauri::State<'_, StorageLock>,
+    session: tauri::State<'_, SessionPassword>,
+    user: Option<String>,
+    current_password: String,
+    new_password: String,
+) -> Result<(), String> {
+    let _guard = lock
+        .0
+        .lock()
+        .map_err(|_| "Storage lock is poisoned".to_string())?;
+    let user = storage::sanitize_user(user);
+    storage::change_db_password(&app, &user, &current_password, &new_password)?;
+    if let Ok(mut sess) = session.0.lock() {
+        *sess = Some(new_password);
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn load_app_settings(app: tauri::AppHandle) -> settings::AppSettings {
+    settings::load(&app)
+}
+
+#[tauri::command]
+fn save_market_cache(app: tauri::AppHandle, cache: serde_json::Value, saved_at: u64) {
+    settings::update_market_cache(&app, cache, saved_at);
 }
 
 #[tauri::command]
@@ -141,6 +267,8 @@ fn open_file_dialog(app: tauri::AppHandle) -> Result<Option<String>, String> {
     Ok(file.map(|f| f.to_string()))
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 fn now_unix_ms() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -148,12 +276,15 @@ fn now_unix_ms() -> u64 {
         .as_millis() as u64
 }
 
+// ─── App setup ────────────────────────────────────────────────────────────────
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let webview_data_dir = prepare_webview_data_dir();
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(StorageLock::default())
+        .manage(SessionPassword::default())
         .manage(RuntimePaths {
             webview_data_dir: webview_data_dir.clone(),
         })
@@ -170,6 +301,12 @@ pub fn run() {
             save_portfolios,
             clear_portfolios,
             list_databases,
+            check_db_encrypted,
+            encrypt_database,
+            decrypt_database,
+            change_database_password,
+            load_app_settings,
+            save_market_cache,
             debug_log,
             exit_app,
             open_url,
@@ -218,7 +355,14 @@ fn create_main_window<R: tauri::Runtime>(app: &mut tauri::App<R>) -> tauri::Resu
     let mut height = 700.0;
     let mut position = None;
 
-    if let Ok(db) = storage::load_db(app.handle(), "default") {
+    // Prefer settings.json for window state (works even when DB is encrypted).
+    // Fall back to DB window_state for backward compatibility with older installs.
+    let app_settings = settings::load(app.handle());
+    if let Some(ws) = app_settings.window_state {
+        width = ws.width;
+        height = ws.height;
+        position = Some((ws.x, ws.y));
+    } else if let Ok(db) = storage::load_db(app.handle(), "default", None) {
         if let Some(ws) = db.window_state {
             width = ws.width;
             height = ws.height;
@@ -245,7 +389,7 @@ fn create_main_window<R: tauri::Runtime>(app: &mut tauri::App<R>) -> tauri::Resu
     window.on_window_event(move |event| {
         if let tauri::WindowEvent::CloseRequested { .. } = event {
             let app_handle = w.app_handle();
-            let mut state = storage::WindowState {
+            let mut win_state = settings::WinState {
                 width: 1220.0,
                 height: 700.0,
                 x: 0.0,
@@ -255,22 +399,19 @@ fn create_main_window<R: tauri::Runtime>(app: &mut tauri::App<R>) -> tauri::Resu
             if let Ok(size) = w.inner_size() {
                 if let Ok(scale_factor) = w.scale_factor() {
                     let logical_size = size.to_logical::<f64>(scale_factor);
-                    state.width = logical_size.width;
-                    state.height = logical_size.height;
+                    win_state.width = logical_size.width;
+                    win_state.height = logical_size.height;
                 }
             }
             if let Ok(pos) = w.outer_position() {
                 if let Ok(scale_factor) = w.scale_factor() {
                     let logical_pos = pos.to_logical::<f64>(scale_factor);
-                    state.x = logical_pos.x;
-                    state.y = logical_pos.y;
+                    win_state.x = logical_pos.x;
+                    win_state.y = logical_pos.y;
                 }
             }
 
-            if let Ok(mut db) = storage::load_db(app_handle, "default") {
-                db.window_state = Some(state);
-                let _ = storage::save_db(app_handle, "default", db);
-            }
+            settings::update_window_state(app_handle, win_state);
         }
     });
 

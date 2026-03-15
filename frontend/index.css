@@ -725,6 +725,13 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     font-size: 14px;
     flex: 1;
     min-width: 80px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.db-item-lock {
+    font-size: 12px;
+    line-height: 1;
 }
 .db-item-coins {
     color: #aaa;
@@ -853,6 +860,17 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     display: block;
 }
 
+/* About menu item pushed to the far right */
+.menu-item-right {
+    margin-left: auto;
+}
+
+/* Dropdown that opens to the left (for right-aligned menu items) */
+.dropdown-menu-right {
+    left: auto;
+    right: 0;
+}
+
 .dropdown-item {
     padding: 8px 15px;
     cursor: pointer;
@@ -915,6 +933,44 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 body.show-cur-price .col-cur-price {
     display: table-cell;
+}
+
+/* --- DISABLED MENU ITEM --- */
+.dropdown-item-disabled {
+    color: #555 !important;
+    cursor: default !important;
+    pointer-events: none;
+}
+.dropdown-item-disabled:hover {
+    background-color: transparent !important;
+    color: #555 !important;
+}
+.dropdown-item-focused {
+    background-color: #3a3a3a !important;
+    color: #ffffff !important;
+}
+
+/* --- ENCRYPTION STATUS (status bar) --- */
+.ie-statusbar-panel-enc {
+    flex: 0 0 auto;
+    color: #aaa;
+    gap: 5px;
+}
+.enc-lock-icon {
+    font-size: 12px;
+    line-height: 1;
+    margin-right: 4px;
+}
+
+/* --- ENCRYPTION MODALS --- */
+.enc-modal-error {
+    color: #d32f2f;
+    font-size: 13px;
+    margin-top: 6px;
+    padding: 6px 10px;
+    background: rgba(211, 47, 47, 0.1);
+    border-radius: 3px;
+    border-left: 3px solid #d32f2f;
 }
 
 /* --- CHECKMARK MENU ITEM --- */
