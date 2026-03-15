@@ -1582,7 +1582,6 @@ var Portfolio = {
         if (AppBridge.isTauri()) {
             AppBridge.invoke("save_active_portfolio", { id: id }).catch(function () {});
         }
-        Storage.save({ refreshMarket: false });
         renderApp();
     },
 };
