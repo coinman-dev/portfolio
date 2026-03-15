@@ -6,7 +6,6 @@ use rand::{rngs::OsRng, RngCore};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::fs;
-use std::io::Read;
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Runtime};
 
@@ -14,7 +13,14 @@ const DEFAULT_USER: &str = "default";
 const DEFAULT_IMAGE_DIR: &str = "images/logo";
 const SEEDED_COIN_CATALOG_JSON: &str = include_str!("../../frontend/coinbase/cmc.json");
 
-const ENC_MAGIC: &[u8] = b"COINMAN_ENC_V1\n";
+/// Value written to the "appId" field in every database file.
+const APP_ID: &str = "coinman-portfolio";
+/// Encryption version: AES-256-GCM + Argon2id.
+const ENC_V1: u64 = 1;
+
+/// Legacy magic header used before the JSON format was introduced (read-only).
+const LEGACY_ENC_MAGIC: &[u8] = b"COINMAN_ENC_V1\n";
+
 const SALT_LEN: usize = 16;
 const NONCE_LEN: usize = 12;
 
@@ -99,10 +105,6 @@ pub struct DbFileInfo {
 
 // ─── Encryption ───────────────────────────────────────────────────────────────
 
-pub fn is_file_encrypted(bytes: &[u8]) -> bool {
-    bytes.starts_with(ENC_MAGIC)
-}
-
 fn derive_key(password: &str, salt: &[u8]) -> Result<[u8; 32], String> {
     let params = Params::new(65536, 2, 1, Some(32))
         .map_err(|e| format!("Argon2 params error: {e}"))?;
@@ -114,7 +116,8 @@ fn derive_key(password: &str, salt: &[u8]) -> Result<[u8; 32], String> {
     Ok(key)
 }
 
-fn encrypt_json(json: &str, password: &str) -> Result<Vec<u8>, String> {
+/// Encrypt a JSON string and return a base64-encoded ciphertext (salt + nonce + ciphertext).
+fn encrypt_to_b64(json: &str, password: &str) -> Result<String, String> {
     let mut salt = [0u8; SALT_LEN];
     let mut nonce_bytes = [0u8; NONCE_LEN];
     OsRng.fill_bytes(&mut salt);
@@ -134,29 +137,17 @@ fn encrypt_json(json: &str, password: &str) -> Result<Vec<u8>, String> {
     payload.extend_from_slice(&nonce_bytes);
     payload.extend(ciphertext);
 
-    let encoded = BASE64.encode(&payload);
-    let mut result = ENC_MAGIC.to_vec();
-    result.extend_from_slice(encoded.as_bytes());
-    result.push(b'\n');
-    Ok(result)
+    Ok(BASE64.encode(&payload))
 }
 
-fn decrypt_json(bytes: &[u8], password: &str) -> Result<String, String> {
-    if !bytes.starts_with(ENC_MAGIC) {
-        return Err("Not an encrypted file".to_string());
-    }
-
-    let encoded_bytes = &bytes[ENC_MAGIC.len()..];
-    let encoded_str = std::str::from_utf8(encoded_bytes)
-        .map_err(|e| format!("Encoding error: {e}"))?
-        .trim_end();
-
+/// Decrypt a base64-encoded ciphertext (salt + nonce + ciphertext) and return the JSON string.
+fn decrypt_from_b64(b64: &str, password: &str) -> Result<String, String> {
     let payload = BASE64
-        .decode(encoded_str)
+        .decode(b64.trim())
         .map_err(|e| format!("Base64 decode error: {e}"))?;
 
     if payload.len() < SALT_LEN + NONCE_LEN + 16 {
-        return Err("Corrupted encrypted file".to_string());
+        return Err("Corrupted encrypted data".to_string());
     }
 
     let salt = &payload[..SALT_LEN];
@@ -173,6 +164,78 @@ fn decrypt_json(bytes: &[u8], password: &str) -> Result<String, String> {
         .map_err(|_| "WRONG_PASSWORD".to_string())?;
 
     String::from_utf8(plaintext).map_err(|e| format!("UTF-8 decode error: {e}"))
+}
+
+/// Decrypt a file in the legacy format (COINMAN_ENC_V1 magic header + base64).
+fn legacy_decrypt(bytes: &[u8], password: &str) -> Result<String, String> {
+    let encoded_bytes = &bytes[LEGACY_ENC_MAGIC.len()..];
+    let b64 = std::str::from_utf8(encoded_bytes)
+        .map_err(|e| format!("Encoding error: {e}"))?
+        .trim_end();
+    decrypt_from_b64(b64, password)
+}
+
+// ─── File format ──────────────────────────────────────────────────────────────
+
+/// Build the on-disk JSON payload for the new file format.
+///
+/// Plain:
+/// ```json
+/// { "appId": "coinman-portfolio", "encrypted": 0, "encryptedData": null,
+///   "portfolios": [...], "activePortfolioId": ... }
+/// ```
+///
+/// Encrypted (v1):
+/// ```json
+/// { "appId": "coinman-portfolio", "encrypted": 1, "encryptedData": "<base64>" }
+/// ```
+fn build_db_file(data: DbData, password: Option<&str>) -> Result<Vec<u8>, String> {
+    let mut root = Map::new();
+    root.insert("appId".to_string(), Value::String(APP_ID.to_string()));
+
+    if let Some(pw) = password {
+        let inner_json = serialize_inner_data(&data)?;
+        let b64 = encrypt_to_b64(&inner_json, pw)?;
+        root.insert("encrypted".to_string(), Value::from(ENC_V1));
+        root.insert("encryptedData".to_string(), Value::String(b64));
+    } else {
+        root.insert("encrypted".to_string(), Value::from(0u64));
+        root.insert("encryptedData".to_string(), Value::Null);
+        root.insert("portfolios".to_string(), Value::Array(data.portfolios));
+        root.insert(
+            "activePortfolioId".to_string(),
+            data.active_portfolio_id.unwrap_or(Value::Null),
+        );
+        if let Some(ws) = data.window_state {
+            if let Ok(v) = serde_json::to_value(ws) {
+                root.insert("windowState".to_string(), v);
+            }
+        }
+    }
+
+    serde_json::to_string_pretty(&Value::Object(root))
+        .map(|j| format!("{j}\n").into_bytes())
+        .map_err(|e| format!("Cannot encode database JSON: {e}"))
+}
+
+/// Serialize the inner portfolio data (used as the plaintext before encryption).
+fn serialize_inner_data(data: &DbData) -> Result<String, String> {
+    let mut inner = Map::new();
+    inner.insert(
+        "portfolios".to_string(),
+        Value::Array(data.portfolios.clone()),
+    );
+    inner.insert(
+        "activePortfolioId".to_string(),
+        data.active_portfolio_id.clone().unwrap_or(Value::Null),
+    );
+    if let Some(ws) = &data.window_state {
+        if let Ok(v) = serde_json::to_value(ws) {
+            inner.insert("windowState".to_string(), v);
+        }
+    }
+    serde_json::to_string_pretty(&Value::Object(inner))
+        .map_err(|e| format!("Cannot encode inner JSON: {e}"))
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
@@ -205,8 +268,20 @@ pub fn load_bootstrap<R: Runtime>(
     })
 }
 
-/// Load DB from disk. If the file is encrypted and no password is provided,
-/// returns Err("DB_ENCRYPTED"). If the password is wrong, returns Err("WRONG_PASSWORD").
+/// Load DB from disk.
+///
+/// Supported formats (in detection order):
+/// 1. Legacy encrypted (starts with `COINMAN_ENC_V1\n` magic)
+/// 2. New JSON format with `"appId": "coinman-portfolio"`
+///    - `"encrypted": 0` → plain
+///    - `"encrypted": 1` → AES-256-GCM v1
+/// 3. Legacy plain JSON (object with `"portfolios"` key but no `"appId"`)
+/// 4. Legacy plain JSON (root array of portfolios)
+///
+/// Returns:
+/// - `Err("DB_ENCRYPTED")` — file is encrypted and no password provided
+/// - `Err("WRONG_PASSWORD")` — password is incorrect
+/// - `Err("UNKNOWN_FORMAT")` — file is not a recognized CoinMan database
 pub fn load_db<R: Runtime>(
     app: &AppHandle<R>,
     user: &str,
@@ -219,23 +294,64 @@ pub fn load_db<R: Runtime>(
         return Ok(DbData::default());
     }
 
-    if is_file_encrypted(&bytes) {
+    // ── Legacy encrypted format ──────────────────────────────────────────────
+    if bytes.starts_with(LEGACY_ENC_MAGIC) {
         let pw = password.ok_or_else(|| "DB_ENCRYPTED".to_string())?;
-        let json = decrypt_json(&bytes, pw)?;
+        let json = legacy_decrypt(&bytes, pw)?;
         let decoded = serde_json::from_str::<Value>(&json).unwrap_or(Value::Null);
         return Ok(normalize_db_value(decoded));
     }
 
+    // ── JSON formats ─────────────────────────────────────────────────────────
     let raw = String::from_utf8_lossy(&bytes);
     if raw.trim().is_empty() {
         return Ok(DbData::default());
     }
-    let decoded = serde_json::from_str::<Value>(&raw)
+
+    let root: Value = serde_json::from_str(&raw)
         .map_err(|_| "UNKNOWN_FORMAT".to_string())?;
-    Ok(normalize_db_value(decoded))
+
+    match &root {
+        Value::Object(obj) => {
+            match obj.get("appId").and_then(|v| v.as_str()) {
+                Some(APP_ID) => {
+                    // New JSON format
+                    let enc = obj.get("encrypted").and_then(|v| v.as_u64()).unwrap_or(0);
+                    match enc {
+                        0 => Ok(normalize_db_value(root)),
+                        ENC_V1 => {
+                            let pw = password.ok_or_else(|| "DB_ENCRYPTED".to_string())?;
+                            let b64 = obj
+                                .get("encryptedData")
+                                .and_then(|v| v.as_str())
+                                .ok_or_else(|| "Corrupted: missing encryptedData".to_string())?;
+                            let inner_json = decrypt_from_b64(b64, pw)?;
+                            let inner: Value = serde_json::from_str(&inner_json)
+                                .map_err(|_| "Corrupted encrypted data".to_string())?;
+                            Ok(normalize_db_value(inner))
+                        }
+                        v => Err(format!("Unsupported encryption version: {v}")),
+                    }
+                }
+                None => {
+                    // Legacy plain JSON (no appId field)
+                    if obj.contains_key("portfolios") {
+                        Ok(normalize_db_value(root))
+                    } else {
+                        Err("UNKNOWN_FORMAT".to_string())
+                    }
+                }
+                Some(_) => Err("UNKNOWN_FORMAT".to_string()),
+            }
+        }
+        // Legacy: root was an array of portfolios
+        Value::Array(_) => Ok(normalize_db_value(root)),
+        _ => Err("UNKNOWN_FORMAT".to_string()),
+    }
 }
 
-/// Save DB to disk. If a password is provided, the file is encrypted.
+/// Save DB to disk in the new JSON format.
+/// If a password is provided, `encryptedData` is written; otherwise the file is plain.
 pub fn save_db<R: Runtime>(
     app: &AppHandle<R>,
     user: &str,
@@ -248,18 +364,12 @@ pub fn save_db<R: Runtime>(
         }
     }
     let path = resolve_db_file_path(app, user)?;
-    let json = serialize_db_data(normalize_db_data(data))?;
 
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|e| format_file_error("create directory", parent, e))?;
     }
 
-    let payload = if let Some(pw) = password {
-        encrypt_json(&json, pw)?
-    } else {
-        json.into_bytes()
-    };
-
+    let payload = build_db_file(normalize_db_data(data), password)?;
     fs::write(&path, payload).map_err(|e| format_file_error("write", &path, e))
 }
 
@@ -268,7 +378,6 @@ pub fn clear_db<R: Runtime>(
     user: &str,
     password: Option<&str>,
 ) -> Result<(), String> {
-    // Preserve window state when clearing
     let window_state = load_db(app, user, password)
         .ok()
         .and_then(|d| d.window_state);
@@ -277,19 +386,13 @@ pub fn clear_db<R: Runtime>(
     save_db(app, user, data, password)
 }
 
-/// Returns true if the DB file starts with the encryption magic header.
+/// Returns true if the DB file is encrypted (new or legacy format).
 pub fn check_db_encrypted<R: Runtime>(app: &AppHandle<R>, user: &str) -> Result<bool, String> {
     let path = resolve_db_file_path(app, user)?;
     if !path.is_file() {
         return Ok(false);
     }
-    let mut file =
-        fs::File::open(&path).map_err(|e| format_file_error("open", &path, e))?;
-    let mut buf = vec![0u8; ENC_MAGIC.len()];
-    let n = file
-        .read(&mut buf)
-        .map_err(|e| format_file_error("read", &path, e))?;
-    Ok(buf[..n].starts_with(ENC_MAGIC))
+    Ok(is_path_encrypted(&path))
 }
 
 /// Encrypt an existing plain-text DB file with the given password.
@@ -298,16 +401,11 @@ pub fn encrypt_db_file<R: Runtime>(
     user: &str,
     password: &str,
 ) -> Result<(), String> {
-    let path = ensure_db_file(app, user)?;
-    let bytes = fs::read(&path).map_err(|e| format_file_error("read", &path, e))?;
-
-    if is_file_encrypted(&bytes) {
-        return Err("DB_ALREADY_ENCRYPTED".to_string());
-    }
-
-    let raw = String::from_utf8_lossy(&bytes);
-    let encrypted = encrypt_json(&raw, password)?;
-    fs::write(&path, encrypted).map_err(|e| format_file_error("write", &path, e))
+    // load_db returns Err("DB_ENCRYPTED") if already encrypted — propagate as-is.
+    let data = load_db(app, user, None)?;
+    let path = resolve_db_file_path(app, user)?;
+    let payload = build_db_file(normalize_db_data(data), Some(password))?;
+    fs::write(&path, payload).map_err(|e| format_file_error("write", &path, e))
 }
 
 /// Decrypt an encrypted DB file back to plain JSON.
@@ -316,15 +414,11 @@ pub fn decrypt_db_file<R: Runtime>(
     user: &str,
     password: &str,
 ) -> Result<(), String> {
-    let path = ensure_db_file(app, user)?;
-    let bytes = fs::read(&path).map_err(|e| format_file_error("read", &path, e))?;
-
-    if !is_file_encrypted(&bytes) {
-        return Err("DB_NOT_ENCRYPTED".to_string());
-    }
-
-    let json = decrypt_json(&bytes, password)?;
-    fs::write(&path, json.as_bytes()).map_err(|e| format_file_error("write", &path, e))
+    // load_db returns Err("WRONG_PASSWORD") if wrong password — propagate as-is.
+    let data = load_db(app, user, Some(password))?;
+    let path = resolve_db_file_path(app, user)?;
+    let payload = build_db_file(normalize_db_data(data), None)?;
+    fs::write(&path, payload).map_err(|e| format_file_error("write", &path, e))
 }
 
 /// Re-encrypt a DB file with a new password.
@@ -334,16 +428,10 @@ pub fn change_db_password<R: Runtime>(
     current_password: &str,
     new_password: &str,
 ) -> Result<(), String> {
-    let path = ensure_db_file(app, user)?;
-    let bytes = fs::read(&path).map_err(|e| format_file_error("read", &path, e))?;
-
-    if !is_file_encrypted(&bytes) {
-        return Err("DB_NOT_ENCRYPTED".to_string());
-    }
-
-    let json = decrypt_json(&bytes, current_password)?;
-    let re_encrypted = encrypt_json(&json, new_password)?;
-    fs::write(&path, re_encrypted).map_err(|e| format_file_error("write", &path, e))
+    let data = load_db(app, user, Some(current_password))?;
+    let path = resolve_db_file_path(app, user)?;
+    let payload = build_db_file(normalize_db_data(data), Some(new_password))?;
+    fs::write(&path, payload).map_err(|e| format_file_error("write", &path, e))
 }
 
 pub fn get_db_dir_str<R: Runtime>(app: &AppHandle<R>) -> String {
@@ -496,24 +584,6 @@ fn first_portfolio_id(portfolios: &[Value]) -> Option<Value> {
     })
 }
 
-fn serialize_db_data(data: DbData) -> Result<String, String> {
-    let mut root = Map::new();
-    root.insert("portfolios".to_string(), Value::Array(data.portfolios));
-    root.insert(
-        "activePortfolioId".to_string(),
-        data.active_portfolio_id.unwrap_or(Value::Null),
-    );
-    if let Some(window_state) = data.window_state {
-        if let Ok(value) = serde_json::to_value(window_state) {
-            root.insert("windowState".to_string(), value);
-        }
-    }
-
-    serde_json::to_string_pretty(&Value::Object(root))
-        .map(|json| format!("{json}\n"))
-        .map_err(|e| format!("Cannot encode database JSON: {e}"))
-}
-
 fn ensure_db_file<R: Runtime>(app: &AppHandle<R>, user: &str) -> Result<PathBuf, String> {
     let path = resolve_db_file_path(app, user)?;
     if let Some(parent) = path.parent() {
@@ -521,7 +591,7 @@ fn ensure_db_file<R: Runtime>(app: &AppHandle<R>, user: &str) -> Result<PathBuf,
     }
 
     if !path.is_file() {
-        let payload = empty_db_payload()?;
+        let payload = build_db_file(DbData::default(), None)?;
         fs::write(&path, payload).map_err(|e| format_file_error("write", &path, e))?;
     }
 
@@ -558,21 +628,29 @@ fn format_file_error(action: &str, path: &Path, error: std::io::Error) -> String
     format!("Cannot {action} `{}`: {error}", path.display())
 }
 
-fn empty_db_payload() -> Result<String, String> {
-    serialize_db_data(DbData::default())
-}
-
+/// Check whether the given file path contains an encrypted database.
+/// Handles both legacy (magic header) and new JSON format.
 fn is_path_encrypted(path: &Path) -> bool {
-    let mut file = match fs::File::open(path) {
-        Ok(f) => f,
+    let bytes = match fs::read(path) {
+        Ok(b) => b,
         Err(_) => return false,
     };
-    let mut buf = vec![0u8; ENC_MAGIC.len()];
-    let n = match file.read(&mut buf) {
-        Ok(n) => n,
-        Err(_) => return false,
-    };
-    buf[..n].starts_with(ENC_MAGIC)
+
+    // Legacy encrypted format
+    if bytes.starts_with(LEGACY_ENC_MAGIC) {
+        return true;
+    }
+
+    // New JSON format: parse and check "encrypted" field
+    if let Ok(raw) = std::str::from_utf8(&bytes) {
+        if let Ok(Value::Object(obj)) = serde_json::from_str::<Value>(raw) {
+            if obj.get("appId").and_then(|v| v.as_str()) == Some(APP_ID) {
+                return obj.get("encrypted").and_then(|v| v.as_u64()).unwrap_or(0) > 0;
+            }
+        }
+    }
+
+    false
 }
 
 fn count_coins_in_file(path: &Path) -> usize {
