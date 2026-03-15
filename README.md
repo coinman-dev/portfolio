@@ -23,6 +23,7 @@ Most portfolio tracking services store your data on their servers, where third p
 - Automatic current price fetching via [CoinGecko API](https://www.coingecko.com/)
 - P&L display and price change in %
 - Switch between multiple database files at runtime
+- **AES-256-GCM database encryption** with Argon2id key derivation
 - Optional "Current Price" column (toggle in Settings)
 - Status bar: loaded database name + market data status
 - Debug logging to file (launch with `--debug` flag)
@@ -120,6 +121,37 @@ Output: `target/release/coinman-portfolio`
 ## Database File
 
 By default, data is saved to `database/default.json` next to the executable. You can create multiple database files and switch between them via **File → Open database file**.
+
+---
+
+## Database Encryption
+
+CoinMan Portfolio supports **AES-256-GCM** encryption for database files, with keys derived via **Argon2id** (memory-hard key derivation). Your data is protected with modern, battle-tested cryptography.
+
+### How it works
+
+- Go to **File → Encrypt database** to set a password for the current database file
+- The encrypted file is stored in-place — the same `.json` path, but the contents are encrypted
+- On next launch (or when switching to an encrypted database), you will be prompted for the password
+- Without the correct password, the file cannot be read or decrypted
+
+### Key details
+
+| Property | Value |
+|----------|-------|
+| Cipher | AES-256-GCM |
+| Key derivation | Argon2id |
+| KDF parameters | m=65536 (64 MB), t=2 iterations, p=1 |
+| Salt | 16 bytes, randomly generated per file |
+| Nonce | 12 bytes, randomly generated per encryption |
+
+### Password management
+
+- **Change password** — File → Change database password (re-encrypts with a new key)
+- **Remove encryption** — File → Decrypt database (restores to plain JSON)
+- The password is never stored anywhere — it is held in memory only for the current session
+
+> **Important:** If you forget your password, there is no recovery option. Keep your password safe.
 
 ---
 
