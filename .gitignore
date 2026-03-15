@@ -4,9 +4,6 @@ target/
 # Tauri generated schemas (auto-regenerated on build)
 src-tauri/gen/
 
-# Debug log
-portfolio.debug.log
-
 # Database files (user data, not source)
 database/
 
@@ -16,3 +13,5 @@ database/
 # OS files
 .DS_Store
 Thumbs.db
+
+.memory/

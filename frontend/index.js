@@ -267,11 +267,34 @@ var AppSettings = {
                 menuItem.classList.remove("checked");
             }
         }
+
+        // Adjust column widths to keep Profit/Loss and Change columns in place
+        var thCoin = document.getElementById("th-coin");
+        var thCur = document.getElementById("th-cur-price");
+        if (thCoin && thCur) {
+            var savedObj = this.get("columnWidths", {});
+            var saved = savedObj.widths || savedObj;
+            var wCoinBase = parseInt(saved["th-coin"]) || 444;
+            var wCurBase = parseInt(saved["th-cur-price"]) || 121;
+
+            if (enabled) {
+                thCoin.style.width = wCoinBase + "px";
+                thCur.style.width = wCurBase + "px";
+            } else {
+                // When hidden, th-coin expands to cover both its base width and cur-price width
+                thCoin.style.width = (wCoinBase + wCurBase) + "px";
+                thCur.style.width = "0px";
+            }
+        }
     },
 
     handleToggleCurPrice: function () {
         var current = this.get("showCurPrice", false);
-        this.set("showCurPrice", !current);
+        var newVal = !current;
+        this.set("showCurPrice", newVal);
+        if (AppBridge.isTauri()) {
+            AppBridge.invoke("save_show_cur_price", { show: newVal }).catch(function () {});
+        }
         this.applyCurPrice();
     },
 
@@ -2185,6 +2208,86 @@ var UI = {
         });
     },
 
+    initColumnResizing: function () {
+        var resizers = document.querySelectorAll("#portfolio-transactions-table .resizer");
+        resizers.forEach(function (resizer) {
+            resizer.addEventListener("mousedown", function (e) {
+                e.preventDefault();
+                var th = resizer.parentElement;
+                
+                // Find the previous visible th
+                var prevTh = th.previousElementSibling;
+                while (prevTh && window.getComputedStyle(prevTh).display === "none") {
+                    prevTh = prevTh.previousElementSibling;
+                }
+                
+                if (!prevTh) return;
+
+                var startX = e.pageX;
+                var startWidth = prevTh.getBoundingClientRect().width;
+                
+                // Calculate how much we can expand to the right before the last column hits its minimum width (80px)
+                var thChange = document.getElementById("th-change");
+                var availableSlack = thChange ? (thChange.offsetWidth - 80) : 10000;
+
+                function onMouseMove(eMove) {
+                    var delta = eMove.pageX - startX;
+                    
+                    // Limit movement to the right to prevent table overflow and scrollbars
+                    if (delta > availableSlack) {
+                        delta = availableSlack;
+                    }
+
+                    var newWidth = startWidth + delta;
+                    if (newWidth > 30) {
+                        prevTh.style.width = newWidth + "px";
+                    }
+                }
+
+                function onMouseUp() {
+                    document.removeEventListener("mousemove", onMouseMove);
+                    document.removeEventListener("mouseup", onMouseUp);
+
+                    // We need to store widths correctly, accounting for whether Cur. Price is hidden
+                    var showCur = AppSettings.get("showCurPrice", false);
+                    var thCoin = document.getElementById("th-coin");
+                    var thCur = document.getElementById("th-cur-price");
+
+                    var widths = {};
+                    var allThs = document.querySelectorAll("#portfolio-transactions-table th");
+                    allThs.forEach(function (t) {
+                        if (t.id && t.id !== "th-change" && t.offsetWidth > 0) {
+                            widths[t.id] = t.offsetWidth;
+                        }
+                    });
+
+                    // Keep existing saved widths for currently hidden columns
+                    var savedObj = AppSettings.get("columnWidths", {});
+                    var saved = savedObj.widths || savedObj;
+                    Object.keys(widths).forEach(function (k) {
+                        saved[k] = widths[k];
+                    });
+
+                    // If curPrice is hidden, th-coin's current offsetWidth is its base width plus cur-price width.
+                    // To get the correct base width of th-coin, we subtract current base of cur-price.
+                    if (!showCur && thCoin && thCur) {
+                        var wCurBase = parseInt(saved["th-cur-price"]) || 121;
+                        saved["th-coin"] = Math.max(30, (thCoin.offsetWidth || 444) - wCurBase);
+                    }
+
+                    AppSettings.set("columnWidths", saved);
+
+                    if (AppBridge.isTauri()) {
+                        AppBridge.invoke("save_column_widths", { widths: saved }).catch(function () {});
+                    }
+                }
+
+                document.addEventListener("mousemove", onMouseMove);
+                document.addEventListener("mouseup", onMouseUp);
+            });
+        });
+    },
+
     initSortingUI: function () {
         var btns = document.querySelectorAll(".th-sort-btn");
         btns.forEach(function (btn) {
@@ -3891,6 +3994,22 @@ var DbSelector = {
                             if (appSettings && appSettings.activePortfolioId !== undefined) {
                                 state.activePortfolioId = appSettings.activePortfolioId;
                             }
+                            if (appSettings && appSettings.showCurPrice !== undefined) {
+                                AppSettings.set("showCurPrice", !!appSettings.showCurPrice);
+                                AppSettings.applyCurPrice();
+                            }
+                            if (appSettings && appSettings.columnWidths) {
+                                var widthsData = appSettings.columnWidths;
+                                var widths = widthsData.widths || widthsData;
+                                AppSettings.set("columnWidths", widths);
+                                AppSettings.applyCurPrice(); // Still call here to apply widths correctly
+                                Object.keys(widths).forEach(function (id) {
+                                    var th = document.getElementById(id);
+                                    if (th && id !== "th-change" && id !== "th-coin" && id !== "th-cur-price") {
+                                        th.style.width = widths[id] + "px";
+                                    }
+                                });
+                            }
                             if (appSettings && Array.isArray(appSettings.marketCache) && appSettings.marketCache.length) {
                                 Market.setStateMarketData(appSettings.marketCache);
                                 var ts = appSettings.marketCacheSavedAt
@@ -4183,6 +4302,7 @@ window.onload = function () {
                 TimePicker.initAll();
                 UI.initRestrictions();
                 UI.initSortingUI();
+                UI.initColumnResizing();
 
                 UI.applyModalSize("modal-create-portfolio", "DEFAULT");
                 UI.applyModalSize("modal-edit-portfolio", "DEFAULT");
@@ -4222,6 +4342,22 @@ window.onload = function () {
                         .then(function (appSettings) {
                             if (appSettings && appSettings.activePortfolioId !== undefined) {
                                 state.activePortfolioId = appSettings.activePortfolioId;
+                            }
+                            if (appSettings && appSettings.showCurPrice !== undefined) {
+                                AppSettings.set("showCurPrice", !!appSettings.showCurPrice);
+                                AppSettings.applyCurPrice();
+                            }
+                            if (appSettings && appSettings.columnWidths) {
+                                var widthsData = appSettings.columnWidths;
+                                var widths = widthsData.widths || widthsData;
+                                AppSettings.set("columnWidths", widths);
+                                AppSettings.applyCurPrice(); // Still call here to apply widths correctly
+                                Object.keys(widths).forEach(function (id) {
+                                    var th = document.getElementById(id);
+                                    if (th && id !== "th-change" && id !== "th-coin" && id !== "th-cur-price") {
+                                        th.style.width = widths[id] + "px";
+                                    }
+                                });
                             }
                             if (appSettings && Array.isArray(appSettings.marketCache) && appSettings.marketCache.length) {
                                 Market.setStateMarketData(appSettings.marketCache);

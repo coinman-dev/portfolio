@@ -244,6 +244,16 @@ fn save_active_portfolio(app: tauri::AppHandle, id: serde_json::Value) {
 }
 
 #[tauri::command]
+fn save_column_widths(app: tauri::AppHandle, widths: serde_json::Value) {
+    settings::update_column_widths(&app, widths);
+}
+
+#[tauri::command]
+fn save_show_cur_price(app: tauri::AppHandle, show: bool) {
+    settings::update_show_cur_price(&app, show);
+}
+
+#[tauri::command]
 fn debug_log(message: String) {
     log::info!("{}", message);
 }
@@ -313,6 +323,8 @@ pub fn run() {
             load_app_settings,
             save_market_cache,
             save_active_portfolio,
+            save_column_widths,
+            save_show_cur_price,
             debug_log,
             exit_app,
             open_url,

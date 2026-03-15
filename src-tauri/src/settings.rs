@@ -24,6 +24,10 @@ pub struct AppSettings {
     pub market_cache_saved_at: Option<u64>,
     #[serde(default)]
     pub active_portfolio_id: Option<Value>,
+    #[serde(default)]
+    pub column_widths: Option<Value>,
+    #[serde(default)]
+    pub show_cur_price: Option<bool>,
 }
 
 pub fn load<R: Runtime>(app: &AppHandle<R>) -> AppSettings {
@@ -51,6 +55,18 @@ pub fn update_market_cache<R: Runtime>(app: &AppHandle<R>, cache: Value, saved_a
 pub fn update_active_portfolio_id<R: Runtime>(app: &AppHandle<R>, id: Value) {
     let mut settings = load(app);
     settings.active_portfolio_id = Some(id);
+    save(app, &settings);
+}
+
+pub fn update_column_widths<R: Runtime>(app: &AppHandle<R>, widths: Value) {
+    let mut settings = load(app);
+    settings.column_widths = Some(widths);
+    save(app, &settings);
+}
+
+pub fn update_show_cur_price<R: Runtime>(app: &AppHandle<R>, show: bool) {
+    let mut settings = load(app);
+    settings.show_cur_price = Some(show);
     save(app, &settings);
 }
 

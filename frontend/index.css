@@ -360,16 +360,57 @@ select option {
 /* --- TRANSACTIONS TABLE --- */
 #portfolio-transactions-table {
     margin-top: 10px;
+    table-layout: fixed;
+    width: 100%;
+}
+#portfolio-transactions-table th {
+    position: relative;
+    box-sizing: border-box;
 }
 #portfolio-transactions-table thead tr {
     background-color: #1e1e1e;
 }
+.resizer {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+    cursor: col-resize;
+    z-index: 1;
+}
+.resizer::before {
+    content: "";
+    position: absolute;
+    left: 2px;
+    top: 25%;
+    bottom: 25%;
+    width: 1px;
+    background-color: #555;
+}
+.resizer:hover::before {
+    background-color: #f1c40f;
+}
+
 .col-logo {
-    width: 25px;
+    width: 50px;
+    padding-left: 10px;
     font-size: 14px;
 }
 .col-coin-date {
-    width: 40%;
+    width: 444px;
+}
+#th-holdings {
+    width: 172px;
+}
+#col-header-price {
+    width: 176px;
+}
+#th-cur-price {
+    width: 121px;
+}
+#th-profit {
+    width: 133px;
 }
 
 .th-sort-btn {

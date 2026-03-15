@@ -152,8 +152,8 @@
 			<table id="portfolio-transactions-table">
 				<thead>
 					<tr>
-						<th class="col-logo">Logo</th>
-						<th class="col-coin-date">
+						<th class="col-logo" id="th-logo">Logo</th>
+						<th class="col-coin-date" id="th-coin">
 							<span class="th-sort-btn" data-sort-key="coinDate">
 								<span class="th-sort-label">Coin / Date</span>
 								<span class="th-sort-arrows">
@@ -162,7 +162,8 @@
 								</span>
 							</span>
 						</th>
-						<th>
+						<th id="th-holdings">
+							<div class="resizer"></div>
 							<span class="th-sort-btn" data-sort-key="holdings">
 								<span class="th-sort-label">Holdings</span>
 								<span class="th-sort-arrows">
@@ -172,6 +173,7 @@
 							</span>
 						</th>
 						<th id="col-header-price">
+							<div class="resizer"></div>
 							<span class="th-sort-btn" data-sort-key="price">
 								<span class="th-sort-label" id="col-header-price-label">[[PRICE_INFO]]</span>
 								<span class="th-sort-arrows">
@@ -180,7 +182,8 @@
 								</span>
 							</span>
 						</th>
-						<th class="col-cur-price">
+						<th class="col-cur-price" id="th-cur-price">
+							<div class="resizer"></div>
 							<span class="th-sort-btn" data-sort-key="currentPrice">
 								<span class="th-sort-label">Cur. Price</span>
 								<span class="th-sort-arrows">
@@ -189,7 +192,8 @@
 								</span>
 							</span>
 						</th>
-						<th>
+						<th id="th-profit">
+							<div class="resizer"></div>
 							<span class="th-sort-btn" data-sort-key="profit">
 								<span class="th-sort-label">Profit/Loss</span>
 								<span class="th-sort-arrows">
@@ -198,7 +202,8 @@
 								</span>
 							</span>
 						</th>
-						<th>
+						<th id="th-change">
+							<div class="resizer"></div>
 							<span class="th-sort-btn" data-sort-key="change">
 								<span class="th-sort-label">Change</span>
 								<span class="th-sort-arrows">
