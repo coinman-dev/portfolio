@@ -1,4 +1,4 @@
-name: Build macOS
+name: Build Release
 
 on:
   push:
@@ -8,6 +8,39 @@ on:
   workflow_dispatch:
 
 jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version "^2" --locked
+
+      - name: Build Windows
+        run: cargo tauri build
+        working-directory: src-tauri
+
+      - name: Create portable zip
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem "target/release/coinman-portfolio.exe"
+          Compress-Archive -Path $exe.FullName -DestinationPath "coinman-portfolio-windows-x64.zip"
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coinman-windows-x64
+          path: coinman-portfolio-windows-x64.zip
+
   build-macos:
     runs-on: macos-latest
 
