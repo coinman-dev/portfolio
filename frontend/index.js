@@ -3097,6 +3097,7 @@ function handleDeleteTransaction() {
 }
 
 function openClearDatabaseModal() {
+    window.closeAllDropdowns();
     UI.applyModalSize("modal-clear-database", "DEFAULT");
     UI.openModal("modal-clear-database");
 }
