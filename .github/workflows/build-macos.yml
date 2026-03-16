@@ -72,10 +72,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coinman-macos-x86_64
-          path: src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg
+          path: target/x86_64-apple-darwin/release/bundle/dmg/*.dmg
 
       - name: Upload aarch64 artifact
         uses: actions/upload-artifact@v4
         with:
           name: coinman-macos-aarch64
-          path: src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
+          path: target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
