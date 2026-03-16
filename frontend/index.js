@@ -4508,6 +4508,12 @@ window.onload = function () {
                         if (files.length >= 2) {
                             initUiAndRender({ locked: true });
                             DbSelector.open(files, result.dbDir || "");
+                        } else if (files.length === 1) {
+                            var singleName = files[0].name;
+                            window.SERVER_CONFIG.user = singleName;
+                            ServerSync.user = singleName;
+                            Market.setDbStatus(singleName);
+                            doInitLoad(null);
                         } else {
                             doInitLoad(null);
                         }

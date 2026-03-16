@@ -272,7 +272,10 @@ pub fn load_db<R: Runtime>(
     user: &str,
     password: Option<&str>,
 ) -> Result<DbData, String> {
-    let path = ensure_db_file(app, user)?;
+    let path = resolve_db_file_path(app, user)?;
+    if !path.is_file() {
+        return Ok(DbData::default());
+    }
     let raw = fs::read_to_string(&path).map_err(|e| format_file_error("read", &path, e))?;
 
     if raw.trim().is_empty() {
@@ -541,19 +544,6 @@ fn normalize_db_value(value: Value) -> DbData {
     DbData { portfolios, window_state }
 }
 
-fn ensure_db_file<R: Runtime>(app: &AppHandle<R>, user: &str) -> Result<PathBuf, String> {
-    let path = resolve_db_file_path(app, user)?;
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).map_err(|e| format_file_error("create directory", parent, e))?;
-    }
-
-    if !path.is_file() {
-        let payload = build_db_file(DbData::default(), None)?;
-        fs::write(&path, payload).map_err(|e| format_file_error("write", &path, e))?;
-    }
-
-    Ok(path)
-}
 
 fn resolve_db_file_path<R: Runtime>(app: &AppHandle<R>, user: &str) -> Result<PathBuf, String> {
     let base_dir = database_dir(app)?;
