@@ -4,6 +4,7 @@ mod storage;
 use serde::Serialize;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -16,6 +17,15 @@ struct StorageLock(Mutex<()>);
 /// Stores the current session password in memory (never written to disk).
 #[derive(Default)]
 struct SessionPassword(Mutex<Option<String>>);
+
+/// Tracks the decoration size offset on Linux where inner_size() includes
+/// window decorations, causing the window to grow on each launch cycle.
+#[derive(Default)]
+struct WindowSizeCalibration {
+    intended: Mutex<(f64, f64)>,
+    offset: Mutex<(f64, f64)>,
+    calibrated: AtomicBool,
+}
 
 #[derive(Clone)]
 struct RuntimePaths {
@@ -336,6 +346,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(StorageLock::default())
         .manage(SessionPassword::default())
+        .manage(WindowSizeCalibration::default())
         .manage(RuntimePaths {
             webview_data_dir: webview_data_dir.clone(),
         })
@@ -437,44 +448,74 @@ fn create_main_window<R: tauri::Runtime>(app: &mut tauri::App<R>) -> tauri::Resu
 
     if let Some((x, y)) = position {
         builder = builder.position(x, y);
+    } else {
+        builder = builder.center();
+    }
+
+    // Store the intended size so we can compute the decoration offset later.
+    {
+        let cal = app.state::<WindowSizeCalibration>();
+        *cal.intended.lock().unwrap() = (width, height);
     }
 
     let window = builder.build()?;
 
     let w = window.clone();
     window.on_window_event(move |event| {
-        if let tauri::WindowEvent::CloseRequested { .. } = event {
-            let app_handle = w.app_handle();
-            
-            // Try to preserve previous x and y in case outer_position fails (e.g. on Wayland)
-            let (prev_x, prev_y) = settings::load_global(&app_handle)
-                .window_state
-                .map(|ws| (ws.x, ws.y))
-                .unwrap_or((0.0, 0.0));
-
-            let mut win_state = settings::WinState {
-                width: 1220.0,
-                height: 700.0,
-                x: prev_x,
-                y: prev_y,
-            };
-
-            if let Ok(size) = w.inner_size() {
-                if let Ok(scale_factor) = w.scale_factor() {
-                    let logical_size = size.to_logical::<f64>(scale_factor);
-                    win_state.width = logical_size.width;
-                    win_state.height = logical_size.height;
+        match event {
+            tauri::WindowEvent::Resized(phys_size) => {
+                let app_handle = w.app_handle();
+                let cal = app_handle.state::<WindowSizeCalibration>();
+                // On the first Resized event (initial window show), compute the
+                // decoration offset = reported_logical - intended.  On Linux some
+                // WMs include decorations in inner_size(), which inflates the
+                // value.  We subtract this offset when saving on close.
+                if !cal.calibrated.swap(true, Ordering::Relaxed) {
+                    if let Ok(sf) = w.scale_factor() {
+                        let logical = phys_size.to_logical::<f64>(sf);
+                        let intended = *cal.intended.lock().unwrap();
+                        let ow = (logical.width - intended.0).max(0.0);
+                        let oh = (logical.height - intended.1).max(0.0);
+                        *cal.offset.lock().unwrap() = (ow, oh);
+                    }
                 }
             }
-            if let Ok(pos) = w.outer_position() {
-                if let Ok(scale_factor) = w.scale_factor() {
-                    let logical_pos = pos.to_logical::<f64>(scale_factor);
-                    win_state.x = logical_pos.x;
-                    win_state.y = logical_pos.y;
-                }
-            }
+            tauri::WindowEvent::CloseRequested { .. } => {
+                let app_handle = w.app_handle();
+                let cal = app_handle.state::<WindowSizeCalibration>();
+                let (ow, oh) = *cal.offset.lock().unwrap();
 
-            settings::update_window_state(app_handle, win_state);
+                // Try to preserve previous x and y in case outer_position fails (e.g. on Wayland)
+                let (prev_x, prev_y) = settings::load_global(&app_handle)
+                    .window_state
+                    .map(|ws| (ws.x, ws.y))
+                    .unwrap_or((0.0, 0.0));
+
+                let mut win_state = settings::WinState {
+                    width: 1220.0,
+                    height: 700.0,
+                    x: prev_x,
+                    y: prev_y,
+                };
+
+                if let Ok(size) = w.inner_size() {
+                    if let Ok(scale_factor) = w.scale_factor() {
+                        let logical_size = size.to_logical::<f64>(scale_factor);
+                        win_state.width = (logical_size.width - ow).max(1220.0);
+                        win_state.height = (logical_size.height - oh).max(700.0);
+                    }
+                }
+                if let Ok(pos) = w.outer_position() {
+                    if let Ok(scale_factor) = w.scale_factor() {
+                        let logical_pos = pos.to_logical::<f64>(scale_factor);
+                        win_state.x = logical_pos.x;
+                        win_state.y = logical_pos.y;
+                    }
+                }
+
+                settings::update_window_state(app_handle, win_state);
+            }
+            _ => {}
         }
     });
 
