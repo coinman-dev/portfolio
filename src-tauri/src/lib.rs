@@ -4,7 +4,7 @@ mod storage;
 use serde::Serialize;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::{mpsc, Mutex};
 use std::thread;
 use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -301,13 +301,20 @@ fn copy_database(
 }
 
 #[tauri::command]
-fn open_file_dialog(app: tauri::AppHandle) -> Result<Option<String>, String> {
+async fn open_file_dialog(app: tauri::AppHandle) -> Result<Option<String>, String> {
     use tauri_plugin_dialog::DialogExt;
+    let (tx, rx) = mpsc::channel();
+    
     let mut builder = app.dialog().file().add_filter("JSON", &["json"]);
     if let Some(db_dir) = storage::get_db_dir_path(&app) {
         builder = builder.set_directory(db_dir);
     }
-    let file = builder.blocking_pick_file();
+    
+    builder.pick_file(move |file| {
+        let _ = tx.send(file);
+    });
+    
+    let file = rx.recv().map_err(|e| e.to_string())?;
     Ok(file.map(|f| f.to_string()))
 }
 
