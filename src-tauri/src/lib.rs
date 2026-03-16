@@ -445,11 +445,18 @@ fn create_main_window<R: tauri::Runtime>(app: &mut tauri::App<R>) -> tauri::Resu
     window.on_window_event(move |event| {
         if let tauri::WindowEvent::CloseRequested { .. } = event {
             let app_handle = w.app_handle();
+            
+            // Try to preserve previous x and y in case outer_position fails (e.g. on Wayland)
+            let (prev_x, prev_y) = settings::load_global(&app_handle)
+                .window_state
+                .map(|ws| (ws.x, ws.y))
+                .unwrap_or((0.0, 0.0));
+
             let mut win_state = settings::WinState {
                 width: 1220.0,
                 height: 700.0,
-                x: 0.0,
-                y: 0.0,
+                x: prev_x,
+                y: prev_y,
             };
 
             if let Ok(size) = w.inner_size() {
