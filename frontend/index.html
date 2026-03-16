@@ -13,6 +13,7 @@
 				File
 				<div class="dropdown-menu" id="file-dropdown">
 					<div class="dropdown-item" onclick="handleMenuOpenDatabase()">Open database file</div>
+					<div class="dropdown-item" onclick="handleMenuSaveDbAs()">Save database as...</div>
 					<div class="dropdown-item" onclick="openClearDatabaseModal()">Clear the database</div>
 					<div class="dropdown-divider"></div>
 					<div class="dropdown-item" id="menu-encrypt-database" onclick="handleMenuEncryptDatabase()">Encrypt database</div>
@@ -752,6 +753,30 @@
 			</div>
 			<div class="modal-footer modal-footer-right">
 				<button class="btn btn-orange" onclick="handleDoUnlockDatabase()">UNLOCK</button>
+			</div>
+		</div>
+	</div>
+
+	<!-- MODAL: Save database as -->
+	<div id="modal-save-db-as" class="modal">
+		<div class="modal-content" style="max-width: 420px;">
+			<div class="modal-header">
+				<span>&#128190; Save Database As...</span>
+				<span class="close-btn" onclick="closeModal('modal-save-db-as')">&times;</span>
+			</div>
+			<div class="modal-body">
+				<p style="color:#cccccc; font-size:14px; margin:0 0 18px 0;">
+					Save a copy of the current database under a new name. The copy will be created in the same database folder.
+				</p>
+				<div class="form-group" style="margin-bottom:8px;">
+					<label class="form-label">New database name</label>
+					<input type="text" id="save-db-as-name" class="form-input" placeholder="Enter name..." onkeydown="handleSaveDbAsKeydown(event)"/>
+				</div>
+				<div id="save-db-as-error" class="enc-modal-error hidden"></div>
+			</div>
+			<div class="modal-footer modal-footer-split">
+				<button class="btn btn-outline" onclick="closeModal('modal-save-db-as')">CANCEL</button>
+				<button class="btn btn-orange" onclick="handleDoSaveDbAs()">SAVE</button>
 			</div>
 		</div>
 	</div>

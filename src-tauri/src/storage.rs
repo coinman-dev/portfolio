@@ -225,9 +225,24 @@ pub fn sanitize_user(value: Option<String>) -> String {
         return DEFAULT_USER.to_string();
     }
 
+    // Block path traversal and OS-unsafe characters; allow Unicode letters,
+    // digits, spaces, underscores, hyphens, and dots (but not leading dots).
+    let has_unsafe = trimmed.contains('/')
+        || trimmed.contains('\\')
+        || trimmed.contains('\0')
+        || trimmed.starts_with('.')
+        || trimmed == ".."
+        || trimmed.contains("..");
+
+    if has_unsafe {
+        return DEFAULT_USER.to_string();
+    }
+
+    // Every character must be a Unicode letter/digit, space, underscore,
+    // hyphen, or dot — reject control characters and other special chars.
     if trimmed
         .chars()
-        .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+        .all(|c| c.is_alphanumeric() || c == ' ' || c == '_' || c == '-' || c == '.')
     {
         trimmed.to_string()
     } else {
@@ -307,6 +322,20 @@ pub fn save_db<R: Runtime>(
             data.window_state = existing.window_state;
         }
     }
+
+    // Always store portfolios sorted by id so the file has a stable, predictable order.
+    // Display order is kept separately in settings.json (portfolioOrder).
+    data.portfolios.sort_by(|a, b| {
+        match (a.get("id").and_then(|v| v.as_i64()), b.get("id").and_then(|v| v.as_i64())) {
+            (Some(x), Some(y)) => x.cmp(&y),
+            _ => {
+                let sa = a.get("id").and_then(|v| v.as_str()).unwrap_or("");
+                let sb = b.get("id").and_then(|v| v.as_str()).unwrap_or("");
+                sa.cmp(sb)
+            }
+        }
+    });
+
     let path = resolve_db_file_path(app, user)?;
 
     if let Some(parent) = path.parent() {
@@ -376,6 +405,26 @@ pub fn change_db_password<R: Runtime>(
     let path = resolve_db_file_path(app, user)?;
     let payload = build_db_file(data, Some(new_password))?;
     fs::write(&path, payload).map_err(|e| format_file_error("write", &path, e))
+}
+
+pub fn copy_db_file<R: Runtime>(app: &AppHandle<R>, src_user: &str, dst_user: &str) -> Result<(), String> {
+    let src_path = resolve_db_file_path(app, src_user)?;
+    let dst_path = resolve_db_file_path(app, dst_user)?;
+
+    if !src_path.is_file() {
+        return Err(format!("Source database '{}' not found", src_user));
+    }
+    if dst_path.is_file() {
+        return Err("DATABASE_EXISTS".to_string());
+    }
+
+    if let Some(parent) = dst_path.parent() {
+        fs::create_dir_all(parent).map_err(|e| format_file_error("create directory", parent, e))?;
+    }
+
+    fs::copy(&src_path, &dst_path)
+        .map(|_| ())
+        .map_err(|e| format!("Cannot copy database: {e}"))
 }
 
 pub fn get_db_dir_str<R: Runtime>(app: &AppHandle<R>) -> String {

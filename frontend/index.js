@@ -1499,6 +1499,7 @@ var Market = {
                 MarketCache.set(symbols, vsCurrencies, state.marketData);
                 if (AppBridge.isTauri()) {
                     AppBridge.invoke("save_market_cache", {
+                        user: ServerSync.user,
                         cache: state.marketData,
                         savedAt: Date.now(),
                     }).catch(function () {});
@@ -1561,7 +1562,7 @@ var Portfolio = {
         portfolios.push(p);
         state.activePortfolioId = p.id;
         if (AppBridge.isTauri()) {
-            AppBridge.invoke("save_active_portfolio", { id: p.id }).catch(function () {});
+            AppBridge.invoke("save_active_portfolio", { user: ServerSync.user, id: p.id }).catch(function () {});
         }
         Storage.save({ refreshMarket: false });
         return p;
@@ -1594,7 +1595,7 @@ var Portfolio = {
         });
         state.activePortfolioId = portfolios[0].id;
         if (AppBridge.isTauri()) {
-            AppBridge.invoke("save_active_portfolio", { id: portfolios[0].id }).catch(function () {});
+            AppBridge.invoke("save_active_portfolio", { user: ServerSync.user, id: portfolios[0].id }).catch(function () {});
         }
         Storage.save();
         return true;
@@ -1603,7 +1604,7 @@ var Portfolio = {
     switch: function (id) {
         state.activePortfolioId = id;
         if (AppBridge.isTauri()) {
-            AppBridge.invoke("save_active_portfolio", { id: id }).catch(function () {});
+            AppBridge.invoke("save_active_portfolio", { user: ServerSync.user, id: id }).catch(function () {});
         }
         renderApp();
     },
@@ -3132,6 +3133,22 @@ function switchPortfolio(id) {
     Portfolio.switch(id);
 }
 
+// Reorder the global `portfolios` array to match the saved ID order.
+// Portfolios not present in `order` are appended at the end (e.g. newly created ones).
+function applyPortfolioOrder(order) {
+    if (!Array.isArray(order) || !order.length) return;
+    var indexMap = {};
+    order.forEach(function (id, i) { indexMap[String(id)] = i; });
+    portfolios.sort(function (a, b) {
+        var ia = indexMap[String(a.id)];
+        var ib = indexMap[String(b.id)];
+        if (ia === undefined && ib === undefined) return 0;
+        if (ia === undefined) return 1;
+        if (ib === undefined) return -1;
+        return ia - ib;
+    });
+}
+
 var PortfolioTabsDnD = {
     holdDelayMs: 180,
     moveThresholdPx: 8,
@@ -3241,7 +3258,12 @@ var PortfolioTabsDnD = {
         if (fromIndex !== -1 && toIndex !== -1 && fromIndex !== toIndex) {
             var moved = portfolios.splice(fromIndex, 1)[0];
             portfolios.splice(toIndex, 0, moved);
-            Storage.save({ refreshMarket: false });
+            if (AppBridge.isTauri()) {
+                AppBridge.invoke("save_portfolio_order", {
+                    user: ServerSync.user,
+                    order: portfolios.map(function (p) { return p.id; }),
+                }).catch(function () {});
+            }
             renderApp();
         }
 
@@ -3826,6 +3848,15 @@ window.onclick = function (event) {
     }
 };
 
+// Prevent clicks inside a dropdown from bubbling up to .menu-item,
+// which would cause toggleDropdown() to re-open the just-closed menu.
+(function () {
+    var menus = document.getElementsByClassName("dropdown-menu");
+    for (var i = 0; i < menus.length; i++) {
+        menus[i].addEventListener("click", function (e) { e.stopPropagation(); });
+    }
+}());
+
 window.openAboutModal = function () {
     window.closeAllDropdowns();
     UI.openModal("modal-about");
@@ -3989,10 +4020,13 @@ var DbSelector = {
                 MarketCache.clear();
                 // Restore market cache from settings.json, then schedule refresh
                 if (AppBridge.isTauri()) {
-                    AppBridge.invoke("load_app_settings")
+                    AppBridge.invoke("load_app_settings", { user: ServerSync.user })
                         .then(function (appSettings) {
                             if (appSettings && appSettings.activePortfolioId !== undefined) {
                                 state.activePortfolioId = appSettings.activePortfolioId;
+                            }
+                            if (appSettings && Array.isArray(appSettings.portfolioOrder)) {
+                                applyPortfolioOrder(appSettings.portfolioOrder);
                             }
                             if (appSettings && appSettings.showCurPrice !== undefined) {
                                 AppSettings.set("showCurPrice", !!appSettings.showCurPrice);
@@ -4075,6 +4109,53 @@ window.handleMenuOpenDatabase = function () {
         .catch(function (err) {
             console.error("open_file_dialog error:", err);
             alert("Error opening file:\n" + String(err));
+        });
+};
+
+window.handleMenuSaveDbAs = function () {
+    window.closeAllDropdowns();
+    if (!AppBridge.isTauri()) {
+        alert("This feature requires the desktop application environment.");
+        return;
+    }
+    var nameEl = document.getElementById("save-db-as-name");
+    var errEl = document.getElementById("save-db-as-error");
+    if (nameEl) nameEl.value = "";
+    if (errEl) errEl.classList.add("hidden");
+    UI.openModal("modal-save-db-as");
+    if (nameEl) setTimeout(function () { nameEl.focus(); }, 80);
+};
+
+window.handleSaveDbAsKeydown = function (e) {
+    if (e.key === "Enter") handleDoSaveDbAs();
+};
+
+window.handleDoSaveDbAs = function () {
+    var nameEl = document.getElementById("save-db-as-name");
+    var errEl = document.getElementById("save-db-as-error");
+    var name = nameEl ? nameEl.value.trim() : "";
+
+    function showErr(msg) {
+        if (errEl) { errEl.textContent = msg; errEl.classList.remove("hidden"); }
+    }
+
+    if (!name) { showErr("Please enter a name."); return; }
+
+    AppBridge.invoke("copy_database", { sourceUser: ServerSync.user, targetUser: name })
+        .then(function () {
+            UI.closeModal("modal-save-db-as");
+            DbSelector._loadByName(name);
+        })
+        .catch(function (e) {
+            var msg = String(e);
+            if (msg.indexOf("DATABASE_EXISTS") !== -1) {
+                showErr("A database with that name already exists.");
+            } else if (msg.indexOf("INVALID_NAME") !== -1) {
+                showErr("Invalid name. Avoid special characters like / \\ and leading dots.");
+            } else {
+                showErr("Error: " + msg);
+            }
+            if (nameEl) { nameEl.select(); nameEl.focus(); }
         });
 };
 
@@ -4338,10 +4419,13 @@ window.onload = function () {
                 }
 
                 if (AppBridge.isTauri()) {
-                    AppBridge.invoke("load_app_settings")
+                    AppBridge.invoke("load_app_settings", { user: ServerSync.user })
                         .then(function (appSettings) {
                             if (appSettings && appSettings.activePortfolioId !== undefined) {
                                 state.activePortfolioId = appSettings.activePortfolioId;
+                            }
+                            if (appSettings && Array.isArray(appSettings.portfolioOrder)) {
+                                applyPortfolioOrder(appSettings.portfolioOrder);
                             }
                             if (appSettings && appSettings.showCurPrice !== undefined) {
                                 AppSettings.set("showCurPrice", !!appSettings.showCurPrice);

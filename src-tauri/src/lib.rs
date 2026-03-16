@@ -229,18 +229,21 @@ fn change_database_password(
 }
 
 #[tauri::command]
-fn load_app_settings(app: tauri::AppHandle) -> settings::AppSettings {
-    settings::load(&app)
+fn load_app_settings(app: tauri::AppHandle, user: Option<String>) -> settings::AppSettingsForUser {
+    let user = storage::sanitize_user(user);
+    settings::load_for_user(&app, &user)
 }
 
 #[tauri::command]
-fn save_market_cache(app: tauri::AppHandle, cache: serde_json::Value, saved_at: u64) {
-    settings::update_market_cache(&app, cache, saved_at);
+fn save_market_cache(app: tauri::AppHandle, user: Option<String>, cache: serde_json::Value, saved_at: u64) {
+    let user = storage::sanitize_user(user);
+    settings::update_market_cache(&app, &user, cache, saved_at);
 }
 
 #[tauri::command]
-fn save_active_portfolio(app: tauri::AppHandle, id: serde_json::Value) {
-    settings::update_active_portfolio_id(&app, id);
+fn save_active_portfolio(app: tauri::AppHandle, user: Option<String>, id: serde_json::Value) {
+    let user = storage::sanitize_user(user);
+    settings::update_active_portfolio_id(&app, &user, id);
 }
 
 #[tauri::command]
@@ -251,6 +254,12 @@ fn save_column_widths(app: tauri::AppHandle, widths: serde_json::Value) {
 #[tauri::command]
 fn save_show_cur_price(app: tauri::AppHandle, show: bool) {
     settings::update_show_cur_price(&app, show);
+}
+
+#[tauri::command]
+fn save_portfolio_order(app: tauri::AppHandle, user: Option<String>, order: Vec<serde_json::Value>) {
+    let user = storage::sanitize_user(user);
+    settings::update_portfolio_order(&app, &user, order);
 }
 
 #[tauri::command]
@@ -269,6 +278,26 @@ fn open_url(url: String) {
     std::process::Command::new("cmd").args(["/c", "start", &url]).spawn().ok();
     #[cfg(target_os = "linux")]
     std::process::Command::new("xdg-open").arg(&url).spawn().ok();
+}
+
+#[tauri::command]
+fn copy_database(
+    app: tauri::AppHandle,
+    lock: tauri::State<'_, StorageLock>,
+    source_user: Option<String>,
+    target_user: String,
+) -> Result<(), String> {
+    let _guard = lock
+        .0
+        .lock()
+        .map_err(|_| "Storage lock is poisoned".to_string())?;
+    let src_user = storage::sanitize_user(source_user);
+    let dst_user = storage::sanitize_user(Some(target_user.clone()));
+    // If sanitize changed the name the input was invalid (path traversal, bad chars, etc.)
+    if dst_user != target_user.trim() {
+        return Err("INVALID_NAME".to_string());
+    }
+    storage::copy_db_file(&app, &src_user, &dst_user)
 }
 
 #[tauri::command]
@@ -328,7 +357,9 @@ pub fn run() {
             debug_log,
             exit_app,
             open_url,
-            open_file_dialog
+            open_file_dialog,
+            copy_database,
+            save_portfolio_order
         ])
         .setup(|app| {
             let debug_mode = std::env::args()
@@ -375,7 +406,7 @@ fn create_main_window<R: tauri::Runtime>(app: &mut tauri::App<R>) -> tauri::Resu
 
     // Prefer settings.json for window state (works even when DB is encrypted).
     // Fall back to DB window_state for backward compatibility with older installs.
-    let app_settings = settings::load(app.handle());
+    let app_settings = settings::load_global(app.handle());
     if let Some(ws) = app_settings.window_state {
         width = ws.width;
         height = ws.height;
