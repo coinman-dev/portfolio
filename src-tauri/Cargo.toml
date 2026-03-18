@@ -1,6 +1,6 @@
 [package]
 name = "coinman-portfolio"
-version = "0.3.0"
+version = "0.4.0"
 description = "CoinMan desktop portfolio tracker"
 authors = ["modulator"]
 license = ""
