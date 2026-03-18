@@ -43,7 +43,9 @@ Most portfolio tracking services store your data on their servers, where third p
 
 ## Screenshots
 
-*(coming soon)*
+![CoinMan Portfolio — Current tab](docs/screenshots/screenshot1.png)
+
+![CoinMan Portfolio — Sold tab](docs/screenshots/screenshot2.png)
 
 ---
 
