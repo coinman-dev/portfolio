@@ -63,14 +63,6 @@ body {
     font-variant-numeric: tabular-nums;
 }
 
-/* Template rows hide */
-#template-coin-row,
-#template-summary-row,
-#template-portfolio-tab,
-#template-empty-row,
-#template-bulk-sell-row {
-    display: none !important;
-}
 
 /* --- TABLES GENERAL --- */
 table {
@@ -140,10 +132,11 @@ td {
 }
 
 /* Portfolio Tabs & Action Bar */
-#portfolioTabsTable {
-    border: 0;
-    border-collapse: separate;
-    border-spacing: 6px 0;
+#portfolioTabsRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
 }
 
 .p-tab {
@@ -153,8 +146,6 @@ td {
     color: #ffffff;
     border-bottom: 2px solid transparent;
     transition: 0.3s;
-    display: inline-block;
-    margin-right: 8px;
     background: #0b1f3a;
     border: 1px solid #173b63;
     border-radius: 4px;
@@ -166,9 +157,6 @@ td {
 .p-tab:hover:not(.active) {
     color: #ffffff;
     background: #0f2a4d;
-}
-#portfolioTabsRow .p-tab:last-child {
-    margin-right: 0;
 }
 #portfolioTabsRow .p-tab {
     user-select: none;
@@ -230,6 +218,7 @@ body.tabs-drag-active * {
     font-size: 12px;
     justify-content: center;
     min-height: 34px;
+    white-space: nowrap;
 }
 .btn-orange {
     background-color: #f57c00;
@@ -506,7 +495,8 @@ select option {
     display: flex;
     justify-content: flex-end;
     align-items: center;
-    padding: 10px 20px;
+    gap: 8px;
+    padding: 10px 15px 10px 10px;
     border-top: 1px solid #333;
     background: #1e1e1e;
 }

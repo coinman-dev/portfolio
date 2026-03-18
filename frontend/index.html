@@ -59,22 +59,18 @@
 				<tr>
 					<td class="action-bar-tabs-cell">
 						<!-- Вкладки портфелей перенесены сюда -->
-						<table id="portfolioTabsTable">
-							<tr id="portfolioTabsRow">
-								<!-- Шаблон ячейки вкладки (скрыт) -->
-								<td id="template-portfolio-tab" class="p-tab" title="Created: [Date]">
+						<div id="portfolioTabsRow">
+							<!-- [PORTFOLIO_TAB_BEGIN] -->
+							<div id="template-portfolio-tab" class="p-tab" title="Created: [Date]">
                                     [[PORTFOLIO_NAME]]
-                                </td>
-							</tr>
-						</table>
+                                </div>
+							<!-- [PORTFOLIO_TAB_END] -->
+						</div>
 					</td>
 					<td class="action-bar-buttons-cell">
 						<div class="action-buttons-row">
 							<button class="btn btn-blue" onclick="openEditPortfolioModal()">
                                 EDIT PORTFOLIO
-                            </button>
-							<button class="btn btn-orange" onclick="openAddCoinModal()">
-                                + COIN
                             </button>
 						</div>
 					</td>
@@ -143,9 +139,14 @@
 						</div>
 					</td>
 					<td class="controls-action-cell">
-						<button class="btn btn-blue" id="btn-collapse" onclick="toggleCollapse()">
-                            COLLAPSE
-                        </button>
+						<div class="action-buttons-row">
+							<button class="btn btn-blue" id="btn-collapse" onclick="toggleCollapse()">
+                                COLLAPSE
+                            </button>
+							<button class="btn btn-orange btn-inline" onclick="openAddCoinModal()">
+                                + COIN
+                            </button>
+						</div>
 					</td>
 				</tr>
 			</table>
@@ -216,7 +217,7 @@
 					</tr>
 				</thead>
 				<tbody id="transactions-table-body">
-					<!-- Шаблон строки транзакции (скрыт) -->
+					<!-- [COIN_ROW_BEGIN] -->
 					<tr id="template-coin-row">
 						<td>
 							<div class="coin-icon">[[ICON]]</div>
@@ -225,7 +226,7 @@
 							<div class="coin-cell-content">
 								<div class="coin-info-block">
 									<span class="coin-name">[[COINNAME]]</span>
-									<span class="coin-date">[[DATE]] • [[NOTE]]</span>
+									<span class="coin-date">[[DATE]]</span>
 								</div>
 								<button class="btn-table-edit t-btn-edit">
                                     EDIT
@@ -250,6 +251,8 @@
 							<div class="text-bold t-change">[[CHANGE_%]]</div>
 						</td>
 					</tr>
+					<!-- [COIN_ROW_END] -->
+					<!-- [SUMMARY_ROW_BEGIN] -->
 					<tr id="template-summary-row" class="summary-row">
 						<td>
 							<div class="coin-icon">
@@ -284,15 +287,20 @@
 							<div class="text-bold s-change">[[A_CHANGE_%]]</div>
 						</td>
 					</tr>
-					<!-- Пустая строка -->
+					<!-- [SUMMARY_ROW_END] -->
+					<!-- [EMPTY_ROW_BEGIN] -->
 					<tr id="template-empty-row">
-						<td id="empty-row-colspan-td" colspan="6" class="empty-state-cell">
+						<td id="empty-row-colspan-td" colspan="7" class="empty-state-cell">
                             No transactions found
                         </td>
 					</tr>
+					<!-- [EMPTY_ROW_END] -->
 				</tbody>
 			</table>
 			<div class="table-footer-bar">
+				<button class="btn btn-blue btn-inline" id="btn-collapse-footer" onclick="toggleCollapse()">
+                    COLLAPSE
+                </button>
 				<button class="btn btn-orange btn-inline" onclick="openAddCoinModal()">
                     + COIN
                 </button>
@@ -412,7 +420,7 @@
 						<div class="flex-1 suggestions-wide-right">
 							<label class="form-label">Symbol</label>
 							<input type="text" id="add-coin-symbol" class="form-input" maxlength="8" placeholder="e.g. BTC" oninput="
-                                    handleSearch(
+                                    handleSearchBySymbol(
                                         'add-coin-symbol',
                                         'suggestions-add-symbol',
                                     )
@@ -446,6 +454,10 @@
 							<input type="text" id="add-coin-time" class="form-input time-input" placeholder="HH:MM" autocomplete="off"/>
 							<ul id="time-suggestions-add" class="time-suggestions"/>
 						</div>
+					</div>
+					<div class="form-group">
+						<label class="form-label">Wallet Address</label>
+						<input type="text" id="add-coin-wallet" class="form-input" maxlength="220" placeholder="Optional wallet address where coins are stored..."/>
 					</div>
 					<div class="form-group">
 						<label class="form-label">Notes</label>
@@ -528,7 +540,7 @@
 								</tr>
 							</thead>
 							<tbody id="bulk-sell-tbody">
-								<!-- template row -->
+								<!-- [BULK_SELL_ROW_BEGIN] -->
 								<tr id="template-bulk-sell-row">
 									<td>
 										<div class="coin-icon">[[ICON]]</div>
@@ -553,7 +565,8 @@
 										<input type="checkbox" class="bs-check"/>
 									</td>
 								</tr>
-							</tbody>
+															<!-- [BULK_SELL_ROW_END] -->
+</tbody>
 						</table>
 					</div>
 				</div>
@@ -642,6 +655,10 @@
 							</div>
 						</div>
 						<div class="form-group">
+							<label class="form-label">Wallet Address</label>
+							<input type="text" id="edit-coin-wallet" class="form-input" maxlength="220" placeholder="Optional wallet address where coins are stored..."/>
+						</div>
+						<div class="form-group">
 							<label class="form-label">Notes</label>
 							<input type="text" id="edit-coin-note" class="form-input"/>
 						</div>
@@ -701,6 +718,11 @@
 						CoinMan Portfolio is a lightweight and secure desktop application designed to track and manage your cryptocurrency portfolios locally. Your data is stored securely on your machine.
 					</p>
 					<a href="#" onclick="AppBridge.invoke('open_url', { url: 'https://github.com/coinman-dev/portfolio' }); return false;" style="color: #e67e22; font-size: 13px; text-decoration: none;">github.com/coinman-dev/portfolio</a>
+					<p style="color: #888888; font-size: 11px; line-height: 1.5; margin-top: 16px; margin-bottom: 0;">
+						Market data powered by <a href="#" onclick="AppBridge.invoke('open_url', { url: 'https://www.coingecko.com/' }); return false;" style="color: #e67e22; text-decoration: none;">CoinGecko API</a><br/>
+						This software is for informational purposes only.<br/>
+						Not financial advice. Licensed under MIT.
+					</p>
 				</div>
 				<div class="modal-footer">
 					<button class="btn btn-outline" onclick="closeModal('modal-about')">

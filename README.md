@@ -173,6 +173,18 @@ This project was developed with the help of AI tools:
 
 ---
 
+## Disclaimer
+
+CoinMan Portfolio is provided **for informational purposes only**. It is not financial, investment, or trading advice. The authors are not responsible for any financial decisions made based on data displayed by this application. Use at your own risk.
+
+---
+
+## Data Attribution
+
+Market price data is provided by the [CoinGecko API](https://www.coingecko.com/). CoinMan Portfolio is not affiliated with or endorsed by CoinGecko.
+
+---
+
 ## License
 
-MIT
+This project is licensed under the [MIT License](LICENSE).

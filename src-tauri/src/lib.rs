@@ -267,6 +267,11 @@ fn save_show_cur_price(app: tauri::AppHandle, show: bool) {
 }
 
 #[tauri::command]
+fn save_is_collapsed(app: tauri::AppHandle, collapsed: bool) {
+    settings::update_is_collapsed(&app, collapsed);
+}
+
+#[tauri::command]
 fn save_portfolio_order(app: tauri::AppHandle, user: Option<String>, order: Vec<serde_json::Value>) {
     let user = storage::sanitize_user(user);
     settings::update_portfolio_order(&app, &user, order);
@@ -285,7 +290,17 @@ fn exit_app(app: tauri::AppHandle) {
 #[tauri::command]
 fn open_url(url: String) {
     #[cfg(target_os = "windows")]
-    std::process::Command::new("cmd").args(["/c", "start", &url]).spawn().ok();
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        std::process::Command::new("cmd")
+            .args(["/c", "start", "", &url])
+            .creation_flags(CREATE_NO_WINDOW)
+            .spawn()
+            .ok();
+    }
+    #[cfg(target_os = "macos")]
+    std::process::Command::new("open").arg(&url).spawn().ok();
     #[cfg(target_os = "linux")]
     std::process::Command::new("xdg-open").arg(&url).spawn().ok();
 }
@@ -372,6 +387,7 @@ pub fn run() {
             save_active_portfolio,
             save_column_widths,
             save_show_cur_price,
+            save_is_collapsed,
             debug_log,
             exit_app,
             open_url,

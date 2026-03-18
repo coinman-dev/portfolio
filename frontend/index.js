@@ -52,7 +52,7 @@ var CONFIG = {
        ============================================================ */
     MODAL_SIZES: {
         DEFAULT: { width: "600px", height: "auto", maxHeight: "90vh" },
-        SELL: { width: "700px", height: "auto", maxHeight: "90vh" },
+        SELL: { width: "750px", height: "auto", maxHeight: "90vh" },
     },
 };
 
@@ -306,6 +306,32 @@ var AppSettings = {
 
 // Основные данные портфелей теперь приходят с сервера (default.json).
 var portfolios = [];
+
+var Templates = {
+    portfolioTab: null,
+    coinRow: null,
+    summaryRow: null,
+    emptyRow: null,
+    bulkSellRow: null,
+
+    init: function () {
+        var ids = {
+            portfolioTab: "template-portfolio-tab",
+            coinRow: "template-coin-row",
+            summaryRow: "template-summary-row",
+            emptyRow: "template-empty-row",
+            bulkSellRow: "template-bulk-sell-row",
+        };
+        Object.keys(ids).forEach(function (key) {
+            var el = document.getElementById(ids[key]);
+            if (el) {
+                el.removeAttribute("id");
+                if (el.parentNode) el.parentNode.removeChild(el);
+                Templates[key] = el;
+            }
+        });
+    },
+};
 
 var Utils = {
     parseNumber: function (value, fallback) {
@@ -930,6 +956,7 @@ var Storage = {
 var Market = {
     refreshTimer: null,
     refreshInProgress: false,
+    fileCacheSavedAt: 0,
     detailsCache: {},
 
     clearDetailsCache: function () {
@@ -1398,7 +1425,8 @@ var Market = {
         if (cached) {
             Market.setStateMarketData(cached.marketData);
             Market.setStatus(
-                "Market data: loaded from cache (" +
+                "Market data: loaded " + cached.marketData.length +
+                    " symbols from session cache (" +
                     new Date(cached.savedAt || Date.now()).toLocaleString() +
                     ")",
                 "#aaa",
@@ -1433,6 +1461,29 @@ var Market = {
 
         return window.Promise.all(allRequests)
             .then(function (responses) {
+                var totalApiRows = 0;
+                responses.forEach(function (res) {
+                    totalApiRows += (res.rows || []).length;
+                });
+
+                if (totalApiRows === 0 && state.marketData.length > 0) {
+                    var ts = Market.fileCacheSavedAt
+                        ? new Date(Market.fileCacheSavedAt).toLocaleString()
+                        : "date unknown";
+                    Market.setStatus(
+                        "Market data: loaded " + state.marketData.length +
+                        " symbols from file (" + ts + ")",
+                        "#aaa",
+                    );
+                    renderApp();
+                    return;
+                }
+
+                if (totalApiRows === 0) {
+                    Market.setStatus("Market data: API unavailable, no cached data.", "#D32F2F");
+                    return;
+                }
+
                 var map = {};
                 symbols.forEach(function (sym) {
                     var tracked = trackedBySymbol[sym] || {
@@ -1497,18 +1548,19 @@ var Market = {
                     }),
                 );
                 MarketCache.set(symbols, vsCurrencies, state.marketData);
+                Market.fileCacheSavedAt = Date.now();
                 if (AppBridge.isTauri()) {
                     AppBridge.invoke("save_market_cache", {
                         user: ServerSync.user,
                         cache: state.marketData,
-                        savedAt: Date.now(),
+                        savedAt: Market.fileCacheSavedAt,
                     }).catch(function () {});
                 }
 
                 Market.setStatus(
                     "Market data: loaded " +
                         state.marketData.length +
-                        " symbols (" +
+                        " symbols from API (" +
                         new Date().toLocaleString() +
                         ")",
                     "#aaa",
@@ -1517,7 +1569,19 @@ var Market = {
             })
             .catch(function (e) {
                 console.error(e);
-                Market.setStatus("Market data: API error.", "#D32F2F");
+                if (state.marketData.length > 0) {
+                    var ts = Market.fileCacheSavedAt
+                        ? new Date(Market.fileCacheSavedAt).toLocaleString()
+                        : "date unknown";
+                    Market.setStatus(
+                        "Market data: loaded " + state.marketData.length +
+                        " symbols from file (" + ts + ")",
+                        "#aaa",
+                    );
+                    renderApp();
+                } else {
+                    Market.setStatus("Market data: API error.", "#D32F2F");
+                }
             })
             .finally(function () {
                 Market.refreshInProgress = false;
@@ -1923,10 +1987,12 @@ var Tx = {
                     totalValue: 0,
                     marketValue: 0,
                     image: det.image,
+                    txCount: 0,
                 };
             }
 
             var g = groups[key];
+            g.txCount += 1;
             g.totalAmount += t.amount;
             g.totalCost += t.amount * t.buyPrice;
             g.totalValue +=
@@ -2473,6 +2539,52 @@ var Autocomplete = {
         }
     },
 
+    handleSearchBySymbol: function (inputId, listId) {
+        var input = document.getElementById(inputId);
+        var list = document.getElementById(listId);
+        var query = (input && input.value ? input.value : "").toLowerCase();
+        var source = Market.getAutoCompleteList();
+        if (!list) return;
+        list.innerHTML = "";
+
+        if (query.length < 1 || !source.length) {
+            list.classList.remove("active");
+            return;
+        }
+
+        var matches = [];
+        var i;
+        for (i = 0; i < source.length; i += 1) {
+            var item = source[i];
+            if (item.symbolLower.indexOf(query) === 0) {
+                matches.push(item);
+                if (matches.length >= CONFIG.MAX_SUGGESTIONS) break;
+            }
+        }
+
+        if (matches.length) {
+            list.classList.add("active");
+            var fragment = document.createDocumentFragment();
+            matches.forEach(function (coin) {
+                var li = document.createElement("li");
+                li.className = "suggestion-item";
+                var imgHtml = coin.image
+                    ? '<img src="' + Utils.escapeAttr(coin.image) + '" class="s-img">'
+                    : '<span class="s-img">' + Utils.escapeHtml(coin.symbol && coin.symbol[0] ? coin.symbol[0] : "?") + "</span>";
+                li.innerHTML =
+                    imgHtml +
+                    '<span class="s-name">' + Utils.escapeHtml(coin.name) + '</span><span class="s-symbol">' + Utils.escapeHtml(coin.symbol) + "</span>";
+                li.onclick = function () {
+                    Autocomplete.select(coin, inputId, listId);
+                };
+                fragment.appendChild(li);
+            });
+            list.appendChild(fragment);
+        } else {
+            list.classList.remove("active");
+        }
+    },
+
     select: function (coin, inputId, listId) {
         var isEdit = inputId === "edit-coin-name";
         var prefix = isEdit ? "edit" : "add";
@@ -2584,12 +2696,10 @@ function renderBulkSellTable() {
     var curr = p ? p.currency : "USD";
 
     var tbody = document.getElementById("bulk-sell-tbody");
-    var tpl = document.getElementById("template-bulk-sell-row");
+    var tpl = Templates.bulkSellRow;
     if (!tbody || !tpl) return;
 
-    Array.from(tbody.querySelectorAll("tr")).forEach(function (tr) {
-        if (tr.id !== "template-bulk-sell-row") tr.remove();
-    });
+    tbody.innerHTML = "";
 
     var list = state.bulkSellTxs.slice(0);
     list.sort(function (a, b) {
@@ -2866,6 +2976,7 @@ function openAddCoinModal() {
         "add-coin-price",
         "add-coin-amount",
         "add-coin-note",
+        "add-coin-wallet",
     ].forEach(function (id) {
         document.getElementById(id).value = "";
     });
@@ -2913,6 +3024,7 @@ function handleAddCoin() {
             document.getElementById("add-coin-time").value,
         ),
         note: document.getElementById("add-coin-note").value,
+        wallet: document.getElementById("add-coin-wallet").value,
     });
 
     if (Market.refreshTimer) {
@@ -2971,7 +3083,8 @@ function openEditCoinModal(id) {
     );
     document.getElementById("edit-coin-date").value = dt.date;
     document.getElementById("edit-coin-time").value = dt.time;
-    document.getElementById("edit-coin-note").value = tx.note;
+    document.getElementById("edit-coin-note").value = tx.note || "";
+    document.getElementById("edit-coin-wallet").value = tx.wallet || "";
 
     if (tx.status === "sold") {
         document.getElementById("sell-coin-price").value = Utils.normalizePrice(
@@ -2981,7 +3094,7 @@ function openEditCoinModal(id) {
             Utils.normalizeAmount(tx.amount);
         document.getElementById("sell-coin-date").value = dt.date;
         document.getElementById("sell-coin-time").value = dt.time;
-        document.getElementById("sell-coin-note").value = tx.note;
+        document.getElementById("sell-coin-note").value = tx.note || "";
         switchEditTab("sell");
     } else {
         var now = new Date();
@@ -3036,6 +3149,7 @@ function handleUpdateTransaction() {
             document.getElementById("edit-coin-time").value,
         ),
         note: document.getElementById("edit-coin-note").value,
+        wallet: document.getElementById("edit-coin-wallet").value,
     });
 
     renderApp();
@@ -3124,9 +3238,13 @@ function switchView(view) {
 
 function toggleCollapse() {
     state.isCollapsed = !state.isCollapsed;
-    document.getElementById("btn-collapse").textContent = state.isCollapsed
-        ? "EXPAND"
-        : "COLLAPSE";
+    var collapseLabel = state.isCollapsed ? "EXPAND" : "COLLAPSE";
+    document.getElementById("btn-collapse").textContent = collapseLabel;
+    var footerBtn = document.getElementById("btn-collapse-footer");
+    if (footerBtn) footerBtn.textContent = collapseLabel;
+    if (AppBridge.isTauri()) {
+        AppBridge.invoke("save_is_collapsed", { collapsed: state.isCollapsed }).catch(function () {});
+    }
     renderApp();
 }
 
@@ -3291,16 +3409,20 @@ function renderApp() {
     renderMetrics(renderPortfolio);
     renderTable(renderPortfolio);
     UI.updateSortArrows();
+
+    var collapseLabel = state.isCollapsed ? "EXPAND" : "COLLAPSE";
+    var btnC = document.getElementById("btn-collapse");
+    if (btnC) btnC.textContent = collapseLabel;
+    var btnCF = document.getElementById("btn-collapse-footer");
+    if (btnCF) btnCF.textContent = collapseLabel;
 }
 
 function renderTabs() {
     var row = document.getElementById("portfolioTabsRow");
-    var tpl = document.getElementById("template-portfolio-tab");
+    var tpl = Templates.portfolioTab;
     if (!row || !tpl) return;
 
-    Array.from(row.children).forEach(function (c) {
-        if (c.id !== "template-portfolio-tab") c.remove();
-    });
+    row.innerHTML = "";
 
     var fragment = document.createDocumentFragment();
     portfolios.forEach(function (p) {
@@ -3472,19 +3594,12 @@ function buildTotalPriceSubText(view, spentValue, receivedValue, curr) {
 function renderTable(p) {
     var curr = p.currency;
     var tbody = document.getElementById("transactions-table-body");
-    var tpl = document.getElementById("template-coin-row");
-    var summaryTpl = document.getElementById("template-summary-row");
-    var empty = document.getElementById("template-empty-row");
+    var tpl = Templates.coinRow;
+    var summaryTpl = Templates.summaryRow;
+    var empty = Templates.emptyRow;
     if (!tbody || !tpl || !empty) return;
 
-    Array.from(tbody.querySelectorAll("tr")).forEach(function (tr) {
-        if (
-            tr.id !== "template-coin-row" &&
-            tr.id !== "template-summary-row" &&
-            tr.id !== "template-empty-row"
-        )
-            tr.remove();
-    });
+    tbody.innerHTML = "";
 
     var txsRaw = Tx.getFiltered(p, state.currentView);
 
@@ -3531,7 +3646,7 @@ function renderTable(p) {
                     coin: g.coin,
                     symbol: g.symbol,
                     catalogId: g.catalogId || "",
-                    dateText: Utils.formatAmount(g.totalAmount) + " Positions",
+                    dateText: "Transactions: " + g.txCount,
                     price:
                         g.totalAmount > 0
                             ? state.currentView === "current"
@@ -3569,18 +3684,28 @@ function renderTable(p) {
             var cost = t.amount * t.buyPrice;
             var profit = dispTotal - cost;
             var pct = cost > 0 ? (profit / cost) * 100 : 0;
-            var dateStr =
-                t.date && t.date.indexOf("T") !== -1
-                    ? new Date(t.date).toLocaleString()
-                    : t.date || "";
+            var dateStr = "";
+            if (t.date && t.date.indexOf("T") !== -1) {
+                var _d = new Date(t.date);
+                dateStr = _d.toLocaleString([], {
+                    year: "numeric",
+                    month: "2-digit",
+                    day: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                });
+            } else {
+                dateStr = t.date || "";
+            }
+            var _note = t.note ? String(t.note).trim() : "";
+            var _dateWithNote = dateStr + (_note ? " • " + _note : "");
 
             fragment.appendChild(
                 createRow(tpl, {
                     icon: det.image,
                     coin: t.coin,
                     symbol: t.symbol,
-                    dateText: dateStr,
-                    note: t.note || "",
+                    dateText: _dateWithNote,
                     price: dispPrice,
                     priceSub: buildTotalPriceSubText(
                         state.currentView,
@@ -3775,6 +3900,7 @@ window.switchView = switchView;
 window.toggleCollapse = toggleCollapse;
 window.switchPortfolio = switchPortfolio;
 window.handleSearch = Autocomplete.handleSearch;
+window.handleSearchBySymbol = Autocomplete.handleSearchBySymbol;
 window.openBulkSellModal = openBulkSellModal;
 window.handleBulkSell = handleBulkSell;
 window.openCreatePortfolioModal = openCreatePortfolioModal;
@@ -4033,6 +4159,9 @@ var DbSelector = {
                                 AppSettings.set("showCurPrice", !!appSettings.showCurPrice);
                                 AppSettings.applyCurPrice();
                             }
+                            if (appSettings && appSettings.isCollapsed !== undefined) {
+                                state.isCollapsed = !!appSettings.isCollapsed;
+                            }
                             if (appSettings && appSettings.columnWidths) {
                                 var widthsData = appSettings.columnWidths;
                                 var widths = widthsData.widths || widthsData;
@@ -4047,11 +4176,13 @@ var DbSelector = {
                             }
                             if (appSettings && Array.isArray(appSettings.marketCache) && appSettings.marketCache.length) {
                                 Market.setStateMarketData(appSettings.marketCache);
-                                var ts = appSettings.marketCacheSavedAt
-                                    ? new Date(appSettings.marketCacheSavedAt).toLocaleString()
-                                    : "saved";
+                                Market.fileCacheSavedAt = appSettings.marketCacheSavedAt || 0;
+                                var ts = Market.fileCacheSavedAt
+                                    ? new Date(Market.fileCacheSavedAt).toLocaleString()
+                                    : "date unknown";
                                 Market.setStatus(
-                                    "Market data: restored from cache (" + ts + ")",
+                                    "Market data: loaded " + appSettings.marketCache.length +
+                                    " symbols from file (" + ts + ")",
                                     "#aaa",
                                 );
                                 renderApp();
@@ -4380,6 +4511,7 @@ window.onload = function () {
                 if (uiSetupDone) return;
                 uiSetupDone = true;
 
+                Templates.init();
                 Storage.load();
                 TimePicker.initAll();
                 UI.initRestrictions();
@@ -4432,6 +4564,9 @@ window.onload = function () {
                                 AppSettings.set("showCurPrice", !!appSettings.showCurPrice);
                                 AppSettings.applyCurPrice();
                             }
+                            if (appSettings && appSettings.isCollapsed !== undefined) {
+                                state.isCollapsed = !!appSettings.isCollapsed;
+                            }
                             if (appSettings && appSettings.columnWidths) {
                                 var widthsData = appSettings.columnWidths;
                                 var widths = widthsData.widths || widthsData;
@@ -4446,11 +4581,13 @@ window.onload = function () {
                             }
                             if (appSettings && Array.isArray(appSettings.marketCache) && appSettings.marketCache.length) {
                                 Market.setStateMarketData(appSettings.marketCache);
-                                var ts = appSettings.marketCacheSavedAt
-                                    ? new Date(appSettings.marketCacheSavedAt).toLocaleString()
-                                    : "saved";
+                                Market.fileCacheSavedAt = appSettings.marketCacheSavedAt || 0;
+                                var ts = Market.fileCacheSavedAt
+                                    ? new Date(Market.fileCacheSavedAt).toLocaleString()
+                                    : "date unknown";
                                 Market.setStatus(
-                                    "Market data: restored from cache (" + ts + ")",
+                                    "Market data: loaded " + appSettings.marketCache.length +
+                                    " symbols from file (" + ts + ")",
                                     "#aaa",
                                 );
                                 renderApp();

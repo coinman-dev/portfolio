@@ -38,6 +38,8 @@ pub struct AppSettings {
     /// Global: UI preference, shared across all databases.
     #[serde(default)]
     pub show_cur_price: Option<bool>,
+    #[serde(default)]
+    pub is_collapsed: Option<bool>,
     /// Global: column widths, shared across all databases.
     #[serde(default)]
     pub column_widths: Option<Value>,
@@ -53,6 +55,7 @@ pub struct AppSettings {
 pub struct AppSettingsForUser {
     pub window_state: Option<WinState>,
     pub show_cur_price: Option<bool>,
+    pub is_collapsed: Option<bool>,
     pub column_widths: Option<Value>,
     pub active_portfolio_id: Option<Value>,
     pub portfolio_order: Option<Vec<Value>>,
@@ -74,6 +77,7 @@ pub fn load_for_user<R: Runtime>(app: &AppHandle<R>, user: &str) -> AppSettingsF
     AppSettingsForUser {
         window_state: settings.window_state,
         show_cur_price: settings.show_cur_price,
+        is_collapsed: settings.is_collapsed,
         column_widths: settings.column_widths,
         active_portfolio_id: u.active_portfolio_id,
         portfolio_order: u.portfolio_order,
@@ -111,6 +115,12 @@ pub fn update_column_widths<R: Runtime>(app: &AppHandle<R>, widths: Value) {
 pub fn update_show_cur_price<R: Runtime>(app: &AppHandle<R>, show: bool) {
     let mut settings = load(app);
     settings.show_cur_price = Some(show);
+    save(app, &settings);
+}
+
+pub fn update_is_collapsed<R: Runtime>(app: &AppHandle<R>, collapsed: bool) {
+    let mut settings = load(app);
+    settings.is_collapsed = Some(collapsed);
     save(app, &settings);
 }
 
