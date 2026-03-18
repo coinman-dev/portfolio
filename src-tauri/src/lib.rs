@@ -11,6 +11,10 @@ use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 
+// ─── Default window dimensions (logical pixels) ─────────────────────────────
+const DEFAULT_WINDOW_WIDTH: f64 = 1220.0;
+const DEFAULT_WINDOW_HEIGHT: f64 = 700.0;
+
 #[derive(Default)]
 struct StorageLock(Mutex<()>);
 
@@ -20,11 +24,25 @@ struct SessionPassword(Mutex<Option<String>>);
 
 /// Tracks the decoration size offset on Linux where inner_size() includes
 /// window decorations, causing the window to grow on each launch cycle.
-#[derive(Default)]
 struct WindowSizeCalibration {
     intended: Mutex<(f64, f64)>,
     offset: Mutex<(f64, f64)>,
     calibrated: AtomicBool,
+    /// Mismatch ratio between content scale (Xft.dpi) and window scale factor.
+    /// Used on X11 to compensate for the window being sized in physical pixels
+    /// while WebKitGTK scales content independently via DPI.
+    dpi_mismatch: Mutex<f64>,
+}
+
+impl Default for WindowSizeCalibration {
+    fn default() -> Self {
+        Self {
+            intended: Mutex::new((0.0, 0.0)),
+            offset: Mutex::new((0.0, 0.0)),
+            calibrated: AtomicBool::new(false),
+            dpi_mismatch: Mutex::new(1.0),
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -429,13 +447,51 @@ pub fn run() {
     }
 }
 
+/// On X11, detect the effective DPI scale that WebKitGTK uses for content.
+/// WebKitGTK reads Xft.dpi from X resources (set by KDE, GNOME, etc.) and
+/// scales the page accordingly, even when the window system reports sf = 1.0.
+/// Returns the scale factor (e.g. 1.25 for 120 dpi, 1.5 for 144 dpi).
+#[cfg(target_os = "linux")]
+fn detect_x11_dpi_scale() -> f64 {
+    // 1. Xft.dpi from X resources (most common on KDE/GNOME + X11)
+    if let Ok(output) = std::process::Command::new("xrdb").args(["-query"]).output() {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        for line in stdout.lines() {
+            if let Some(rest) = line.strip_prefix("Xft.dpi:") {
+                if let Ok(dpi) = rest.trim().parse::<f64>() {
+                    if dpi > 96.0 {
+                        return dpi / 96.0;
+                    }
+                }
+            }
+        }
+    }
+    // 2. GDK_DPI_SCALE (fractional, set by some desktop environments)
+    if let Ok(val) = std::env::var("GDK_DPI_SCALE") {
+        if let Ok(s) = val.parse::<f64>() {
+            if s > 1.0 {
+                return s;
+            }
+        }
+    }
+    // 3. GDK_SCALE (integer, older method)
+    if let Ok(val) = std::env::var("GDK_SCALE") {
+        if let Ok(s) = val.parse::<f64>() {
+            if s > 1.0 {
+                return s;
+            }
+        }
+    }
+    1.0
+}
+
 fn create_main_window<R: tauri::Runtime>(app: &mut tauri::App<R>) -> tauri::Result<()> {
     if app.get_webview_window("main").is_some() {
         return Ok(());
     }
 
-    let mut width = 1220.0;
-    let mut height = 700.0;
+    let mut width = DEFAULT_WINDOW_WIDTH;
+    let mut height = DEFAULT_WINDOW_HEIGHT;
     let mut position = None;
 
     // Prefer settings.json for window state (works even when DB is encrypted).
@@ -457,7 +513,7 @@ fn create_main_window<R: tauri::Runtime>(app: &mut tauri::App<R>) -> tauri::Resu
     let mut builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
         .title("CoinMan Portfolio")
         .inner_size(width, height)
-        .min_inner_size(1220.0, 700.0)
+        .min_inner_size(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT)
         .resizable(true)
         .fullscreen(false)
         .data_directory(runtime_paths.webview_data_dir.clone());
@@ -475,6 +531,42 @@ fn create_main_window<R: tauri::Runtime>(app: &mut tauri::App<R>) -> tauri::Resu
     }
 
     let window = builder.build()?;
+
+    // On Linux X11, the window manager may report scale_factor = 1.0 while
+    // WebKitGTK independently reads Xft.dpi and scales content (e.g. 120 dpi
+    // → 1.25x).  This mismatch makes the window too small for the scaled
+    // content.  Detect the real DPI scale and enlarge the window to compensate.
+    // Wayland handles scaling at the compositor level and doesn't need this.
+    #[cfg(target_os = "linux")]
+    {
+        let is_wayland = std::env::var("WAYLAND_DISPLAY").is_ok();
+        if !is_wayland {
+            let dpi_scale = detect_x11_dpi_scale();
+            let win_sf = window.scale_factor().unwrap_or(1.0);
+            let mismatch = dpi_scale / win_sf;
+            if mismatch > 1.01 {
+                // Store mismatch for the save path (CloseRequested).
+                {
+                    let cal = app.state::<WindowSizeCalibration>();
+                    *cal.dpi_mismatch.lock().unwrap() = mismatch;
+                }
+                let scaled_w = width * mismatch;
+                let scaled_h = height * mismatch;
+                let _ = window.set_size(tauri::Size::Logical(tauri::LogicalSize {
+                    width: scaled_w,
+                    height: scaled_h,
+                }));
+                let _ = window.set_min_size(Some(tauri::Size::Logical(tauri::LogicalSize {
+                    width: DEFAULT_WINDOW_WIDTH * mismatch,
+                    height: DEFAULT_WINDOW_HEIGHT * mismatch,
+                })));
+                // Update intended to match the scaled size for correct
+                // decoration-offset calibration on the first Resized event.
+                let cal = app.state::<WindowSizeCalibration>();
+                *cal.intended.lock().unwrap() = (scaled_w, scaled_h);
+            }
+        }
+    }
 
     let w = window.clone();
     window.on_window_event(move |event| {
@@ -508,17 +600,20 @@ fn create_main_window<R: tauri::Runtime>(app: &mut tauri::App<R>) -> tauri::Resu
                     .unwrap_or((0.0, 0.0));
 
                 let mut win_state = settings::WinState {
-                    width: 1220.0,
-                    height: 700.0,
+                    width: DEFAULT_WINDOW_WIDTH,
+                    height: DEFAULT_WINDOW_HEIGHT,
                     x: prev_x,
                     y: prev_y,
                 };
 
+                let dpi_mm = *cal.dpi_mismatch.lock().unwrap();
                 if let Ok(size) = w.inner_size() {
                     if let Ok(scale_factor) = w.scale_factor() {
                         let logical_size = size.to_logical::<f64>(scale_factor);
-                        win_state.width = (logical_size.width - ow).max(1220.0);
-                        win_state.height = (logical_size.height - oh).max(700.0);
+                        // Divide by dpi_mismatch to convert back to "app-logical"
+                        // coordinates (the size before X11 DPI compensation).
+                        win_state.width = ((logical_size.width - ow) / dpi_mm).max(DEFAULT_WINDOW_WIDTH);
+                        win_state.height = ((logical_size.height - oh) / dpi_mm).max(DEFAULT_WINDOW_HEIGHT);
                     }
                 }
                 if let Ok(pos) = w.outer_position() {
