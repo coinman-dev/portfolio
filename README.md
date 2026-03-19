@@ -37,7 +37,7 @@ Most portfolio tracking services store your data on their servers, where third p
 |----------|--------|
 | Windows 10/11 | ✅ Supported |
 | Linux (Ubuntu 22.04+) | ✅ Supported |
-| macOS | ❌ Not tested |
+| macOS | ✅ Supported |
 
 ---
 
