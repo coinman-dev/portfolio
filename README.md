@@ -163,6 +163,7 @@ CoinMan Portfolio supports **AES-256-GCM** encryption for database files, with k
 - Rust — backend, data storage, system calls
 - Vanilla JavaScript / HTML / CSS — UI (no frameworks, no npm)
 - [CoinGecko API](https://www.coingecko.com/) — live coin prices
+- [CoinMarketCap](https://coinmarketcap.com/) — coin catalog & logos
 
 ---
 
@@ -184,6 +185,8 @@ CoinMan Portfolio is provided **for informational purposes only**. It is not fin
 ## Data Attribution
 
 Market price data is provided by the [CoinGecko API](https://www.coingecko.com/). CoinMan Portfolio is not affiliated with or endorsed by CoinGecko.
+
+Coin catalog data (names, symbols, IDs) and coin logos are provided by [CoinMarketCap](https://coinmarketcap.com/). CoinMan Portfolio is not affiliated with or endorsed by CoinMarketCap.
 
 ---
 
