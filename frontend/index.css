@@ -458,11 +458,33 @@ select option {
 .coin-info-block {
     display: flex;
     flex-direction: column;
+    flex: 1;
 }
 .coin-name {
     font-weight: bold;
     font-size: 14px;
     margin-bottom: 4px;
+}
+.coin-ext-links {
+    display: flex;
+    align-items: center;
+    align-self: flex-start;
+    gap: 6px;
+    margin-right: 8px;
+    padding-top: 2px;
+}
+.coin-link-slot:empty {
+    display: none;
+}
+.coin-ext-link {
+    color: #f1c40f;
+    text-decoration: none;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: normal;
+}
+.coin-ext-link:hover {
+    text-decoration: underline;
 }
 .sub-value {
     display: block;

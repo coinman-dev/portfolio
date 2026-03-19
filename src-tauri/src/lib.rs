@@ -434,7 +434,7 @@ pub fn run() {
                 )?;
                 log::info!("=== CoinMan Portfolio started ===");
             }
-            create_main_window(app)?;
+            create_main_window(app, debug_mode)?;
             Ok(())
         })
         .build(tauri::generate_context!())
@@ -485,7 +485,7 @@ fn detect_x11_dpi_scale() -> f64 {
     1.0
 }
 
-fn create_main_window<R: tauri::Runtime>(app: &mut tauri::App<R>) -> tauri::Result<()> {
+fn create_main_window<R: tauri::Runtime>(app: &mut tauri::App<R>, debug_mode: bool) -> tauri::Result<()> {
     if app.get_webview_window("main").is_some() {
         return Ok(());
     }
@@ -531,6 +531,10 @@ fn create_main_window<R: tauri::Runtime>(app: &mut tauri::App<R>) -> tauri::Resu
     }
 
     let window = builder.build()?;
+
+    if debug_mode {
+        window.open_devtools();
+    }
 
     // On Linux X11, the window manager may report scale_factor = 1.0 while
     // WebKitGTK independently reads Xft.dpi and scales content (e.g. 120 dpi

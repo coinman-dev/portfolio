@@ -2,7 +2,17 @@
 /* eslint-disable no-console */
 /* eslint-env browser, es6 */
 
+/*
+ * IMPORTANT — catalogId is the SOLE unique identifier for coins.
+ * It comes from CoinMarketCap (cmc.json) and is embedded in the app binary.
+ * Symbol (BTC, ETH, ADA…) is NOT unique — 921+ symbols have duplicates.
+ * All market data indexing, caching, and lookups MUST use catalogId as the key.
+ * Symbol is only used for: display in the UI and CoinGecko API queries.
+ */
+
 window.DEBUG_MODE = false;
+
+var ENC_V1 = 1;
 
 var CONFIG = {
     IMAGE_DIR: "images/logo/",
@@ -58,7 +68,7 @@ var CONFIG = {
 
 var state = {
     marketData: [],
-    marketDataBySymbol: {},
+    marketDataByCatalogId: {},
     activePortfolioId: 1,
     currentView: "current",
     isCollapsed: false,
@@ -118,8 +128,7 @@ var DebugLog = {
 
     log: function (category, message, data) {
         if (!window.DEBUG_MODE) return;
-        var ts = new Date().toISOString();
-        var line = "[" + ts + "] [" + category + "] " + message;
+        var line = "[" + category + "] " + message;
         if (data !== undefined) {
             try {
                 var s = JSON.stringify(data);
@@ -730,6 +739,9 @@ var CoinCatalog = {
                     nameLower: String((raw && raw.name) || sym).toLowerCase(),
                     symbolLower: sym.toLowerCase(),
                     image: imgObj.src,
+                    website: (raw && raw.website) || "",
+                    sourceCode: (raw && raw.source_code) || "",
+                    explorer: (raw && raw.explorer) || "",
                 };
                 items.push(item);
                 if (item.id && !mapById[item.id]) mapById[item.id] = item;
@@ -831,10 +843,10 @@ var SessionScope = {
 };
 
 var MarketCache = {
-    buildSignature: function (symbols, vsCurrencies) {
-        var symbolsKey = (Array.isArray(symbols) ? symbols : [])
+    buildSignature: function (catalogIds, vsCurrencies) {
+        var symbolsKey = (Array.isArray(catalogIds) ? catalogIds : [])
             .map(function (s) {
-                return Utils.sanitizeSymbol(s || "");
+                return Utils.sanitizeCatalogId(s || "");
             })
             .filter(function (s) {
                 return !!s;
@@ -886,14 +898,14 @@ var MarketCache = {
         }
     },
 
-    get: function (symbols, vsCurrencies) {
+    get: function (catalogIds, vsCurrencies) {
         if (!SessionScope.id) SessionScope.ensure();
 
         var payload = MarketCache.readPayload();
         if (!payload) return null;
         if (String(payload.sessionId || "") !== SessionScope.id) return null;
 
-        var sign = MarketCache.buildSignature(symbols, vsCurrencies);
+        var sign = MarketCache.buildSignature(catalogIds, vsCurrencies);
         if (String(payload.signature || "") !== sign) return null;
         if (!Array.isArray(payload.marketData)) return null;
 
@@ -903,11 +915,11 @@ var MarketCache = {
         };
     },
 
-    set: function (symbols, vsCurrencies, marketData) {
+    set: function (catalogIds, vsCurrencies, marketData) {
         if (!SessionScope.id) SessionScope.ensure();
         var payload = {
             sessionId: SessionScope.id,
-            signature: MarketCache.buildSignature(symbols, vsCurrencies),
+            signature: MarketCache.buildSignature(catalogIds, vsCurrencies),
             savedAt: Date.now(),
             marketData: Array.isArray(marketData) ? marketData : [],
         };
@@ -1058,6 +1070,21 @@ var Market = {
         );
     },
 
+    getTrackedCatalogIds: function (trackedCoins) {
+        return Utils.uniqueList(
+            (Array.isArray(trackedCoins)
+                ? trackedCoins
+                : Market.getTrackedCoins()
+            )
+                .map(function (x) {
+                    return x.catalogId;
+                })
+                .filter(function (x) {
+                    return !!x;
+                }),
+        );
+    },
+
     getCatalogCoin: function (catalogId, symbol, coinName) {
         return CoinCatalog.findBest(catalogId, symbol, coinName);
     },
@@ -1075,22 +1102,29 @@ var Market = {
             var sym = Utils.sanitizeSymbol(
                 coin && coin.symbol ? coin.symbol : "",
             );
+            if (!sym && coin && coin.catalogId) {
+                var cat = CoinCatalog.byId[String(coin.catalogId)];
+                if (cat) sym = cat.symbol;
+            }
             if (!sym) return;
 
+            var cid = Utils.sanitizeCatalogId(
+                coin && coin.catalogId ? coin.catalogId : "",
+            );
             var item = Object.assign({}, coin, { symbol: sym });
             nextList.push(item);
-            nextMap[sym] = item;
+            if (cid) nextMap[cid] = item;
         });
 
         Market.clearDetailsCache();
         state.marketData = nextList;
-        state.marketDataBySymbol = nextMap;
+        state.marketDataByCatalogId = nextMap;
     },
 
-    getMarketCoin: function (symbol) {
-        var sym = Utils.sanitizeSymbol(symbol || "");
-        return sym && state.marketDataBySymbol[sym]
-            ? state.marketDataBySymbol[sym]
+    getMarketCoin: function (catalogId) {
+        var cid = Utils.sanitizeCatalogId(catalogId || "");
+        return cid && state.marketDataByCatalogId[cid]
+            ? state.marketDataByCatalogId[cid]
             : null;
     },
 
@@ -1110,9 +1144,9 @@ var Market = {
         return false;
     },
 
-    getCoinFromSessionCache: function (symbol) {
-        var sym = Utils.sanitizeSymbol(symbol || "");
-        if (!sym) return null;
+    getCoinFromSessionCache: function (catalogId) {
+        var cid = Utils.sanitizeCatalogId(catalogId || "");
+        if (!cid) return null;
         if (!SessionScope.id) SessionScope.ensure();
 
         var payload = MarketCache.readPayload();
@@ -1123,24 +1157,27 @@ var Market = {
         return (
             payload.marketData.find(function (item) {
                 return (
-                    Utils.sanitizeSymbol(
-                        item && item.symbol ? item.symbol : "",
-                    ) === sym
+                    Utils.sanitizeCatalogId(
+                        item && item.catalogId ? item.catalogId : "",
+                    ) === cid
                 );
             }) || null
         );
     },
 
     upsertCoinInState: function (coin) {
-        if (!coin || !coin.symbol) return;
-        var sym = Utils.sanitizeSymbol(coin.symbol);
-        if (!sym) return;
+        if (!coin || !coin.catalogId) return;
+        var cid = Utils.sanitizeCatalogId(coin.catalogId);
+        if (!cid) return;
 
-        var next = Object.assign({}, coin, { symbol: sym });
+        var next = Object.assign({}, coin);
         Market.clearDetailsCache();
-        state.marketDataBySymbol[sym] = next;
+        state.marketDataByCatalogId[cid] = next;
         var idx = state.marketData.findIndex(function (item) {
-            return item && item.symbol === sym;
+            return (
+                item &&
+                Utils.sanitizeCatalogId(item.catalogId || "") === cid
+            );
         });
 
         if (idx === -1) {
@@ -1219,13 +1256,13 @@ var Market = {
 
     persistStateToCache: function () {
         var trackedCoins = Market.getTrackedCoins();
-        var symbols = Market.getTrackedSymbols(trackedCoins);
+        var catalogIds = Market.getTrackedCatalogIds(trackedCoins);
         var vsCurrencies = Market.getNeededVsCurrencies();
-        if (!symbols.length) {
+        if (!catalogIds.length) {
             MarketCache.clear();
             return;
         }
-        MarketCache.set(symbols, vsCurrencies, state.marketData);
+        MarketCache.set(catalogIds, vsCurrencies, state.marketData);
     },
 
     getEntryPrice: function (coin, currency) {
@@ -1292,7 +1329,9 @@ var Market = {
             coinRef && typeof coinRef === "object"
                 ? coinRef.coin || coinRef.name || ""
                 : "";
-        var coin = Market.getMarketCoin(symbol);
+        var resolvedCatalogId = Utils.sanitizeCatalogId(catalogId) ||
+            Market.resolveCatalogId(catalogId, symbol, coinName);
+        var coin = Market.getMarketCoin(resolvedCatalogId);
         var catalog = Market.getCatalogCoin(catalogId, symbol, coinName);
         var details = {
             price: coin ? Market.getEntryPrice(coin, curr) : 0,
@@ -1341,13 +1380,15 @@ var Market = {
         var curr = String(currency || "USD").toUpperCase();
         if (!sym) return window.Promise.resolve(false);
         var catalog = Market.getCatalogCoin(catalogId, sym, coinName || "");
+        var cid = Utils.sanitizeCatalogId(catalogId || "") ||
+            (catalog && catalog.id ? String(catalog.id) : "");
 
-        var inState = Market.getMarketCoin(sym);
+        var inState = cid ? Market.getMarketCoin(cid) : null;
         if (Market.hasCoinCurrencyData(inState, curr)) {
             return window.Promise.resolve(false);
         }
 
-        var inCache = Market.getCoinFromSessionCache(sym);
+        var inCache = cid ? Market.getCoinFromSessionCache(cid) : null;
         if (Market.hasCoinCurrencyData(inCache, curr)) {
             Market.upsertCoinInState(inCache);
             Market.persistStateToCache();
@@ -1404,13 +1445,21 @@ var Market = {
     fetchData: function () {
         var trackedCoins = Market.getTrackedCoins();
         var symbols = Market.getTrackedSymbols(trackedCoins);
+        var catalogIds = Market.getTrackedCatalogIds(trackedCoins);
         var vsCurrencies = Market.getNeededVsCurrencies();
-        var trackedBySymbol = {};
+        var trackedByCatalogId = {};
+        var symbolToCatalogIds = {};
 
         trackedCoins.forEach(function (item) {
-            if (!item || !item.symbol) return;
-            if (!trackedBySymbol[item.symbol])
-                trackedBySymbol[item.symbol] = item;
+            if (!item || !item.catalogId) return;
+            if (!trackedByCatalogId[item.catalogId])
+                trackedByCatalogId[item.catalogId] = item;
+            if (item.symbol) {
+                if (!symbolToCatalogIds[item.symbol])
+                    symbolToCatalogIds[item.symbol] = [];
+                if (symbolToCatalogIds[item.symbol].indexOf(item.catalogId) === -1)
+                    symbolToCatalogIds[item.symbol].push(item.catalogId);
+            }
         });
 
         if (!symbols.length) {
@@ -1421,7 +1470,7 @@ var Market = {
             return window.Promise.resolve();
         }
 
-        var cached = MarketCache.get(symbols, vsCurrencies);
+        var cached = MarketCache.get(catalogIds, vsCurrencies);
         if (cached) {
             Market.setStateMarketData(cached.marketData);
             Market.setStatus(
@@ -1485,10 +1534,10 @@ var Market = {
                 }
 
                 var map = {};
-                symbols.forEach(function (sym) {
-                    var tracked = trackedBySymbol[sym] || {
-                        symbol: sym,
-                        catalogId: "",
+                catalogIds.forEach(function (cid) {
+                    var tracked = trackedByCatalogId[cid] || {
+                        symbol: "",
+                        catalogId: cid,
                         coin: "",
                     };
                     var catalog = Market.getCatalogCoin(
@@ -1496,11 +1545,10 @@ var Market = {
                         tracked.symbol,
                         tracked.coin,
                     );
-                    map[sym] = {
-                        name: catalog && catalog.name ? catalog.name : sym,
-                        symbol: sym,
-                        catalogId:
-                            catalog && catalog.id ? String(catalog.id) : "",
+                    map[cid] = {
+                        name: catalog && catalog.name ? catalog.name : tracked.symbol || cid,
+                        symbol: tracked.symbol || (catalog && catalog.symbol ? catalog.symbol : ""),
+                        catalogId: cid,
                         price: 0,
                         prices: {},
                         change24h: 0,
@@ -1515,44 +1563,58 @@ var Market = {
                         var sym = Utils.sanitizeSymbol(
                             row && row.symbol ? row.symbol : "",
                         );
-                        if (!sym || !map[sym]) return;
-                        if (row && row.name) map[sym].name = String(row.name);
-                        if (Number.isFinite(Number(row && row.current_price))) {
-                            map[sym].prices[curr] = Number(row.current_price);
-                        } else if (map[sym].prices[curr] === undefined) {
-                            map[sym].prices[curr] = 0;
-                        }
+                        var cids = sym ? symbolToCatalogIds[sym] : null;
+                        if (!cids) return;
+                        cids.forEach(function (cid) {
+                            if (!map[cid]) return;
+                            if (row && row.name) map[cid].name = String(row.name);
+                            if (Number.isFinite(Number(row && row.current_price))) {
+                                map[cid].prices[curr] = Number(row.current_price);
+                            } else if (map[cid].prices[curr] === undefined) {
+                                map[cid].prices[curr] = 0;
+                            }
 
-                        var ch24 = Number(
-                            row && row.price_change_percentage_24h_in_currency,
-                        );
-                        if (!Number.isFinite(ch24)) {
-                            ch24 = Number(
-                                row && row.price_change_percentage_24h,
+                            var ch24 = Number(
+                                row && row.price_change_percentage_24h_in_currency,
                             );
-                        }
-                        if (Number.isFinite(ch24)) {
-                            map[sym].changes24h[curr] = ch24;
-                        } else if (map[sym].changes24h[curr] === undefined) {
-                            map[sym].changes24h[curr] = 0;
-                        }
+                            if (!Number.isFinite(ch24)) {
+                                ch24 = Number(
+                                    row && row.price_change_percentage_24h,
+                                );
+                            }
+                            if (Number.isFinite(ch24)) {
+                                map[cid].changes24h[curr] = ch24;
+                            } else if (map[cid].changes24h[curr] === undefined) {
+                                map[cid].changes24h[curr] = 0;
+                            }
+                        });
                     });
                 });
 
                 Market.setStateMarketData(
-                    symbols.map(function (sym) {
-                        var item = map[sym];
+                    catalogIds.map(function (cid) {
+                        var item = map[cid];
                         item.price = Market.getEntryPrice(item, "USD");
                         item.change24h = Market.getEntryChange24h(item, "USD");
                         return item;
                     }),
                 );
-                MarketCache.set(symbols, vsCurrencies, state.marketData);
+                MarketCache.set(catalogIds, vsCurrencies, state.marketData);
                 Market.fileCacheSavedAt = Date.now();
                 if (AppBridge.isTauri()) {
+                    var slimCache = state.marketData.reduce(function (acc, c) {
+                        if (c.catalogId) {
+                            acc.push({
+                                catalogId: c.catalogId,
+                                prices: c.prices,
+                                changes24h: c.changes24h,
+                            });
+                        }
+                        return acc;
+                    }, []);
                     AppBridge.invoke("save_market_cache", {
                         user: ServerSync.user,
-                        cache: state.marketData,
+                        cache: slimCache,
                         savedAt: Market.fileCacheSavedAt,
                     }).catch(function () {});
                 }
@@ -2603,7 +2665,7 @@ var Autocomplete = {
             state.addCatalogId = selectedCatalogId;
         }
         var priceInput = document.getElementById(prefix + "-coin-price");
-        var marketCoin = Market.getMarketCoin(coin.symbol);
+        var marketCoin = Market.getMarketCoin(selectedCatalogId);
         if (priceInput && !priceInput.value)
             priceInput.value = Utils.normalizePrice(
                 Market.getEntryPrice(marketCoin || coin, curr),
@@ -3705,6 +3767,8 @@ function renderTable(p) {
                     icon: det.image,
                     coin: t.coin,
                     symbol: t.symbol,
+                    catalogId: t.catalogId || "",
+                    wallet: t.wallet || "",
                     dateText: _dateWithNote,
                     price: dispPrice,
                     priceSub: buildTotalPriceSubText(
@@ -3818,7 +3882,32 @@ function createRow(tpl, d) {
         "[[CUR_PRICE]]": Utils.formatMoney(d.currentPrice, d.curr),
         "[[PROFIT]]": Utils.formatMoney(d.profit, d.curr),
         "[[CHANGE_%]]": Utils.formatPercent(d.pct),
+        "[[WWW_URL]]": "",
+        "[[GITHUB_URL]]": "",
+        "[[EXPLORER_URL]]": "",
     };
+
+    // Build www / GitHub links for collapsed rows, Explorer for expand rows
+    var cat = d.catalogId ? CoinCatalog.getById(d.catalogId) : null;
+    if (cat) {
+        if (d.isCollapsed) {
+            if (cat.website) {
+                tokens["[[WWW_URL]]"] = '<a href="#" class="coin-ext-link" title="https://' +
+                    Utils.escapeAttr(cat.website) + '" onclick="AppBridge.invoke(\'open_url\',{url:\'https://' +
+                    Utils.escapeAttr(cat.website) + '\'});return false;">Site</a>';
+            }
+            if (cat.sourceCode) {
+                tokens["[[GITHUB_URL]]"] = '<a href="#" class="coin-ext-link" title="https://' +
+                    Utils.escapeAttr(cat.sourceCode) + '" onclick="AppBridge.invoke(\'open_url\',{url:\'https://' +
+                    Utils.escapeAttr(cat.sourceCode) + '\'});return false;">GitHub</a>';
+            }
+        }
+        if (cat.explorer && d.wallet) {
+            var explorerFullUrl = 'https://' + Utils.escapeAttr(cat.explorer) + Utils.escapeAttr(d.wallet);
+            tokens["[[EXPLORER_URL]]"] = '<a href="#" class="coin-ext-link" title="' + explorerFullUrl +
+                '" onclick="AppBridge.invoke(\'open_url\',{url:\'' + explorerFullUrl + '\'});return false;">Explorer</a>';
+        }
+    }
 
     Utils.fillTokens(row, tokens);
 
@@ -4053,7 +4142,12 @@ var DbSelector = {
                 item.name +
                 lockHtml +
                 '</span><span class="db-item-coins">' +
-                (item.encrypted ? "Encrypted database" : "Total coins in database: " + item.coinCount) +
+                (item.encrypted
+                    ? "Encrypted database" +
+                      (item.encryptedVersion > ENC_V1
+                          ? '<br><span style="color:#D32F2F;">version ' + item.encryptedVersion + ' not supported</span>'
+                          : "")
+                    : "Total coins in database: " + item.coinCount) +
                 '</span><span class="db-item-date">' +
                 dateStr +
                 "</span>";
@@ -4114,6 +4208,12 @@ var DbSelector = {
         var item = DbSelector.items[DbSelector.selectedIndex];
         if (!item) return;
         UI.closeModal("modal-open-database");
+        if (item.encrypted && item.encryptedVersion > ENC_V1) {
+            showUnsupportedEncryptionError(item.name, item.encryptedVersion, function () {
+                DbSelector.open(DbSelector.items, DbSelector.dbDir);
+            });
+            return;
+        }
         if (item.encrypted) {
             // We know the file is encrypted — update user context immediately,
             // then ask for the password before attempting to load.
@@ -4207,6 +4307,11 @@ var DbSelector = {
                     showDbUnreadableError(name);
                     return;
                 }
+                var encVer = parseUnsupportedEncVersion(msg);
+                if (encVer) {
+                    showUnsupportedEncryptionError(name, encVer);
+                    return;
+                }
                 console.error("Failed to load db", e);
                 Market.setStatus(
                     "Market data: Error loading database",
@@ -4222,6 +4327,29 @@ function showDbUnreadableError(name) {
     var el = document.getElementById("db-unreadable-name");
     if (el) el.textContent = name ? name + ".json" : "";
     UI.openModal("modal-db-unreadable");
+}
+
+var _unsupportedEncOnClose = null;
+
+function showUnsupportedEncryptionError(name, version, onClose) {
+    var nameEl = document.getElementById("unsupported-enc-name");
+    var verEl = document.getElementById("unsupported-enc-version");
+    if (nameEl) nameEl.textContent = name ? name + ".json" : "";
+    if (verEl) verEl.textContent = "v" + (version || "?");
+    _unsupportedEncOnClose = onClose || null;
+    UI.openModal("modal-unsupported-encryption");
+}
+
+function closeUnsupportedEncryptionModal() {
+    UI.closeModal("modal-unsupported-encryption");
+    var cb = _unsupportedEncOnClose;
+    _unsupportedEncOnClose = null;
+    if (cb) cb();
+}
+
+function parseUnsupportedEncVersion(msg) {
+    var match = msg.match(/UNSUPPORTED_ENCRYPTION:(\d+)/);
+    return match ? match[1] : null;
 }
 
 window.handleMenuOpenDatabase = function () {
@@ -4334,6 +4462,12 @@ var DbEncryption = {
             })
             .catch(function (e) {
                 var msg = String(e);
+                var encVer = parseUnsupportedEncVersion(msg);
+                if (encVer) {
+                    UI.closeModal("modal-unlock-database");
+                    showUnsupportedEncryptionError(ServerSync.user, encVer);
+                    return;
+                }
                 var text = msg.indexOf("WRONG_PASSWORD") !== -1
                     ? "Wrong password. Please try again."
                     : "Error: " + msg;
@@ -4623,6 +4757,12 @@ window.onload = function () {
                         if (msg.indexOf("UNKNOWN_FORMAT") !== -1) {
                             initUiAndRender({ locked: true });
                             showDbUnreadableError(ServerSync.user);
+                            return;
+                        }
+                        var encVer = parseUnsupportedEncVersion(msg);
+                        if (encVer) {
+                            initUiAndRender({ locked: true });
+                            showUnsupportedEncryptionError(ServerSync.user, encVer);
                             return;
                         }
                         console.error("Load failed:", e);

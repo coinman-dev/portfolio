@@ -11,6 +11,11 @@ use tauri::{AppHandle, Runtime};
 
 const DEFAULT_USER: &str = "default";
 const DEFAULT_IMAGE_DIR: &str = "images/logo";
+
+/// Coin catalog from CoinMarketCap, embedded at compile time.
+/// Each coin's `id` (catalogId) is the SOLE unique identifier for coins across
+/// the entire app. Symbol is NOT unique (921+ duplicates). All indexing,
+/// caching, and lookups must use catalogId — never symbol alone.
 const SEEDED_COIN_CATALOG_JSON: &str = include_str!("../../frontend/coinbase/cmc.json");
 
 /// Value written to the "appId" field in every database file.
@@ -61,14 +66,7 @@ pub struct BootstrapConfig {
 #[serde(rename_all = "camelCase")]
 pub struct CoinCatalogConfig {
     pub image_dir: String,
-    pub coins: Vec<CoinCatalogEntry>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct CoinCatalogEntry {
-    pub id: String,
-    pub name: String,
-    pub symbol: String,
+    pub coins: Vec<Value>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -76,17 +74,7 @@ struct CoinCatalogSource {
     #[serde(default, rename = "imageDir")]
     image_dir: Option<String>,
     #[serde(default)]
-    coins: Vec<CoinCatalogSourceEntry>,
-}
-
-#[derive(Debug, Deserialize)]
-struct CoinCatalogSourceEntry {
-    #[serde(default)]
-    id: Value,
-    #[serde(default)]
-    name: String,
-    #[serde(default)]
-    symbol: String,
+    coins: Vec<Value>,
 }
 
 #[derive(serde::Serialize)]
@@ -96,6 +84,7 @@ pub struct DbFileInfo {
     pub modified_ms: u64,
     pub coin_count: usize,
     pub encrypted: bool,
+    pub encrypted_version: u64,
 }
 
 // ─── Encryption ───────────────────────────────────────────────────────────────
@@ -308,7 +297,7 @@ pub fn load_db<R: Runtime>(
                 .map_err(|_| "Corrupted encrypted data".to_string())?;
             Ok(normalize_db_value(inner))
         }
-        v => Err(format!("Unsupported encryption version: {v}")),
+        v => Err(format!("UNSUPPORTED_ENCRYPTION:{v}")),
     }
 }
 
@@ -368,7 +357,7 @@ pub fn check_db_encrypted<R: Runtime>(app: &AppHandle<R>, user: &str) -> Result<
     if !path.is_file() {
         return Ok(false);
     }
-    Ok(is_path_encrypted(&path))
+    Ok(get_encryption_version(&path) > 0)
 }
 
 /// Encrypt an existing plain-text DB file with the given password.
@@ -467,7 +456,8 @@ pub fn list_db_files<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<DbFileInfo>, 
                 .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
                 .map(|d| d.as_millis() as u64)
                 .unwrap_or(0);
-            let encrypted = is_path_encrypted(&path);
+            let enc_ver = get_encryption_version(&path);
+            let encrypted = enc_ver > 0;
             let coin_count = if encrypted {
                 0
             } else {
@@ -478,6 +468,7 @@ pub fn list_db_files<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<DbFileInfo>, 
                 modified_ms,
                 coin_count,
                 encrypted,
+                encrypted_version: enc_ver,
             })
         })
         .collect();
@@ -503,27 +494,42 @@ fn load_coin_catalog() -> Result<CoinCatalogConfig, String> {
     }
 
     for coin in decoded.coins {
-        let symbol = coin.symbol.trim().to_uppercase();
+        let mut obj = match coin {
+            Value::Object(o) => o,
+            _ => continue,
+        };
+
+        // Normalize symbol — skip coins without one
+        let symbol = obj.get("symbol")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .trim()
+            .to_uppercase();
         if symbol.is_empty() {
             continue;
         }
+        obj.insert("symbol".to_string(), Value::String(symbol.clone()));
 
-        let mut id = match coin.id {
-            Value::String(s) => s.trim().to_string(),
-            Value::Number(n) => n.to_string(),
+        // Normalize id to string
+        let id_str = match obj.get("id") {
+            Some(Value::String(s)) => s.trim().to_string(),
+            Some(Value::Number(n)) => n.to_string(),
             _ => String::new(),
         };
-        if !id.chars().all(|c| c.is_ascii_digit()) {
-            id.clear();
-        }
+        let id_clean = if id_str.chars().all(|c| c.is_ascii_digit()) { id_str } else { String::new() };
+        obj.insert("id".to_string(), Value::String(id_clean));
 
-        let name = if coin.name.trim().is_empty() {
-            symbol.clone()
-        } else {
-            coin.name.trim().to_string()
-        };
+        // Normalize name
+        let name = obj.get("name")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .trim()
+            .to_string();
+        obj.insert("name".to_string(), Value::String(
+            if name.is_empty() { symbol } else { name },
+        ));
 
-        coins.push(CoinCatalogEntry { id, name, symbol });
+        coins.push(Value::Object(obj));
     }
 
     Ok(CoinCatalogConfig { image_dir, coins })
@@ -575,17 +581,17 @@ fn format_file_error(action: &str, path: &Path, error: std::io::Error) -> String
     format!("Cannot {action} `{}`: {error}", path.display())
 }
 
-fn is_path_encrypted(path: &Path) -> bool {
+fn get_encryption_version(path: &Path) -> u64 {
     let raw = match fs::read_to_string(path) {
         Ok(s) => s,
-        Err(_) => return false,
+        Err(_) => return 0,
     };
     if let Ok(Value::Object(obj)) = serde_json::from_str::<Value>(&raw) {
         if obj.get("appId").and_then(|v| v.as_str()) == Some(APP_ID) {
-            return obj.get("encrypted").and_then(|v| v.as_u64()).unwrap_or(0) > 0;
+            return obj.get("encrypted").and_then(|v| v.as_u64()).unwrap_or(0);
         }
     }
-    false
+    0
 }
 
 fn count_coins_in_file(path: &Path) -> usize {

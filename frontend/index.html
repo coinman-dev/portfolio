@@ -228,9 +228,12 @@
 									<span class="coin-name">[[COINNAME]]</span>
 									<span class="coin-date">[[DATE]]</span>
 								</div>
-								<button class="btn-table-edit t-btn-edit">
-                                    EDIT
-                                </button>
+								<div class="coin-ext-links">
+									<span class="coin-link-slot">[[WWW_URL]]</span>
+									<span class="coin-link-slot">[[GITHUB_URL]]</span>
+									<span class="coin-link-slot">[[EXPLORER_URL]]</span>
+								</div>
+								<button class="btn-table-edit t-btn-edit">EDIT</button>
 							</div>
 						</td>
 						<td>
@@ -882,6 +885,23 @@
 			<div class="modal-footer modal-footer-split">
 				<button class="btn btn-outline" onclick="closeModal('modal-change-password')">CANCEL</button>
 				<button class="btn btn-orange" onclick="handleDoChangePassword()">CHANGE PASSWORD</button>
+			</div>
+		</div>
+	</div>
+
+	<div id="modal-unsupported-encryption" class="modal">
+		<div class="modal-content" style="max-width: 440px;">
+			<div class="modal-header">
+				<span>&#128274; Unsupported Encryption</span>
+			</div>
+			<div class="modal-body">
+				<p id="unsupported-enc-name" style="color:#fff; font-weight:bold; word-break:break-all; margin-bottom:12px;"></p>
+				<p style="color:#ccc; line-height:1.5;">This database was encrypted with a newer encryption version (<strong id="unsupported-enc-version" style="color:#fff;"></strong>) that this version of CoinMan does not support.</p>
+				<p style="color:#ccc; line-height:1.5; margin-top:10px;">Please update CoinMan to the latest version to open this file.</p>
+				<p style="color:#ccc; line-height:1.5; margin-top:10px;">The file has <strong style="color:#fff;">not</strong> been modified.</p>
+			</div>
+			<div class="modal-footer">
+				<button class="btn btn-outline" onclick="closeUnsupportedEncryptionModal()">OK</button>
 			</div>
 		</div>
 	</div>
