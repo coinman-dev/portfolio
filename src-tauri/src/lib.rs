@@ -309,13 +309,30 @@ fn exit_app(app: tauri::AppHandle) {
 fn open_url(url: String) {
     #[cfg(target_os = "windows")]
     {
-        use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x08000000;
-        std::process::Command::new("cmd")
-            .args(["/c", "start", "", &url])
-            .creation_flags(CREATE_NO_WINDOW)
-            .spawn()
-            .ok();
+        use std::ffi::OsStr;
+        use std::os::windows::ffi::OsStrExt;
+        extern "system" {
+            fn ShellExecuteW(
+                hwnd: *mut std::ffi::c_void,
+                operation: *const u16,
+                file: *const u16,
+                params: *const u16,
+                dir: *const u16,
+                show: i32,
+            ) -> *mut std::ffi::c_void;
+        }
+        let open: Vec<u16> = OsStr::new("open").encode_wide().chain(Some(0)).collect();
+        let wide: Vec<u16> = OsStr::new(&url).encode_wide().chain(Some(0)).collect();
+        unsafe {
+            ShellExecuteW(
+                std::ptr::null_mut(),
+                open.as_ptr(),
+                wide.as_ptr(),
+                std::ptr::null(),
+                std::ptr::null(),
+                1, // SW_SHOWNORMAL
+            );
+        }
     }
     #[cfg(target_os = "macos")]
     std::process::Command::new("open").arg(&url).spawn().ok();
