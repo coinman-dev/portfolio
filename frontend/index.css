@@ -1,12 +1,23 @@
 /* --- CSS STYLES (DARK THEME) --- */
 
+:root {
+    --color-accent: #f57c00;       /* Оранжевый: кнопки (btn-orange), заголовки модалей, акцент summary-row, hover меню */
+    --color-accent-link: #e67e22;  /* Оранжевый (светлее): ссылки в About, галочка в меню Settings */
+    --color-text: #ffffff;         /* Белый: основной текст, заголовки, метки форм */
+    --color-text-muted: #888888;   /* Серый: подписи (дата, хинты), btn-outline, неактивные вкладки */
+    --color-text-dim: #cccccc;     /* Светло-серый: описания в модалях, menu bar, dropdown items */
+    --color-bg-dark: #1a1a1a;     /* Тёмный фон: шапка таблиц (th), menu bar, status bar, modal footer */
+    --color-bg-card: #1e1e1e;     /* Карточный фон: таблицы, форм-инпуты, sell-таблица */
+    --color-bg-modal: #121212;    /* Фон модалей и body страницы, select элементы */
+    --color-border: #333333;      /* Границы: разделители таблиц, рамки карточек, dropdown, status bar */
+}
+
 body {
     font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #121212;
+    background-color: var(--color-bg-modal);
     margin: 0;
-    color: #ffffff;
-    padding-bottom: 26px;
-    padding-top: 24px;
+    color: var(--color-text);
+    padding: 24px 0 26px;
 }
 
 .container {
@@ -55,7 +66,7 @@ body {
 .form-counter,
 .sell-table-counter {
     font-size: 11px;
-    color: #888888;
+    color: var(--color-text-muted);
 }
 
 .form-counter,
@@ -68,7 +79,7 @@ body {
 table {
     width: 100%;
     border-collapse: collapse;
-    background: #1e1e1e;
+    background-color: var(--color-bg-card);
 }
 
 #brand-header-table,
@@ -82,17 +93,17 @@ table {
 }
 
 th {
-    background-color: #1a1a1a;
+    background-color: var(--color-bg-dark);
     text-align: left;
     padding: 10px 15px;
     font-size: 12px;
-    color: #ffffff;
-    border-bottom: 1px solid #333;
+    color: var(--color-text);
+    border-bottom: 1px solid var(--color-border);
 }
 
 td {
     padding: 12px 15px;
-    border-bottom: 1px solid #333;
+    border-bottom: 1px solid var(--color-border);
     vertical-align: middle;
     font-size: 13px;
 }
@@ -128,7 +139,7 @@ td {
     font-weight: bold;
     font-size: 24px;
     margin-left: 4px;
-    color: #ffffff;
+    color: var(--color-text);
 }
 
 /* Portfolio Tabs & Action Bar */
@@ -143,20 +154,20 @@ td {
     padding: 8px 12px;
     cursor: pointer;
     font-size: 14px;
-    color: #ffffff;
+    color: var(--color-text);
     border-bottom: 2px solid transparent;
     transition: 0.3s;
-    background: #0b1f3a;
+    background-color: #0b1f3a;
     border: 1px solid #173b63;
     border-radius: 4px;
 }
 .p-tab.active {
-    color: #ffffff;
+    color: var(--color-text);
     border-bottom: 2px solid #f1c40f;
 }
 .p-tab:hover:not(.active) {
-    color: #ffffff;
-    background: #0f2a4d;
+    color: var(--color-text);
+    background-color: #0f2a4d;
 }
 #portfolioTabsRow .p-tab {
     user-select: none;
@@ -193,8 +204,8 @@ body.tabs-drag-active * {
 /* Buttons */
 .add-portfolio-btn {
     margin-left: auto;
-    background-color: #f57c00;
-    color: white;
+    background-color: var(--color-accent);
+    color: var(--color-text);
     border: none;
     padding: 8px 20px;
     border-radius: 4px;
@@ -221,47 +232,47 @@ body.tabs-drag-active * {
     white-space: nowrap;
 }
 .btn-orange {
-    background-color: #f57c00;
-    color: white;
+    background-color: var(--color-accent);
+    color: var(--color-text);
 }
 .btn-red {
     background-color: #d32f2f;
-    color: white;
+    color: var(--color-text);
 }
 .btn-outline {
     background-color: transparent;
-    border: 1px solid #888888;
-    color: #888888;
+    border: 1px solid var(--color-text-muted);
+    color: var(--color-text-muted);
 }
 .btn-blue {
-    background: #0b1f3a;
-    color: #ffffff;
+    background-color: #0b1f3a;
+    color: var(--color-text);
     border: 1px solid #173b63;
 }
 .btn-blue:hover {
-    background: #0f2a4d;
+    background-color: #0f2a4d;
     border-color: #2b5a90;
 }
 
 .btn-table-edit {
-    background: transparent;
-    border: 1px solid #888888;
-    color: #888888;
+    background-color: transparent;
+    border: 1px solid var(--color-text-muted);
+    color: var(--color-text-muted);
     font-size: 10px;
     padding: 4px 8px;
     border-radius: 4px;
     cursor: pointer;
 }
 .btn-table-edit:hover {
-    border-color: #f57c00;
-    color: #f57c00;
+    border-color: var(--color-accent);
+    color: var(--color-accent);
 }
 
 /* Selects */
 select {
-    background: #121212;
-    color: #ffffff;
-    border: 1px solid #333;
+    background-color: var(--color-bg-modal);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
     padding: 5px;
     border-radius: 4px;
     -webkit-appearance: none;
@@ -269,13 +280,13 @@ select {
     appearance: none;
 }
 select option {
-    background-color: #1e1e1e;
-    color: #ffffff;
+    background-color: var(--color-bg-card);
+    color: var(--color-text);
 }
 #create-p-currency optgroup,
 #edit-p-currency optgroup {
     color: #000000;
-    background-color: #ffffff;
+    background-color: var(--color-text);
     font-weight: 700;
 }
 
@@ -287,11 +298,11 @@ select option {
     width: 20%;
     padding: 15px;
     text-align: center;
-    border: 1px solid #333;
+    border: 1px solid var(--color-border);
 }
 .metric-title {
     font-size: 11px;
-    color: #888888;
+    color: var(--color-text-muted);
     text-transform: uppercase;
     margin-bottom: 8px;
     font-weight: bold;
@@ -309,9 +320,9 @@ select option {
 .view-tab {
     cursor: pointer;
     font-weight: bold;
-    color: #888888;
+    color: var(--color-text-muted);
     padding: 10px 20px;
-    background: transparent;
+    background-color: transparent;
     margin-right: 2px;
     border-bottom: 2px solid transparent;
     margin-bottom: -1px;
@@ -319,8 +330,8 @@ select option {
     white-space: nowrap;
 }
 .view-tab.active {
-    color: #ffffff;
-    background: #2c2c2c;
+    color: var(--color-text);
+    background-color: #2c2c2c;
     border-bottom: 2px solid #4caf50;
 }
 .view-tabs-row {
@@ -336,14 +347,14 @@ select option {
 }
 
 .portfolio-meta {
-    padding: 0px;
+    padding: 0;
     line-height: 1.4;
-    color: #ffffff;
+    color: var(--color-text);
     white-space: nowrap;
 }
 .portfolio-description {
     font-size: 13px;
-    color: #cccccc;
+    color: var(--color-text-dim);
 }
 
 /* --- TRANSACTIONS TABLE --- */
@@ -357,7 +368,7 @@ select option {
     box-sizing: border-box;
 }
 #portfolio-transactions-table thead tr {
-    background-color: #1e1e1e;
+    background-color: var(--color-bg-card);
 }
 .resizer {
     position: absolute;
@@ -424,7 +435,7 @@ select option {
     font-size: 10px;
 }
 .sort-arrow {
-    color: #ffffff;
+    color: var(--color-text);
     padding: 1px 0;
 }
 .sort-arrow.active {
@@ -434,7 +445,7 @@ select option {
 .coin-icon {
     width: 32px;
     height: 32px;
-    background: #fff;
+    background-color: #fff;
     color: #000;
     border-radius: 50%;
     display: flex;
@@ -442,7 +453,7 @@ select option {
     justify-content: center;
     font-weight: bold;
     overflow: hidden;
-    border: 1px solid #333;
+    border: 1px solid var(--color-border);
 }
 .coin-icon img {
     width: 100%;
@@ -493,11 +504,11 @@ select option {
 
 /* Summary row */
 .summary-row {
-    background: #171717;
-    border-top: 2px solid #f57c00;
+    background-color: #171717;
+    border-top: 2px solid var(--color-accent);
 }
 .summary-row .coin-name {
-    color: #f57c00;
+    color: var(--color-accent);
 }
 .summary-row .coin-date {
     color: #b6b6b6;
@@ -519,8 +530,8 @@ select option {
     align-items: center;
     gap: 8px;
     padding: 10px 15px 10px 10px;
-    border-top: 1px solid #333;
-    background: #1e1e1e;
+    border-top: 1px solid var(--color-border);
+    background-color: var(--color-bg-card);
 }
 
 /* BOTTOM REFRESH */
@@ -546,7 +557,7 @@ select option {
     display: flex;
 }
 .modal-content {
-    background: black;
+    background-color: black;
     width: 600px;
     border-radius: 4px;
     overflow: visible;
@@ -554,25 +565,25 @@ select option {
     position: relative;
 }
 .modal-header {
-    background-color: #f57c00;
+    background-color: var(--color-accent);
     padding: 15px 20px;
     font-weight: bold;
     font-size: 18px;
     display: flex;
     justify-content: space-between;
-    color: white;
+    color: var(--color-text);
     border-top-left-radius: 4px;
     border-top-right-radius: 4px;
 }
 .modal-body {
-    background-color: #121212;
+    background-color: var(--color-bg-modal);
     padding: 20px;
-    color: white;
+    color: var(--color-text);
 }
 .modal-footer {
     padding: 15px 20px;
-    background: #1a1a1a;
-    border-top: 1px solid #333;
+    background-color: var(--color-bg-dark);
+    border-top: 1px solid var(--color-border);
     display: flex;
     justify-content: flex-end;
     gap: 10px;
@@ -591,18 +602,18 @@ select option {
 }
 .modal-tabs {
     display: flex;
-    border-bottom: 1px solid #888888;
+    border-bottom: 1px solid var(--color-text-muted);
     margin-bottom: 20px;
 }
 .modal-tab {
     padding: 10px 20px;
     cursor: pointer;
-    color: #888888;
+    color: var(--color-text-muted);
     border-bottom: 2px solid transparent;
 }
 .modal-tab.active {
-    color: white;
-    border-bottom: 2px solid #f57c00;
+    color: var(--color-text);
+    border-bottom: 2px solid var(--color-accent);
 }
 
 .form-group {
@@ -615,23 +626,22 @@ select option {
 }
 .form-label {
     display: block;
-    color: #ffffff;
+    color: var(--color-text);
     font-weight: bold;
     margin-bottom: 5px;
     font-size: 14px;
 }
 .form-input {
     width: 100%;
-    background: #1e1e1e;
-    border: none;
-    border-bottom: 1px solid #888888;
-    color: white;
+    background-color: var(--color-bg-card);
+    border-bottom: 1px solid var(--color-text-muted);
+    color: var(--color-text);
     padding: 8px 0;
     font-size: 14px;
 }
 .form-input:focus {
     outline: none;
-    border-bottom: 1px solid #f57c00;
+    border-bottom: 1px solid var(--color-accent);
 }
 .input-readonly {
     color: #666;
@@ -676,7 +686,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     left: 0;
     width: 100%;
     background-color: #2c2c2c;
-    border: 1px solid #444;
+    border: 1px solid #444444;
     border-radius: 0 0 4px 4px;
     z-index: 100;
     max-height: 200px;
@@ -699,7 +709,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .time-suggestions li {
     padding: 10px;
     cursor: pointer;
-    border-bottom: 1px solid #333;
+    border-bottom: 1px solid var(--color-border);
 }
 .suggestion-item:last-child,
 .time-suggestions li:last-child {
@@ -707,8 +717,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 .suggestion-item:hover,
 .time-suggestions li:hover {
-    background-color: #f57c00;
-    color: white;
+    background-color: var(--color-accent);
+    color: var(--color-text);
 }
 
 .suggestion-item {
@@ -721,7 +731,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 .time-suggestions li {
     font-size: 13px;
-    color: #ffffff;
+    color: var(--color-text);
 }
 
 .s-img {
@@ -767,11 +777,11 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     transition: background 0.1s;
 }
 .db-list-item:hover {
-    background: #1a1a1a;
+    background-color: var(--color-bg-dark);
 }
 .db-list-item.selected {
-    background: #1f0e00;
-    border-left-color: #f57c00;
+    background-color: #1f0e00;
+    border-left-color: var(--color-accent);
 }
 .db-item-name {
     font-weight: bold;
@@ -826,15 +836,15 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     white-space: nowrap;
 }
 .sell-tx-table-wrap {
-    border: 1px solid #333;
+    border: 1px solid var(--color-border);
     border-radius: 4px;
     overflow-y: auto;
     max-height: 260px;
-    background: #1e1e1e;
+    background-color: var(--color-bg-card);
 }
 .sell-tx-table th,
 .sell-tx-table td {
-    border-bottom: 1px solid #333;
+    border-bottom: 1px solid var(--color-border);
 }
 .sell-tx-table tr:last-child td {
     border-bottom: none;
@@ -845,7 +855,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .bs-check {
     width: 16px;
     height: 16px;
-    accent-color: #f57c00;
+    accent-color: var(--color-accent);
 }
 .bulk-sell-coin-date-col {
     width: 240px;
@@ -870,13 +880,13 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     left: 0;
     right: 0;
     height: 24px;
-    background-color: #1a1a1a;
-    border-bottom: 1px solid #333;
+    background-color: var(--color-bg-dark);
+    border-bottom: 1px solid var(--color-border);
     display: flex;
     align-items: center;
     padding: 0 5px;
     font-size: 13px;
-    color: #cccccc;
+    color: var(--color-text-dim);
     z-index: 9999;
     user-select: none;
 }
@@ -892,8 +902,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 .menu-item:hover,
 .menu-item.active {
-    background-color: #333333;
-    color: #ffffff;
+    background-color: var(--color-border);
+    color: var(--color-text);
 }
 
 .dropdown-menu {
@@ -901,8 +911,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     position: absolute;
     top: 24px;
     left: 0;
-    background-color: #1a1a1a;
-    border: 1px solid #333;
+    background-color: var(--color-bg-dark);
+    border: 1px solid var(--color-border);
     min-width: 180px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
     z-index: 10000;
@@ -927,18 +937,18 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .dropdown-item {
     padding: 8px 15px;
     cursor: pointer;
-    color: #cccccc;
+    color: var(--color-text-dim);
     white-space: nowrap;
 }
 
 .dropdown-item:hover {
-    background-color: #f57c00;
-    color: #ffffff;
+    background-color: var(--color-accent);
+    color: var(--color-text);
 }
 
 .dropdown-divider {
     height: 1px;
-    background-color: #333;
+    background-color: var(--color-border);
     margin: 5px 0;
 }
 .ie-statusbar {
@@ -947,13 +957,13 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     left: 0;
     right: 0;
     height: 26px;
-    background-color: #1a1a1a;
-    border-top: 1px solid #333;
+    background-color: var(--color-bg-dark);
+    border-top: 1px solid var(--color-border);
     display: flex;
     align-items: center;
     padding: 2px;
     font-size: 13px;
-    color: #888;
+    color: var(--color-text-muted);
     z-index: 9999;
     box-sizing: border-box;
 }
@@ -1040,8 +1050,39 @@ body.show-cur-price .col-cur-price {
     width: 12px;
     text-align: center;
     font-size: 12px;
-    color: #e67e22;
+    color: var(--color-accent-link);
 }
 .dropdown-item-check.checked::before {
     content: "✓";
 }
+
+/* --- MODAL SIZE VARIANTS --- */
+.modal-sm .modal-content { width: 400px; }
+.modal-md .modal-content { width: 420px; }
+.modal-lg .modal-content { width: 440px; }
+.modal-wide .modal-content { width: 520px; }
+.modal-body-flush { padding: 0; }
+
+/* --- ABOUT MODAL --- */
+.about-body { text-align: center; }
+.about-logo { width: 64px; height: 64px; margin-bottom: 15px; }
+.about-title { margin: 0 0 10px 0; color: var(--color-text); }
+.about-subtitle { color: var(--color-text-muted); font-size: 14px; margin-bottom: 20px; }
+.about-text { color: var(--color-text-dim); font-size: 14px; line-height: 1.5; margin-bottom: 16px; }
+.about-link { color: var(--color-accent-link); font-size: 13px; text-decoration: none; }
+.about-link:hover { text-decoration: underline; }
+.about-credits { color: var(--color-text-muted); font-size: 11px; line-height: 1.5; margin-top: 16px; margin-bottom: 0; }
+.about-credits a { color: var(--color-accent-link); text-decoration: none; }
+.about-credits a:hover { text-decoration: underline; }
+
+/* --- MODAL REUSABLE CLASSES --- */
+.modal-description { color: var(--color-text-dim); font-size: 14px; margin: 0 0 18px 0; }
+.text-accent { color: var(--color-accent-link); }
+.form-group-last { margin-bottom: 8px; }
+
+/* --- ERROR MODAL --- */
+.error-filename { color: var(--color-text); font-weight: bold; word-break: break-all; margin-bottom: 12px; }
+.error-text { color: var(--color-text-dim); line-height: 1.5; }
+.error-hint { color: var(--color-text-dim); line-height: 1.5; margin-top: 10px; }
+.error-text strong,
+.error-hint strong { color: var(--color-text); }

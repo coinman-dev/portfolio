@@ -707,23 +707,23 @@
 			</div>
 		</div>
 
-		<div id="modal-about" class="modal">
-			<div class="modal-content" style="max-width: 400px;">
+		<div id="modal-about" class="modal modal-sm">
+			<div class="modal-content">
 				<div class="modal-header">
 					<span>About CoinMan</span>
 					<span class="close-btn" onclick="closeModal('modal-about')">&times;</span>
 				</div>
-				<div class="modal-body" style="text-align: center;">
-					<img src="images/coinman.dev.webp" alt="Logo" style="width: 64px; height: 64px; margin-bottom: 15px;"/>
-					<h2 style="margin: 0 0 10px 0; color: #ffffff;">CoinMan Portfolio</h2>
-					<p style="color: #888888; font-size: 14px; margin-bottom: 20px;">Version 0.4.0-alpha</p>
-					<p style="color: #cccccc; font-size: 14px; line-height: 1.5; margin-bottom: 16px;">
+				<div class="modal-body about-body">
+					<img src="images/coinman.dev.webp" alt="Logo" class="about-logo"/>
+					<h2 class="about-title">CoinMan Portfolio</h2>
+					<p class="about-subtitle">Version 0.4.0-alpha</p>
+					<p class="about-text">
 						CoinMan Portfolio is a lightweight and secure desktop application designed to track and manage your cryptocurrency portfolios locally. Your data is stored securely on your machine.
 					</p>
-					<a href="#" onclick="AppBridge.invoke('open_url', { url: 'https://github.com/coinman-dev/portfolio' }); return false;" style="color: #e67e22; font-size: 13px; text-decoration: none;">github.com/coinman-dev/portfolio</a>
-					<p style="color: #888888; font-size: 11px; line-height: 1.5; margin-top: 16px; margin-bottom: 0;">
-						Market data powered by <a href="#" onclick="AppBridge.invoke('open_url', { url: 'https://www.coingecko.com/' }); return false;" style="color: #e67e22; text-decoration: none;">CoinGecko API</a><br/>
-						Coin catalog &amp; logos provided by <a href="#" onclick="AppBridge.invoke('open_url', { url: 'https://coinmarketcap.com/' }); return false;" style="color: #e67e22; text-decoration: none;">CoinMarketCap</a><br/>
+					<a href="#" onclick="AppBridge.invoke('open_url', { url: 'https://github.com/coinman-dev/portfolio' }); return false;" class="about-link">github.com/coinman-dev/portfolio</a>
+					<p class="about-credits">
+						Market data powered by <a href="#" onclick="AppBridge.invoke('open_url', { url: 'https://www.coingecko.com/' }); return false;">CoinGecko API</a><br/>
+						Coin catalog &amp; logos provided by <a href="#" onclick="AppBridge.invoke('open_url', { url: 'https://coinmarketcap.com/' }); return false;">CoinMarketCap</a><br/>
 						This software is for informational purposes only.<br/>
 						Not financial advice. Licensed under MIT.
 					</p>
@@ -736,13 +736,13 @@
 			</div>
 		</div>
 
-	<div id="modal-open-database" class="modal">
-		<div class="modal-content" style="width: 520px;">
+	<div id="modal-open-database" class="modal modal-wide">
+		<div class="modal-content">
 			<div class="modal-header">
 				<span>Select Database</span>
 				<span class="close-btn" onclick="closeModal('modal-open-database')">&times;</span>
 			</div>
-			<div class="modal-body" style="padding: 0;">
+			<div class="modal-body modal-body-flush">
 				<div class="db-selector-dir" id="db-selector-dir"></div>
 				<div class="db-selector-list" id="db-selector-list"></div>
 			</div>
@@ -762,16 +762,16 @@
 		</div>
 
 		<!-- MODAL: Unlock encrypted database -->
-	<div id="modal-unlock-database" class="modal">
-		<div class="modal-content" style="max-width: 420px;">
+	<div id="modal-unlock-database" class="modal modal-md">
+		<div class="modal-content">
 			<div class="modal-header">
 				<span>&#128274; Unlock Database</span>
 			</div>
 			<div class="modal-body">
-				<p style="color:#cccccc; font-size:14px; margin:0 0 18px 0;">
+				<p class="modal-description">
 					This database is encrypted. Enter the password to open it.
 				</p>
-				<div class="form-group" style="margin-bottom:8px;">
+				<div class="form-group form-group-last">
 					<label class="form-label">Password</label>
 					<input type="password" id="unlock-db-password" class="form-input" placeholder="Enter password..." onkeydown="handleUnlockKeydown(event)"/>
 				</div>
@@ -784,17 +784,17 @@
 	</div>
 
 	<!-- MODAL: Save database as -->
-	<div id="modal-save-db-as" class="modal">
-		<div class="modal-content" style="max-width: 420px;">
+	<div id="modal-save-db-as" class="modal modal-md">
+		<div class="modal-content">
 			<div class="modal-header">
 				<span>&#128190; Save Database As...</span>
 				<span class="close-btn" onclick="closeModal('modal-save-db-as')">&times;</span>
 			</div>
 			<div class="modal-body">
-				<p style="color:#cccccc; font-size:14px; margin:0 0 18px 0;">
+				<p class="modal-description">
 					Save a copy of the current database under a new name. The copy will be created in the same database folder.
 				</p>
-				<div class="form-group" style="margin-bottom:8px;">
+				<div class="form-group form-group-last">
 					<label class="form-label">New database name</label>
 					<input type="text" id="save-db-as-name" class="form-input" placeholder="Enter name..." onkeydown="handleSaveDbAsKeydown(event)"/>
 				</div>
@@ -808,22 +808,22 @@
 	</div>
 
 	<!-- MODAL: Encrypt database -->
-	<div id="modal-encrypt-database" class="modal">
-		<div class="modal-content" style="max-width: 420px;">
+	<div id="modal-encrypt-database" class="modal modal-md">
+		<div class="modal-content">
 			<div class="modal-header">
 				<span>&#128274; Encrypt Database</span>
 				<span class="close-btn" onclick="closeModal('modal-encrypt-database')">&times;</span>
 			</div>
 			<div class="modal-body">
-				<p style="color:#cccccc; font-size:14px; margin:0 0 18px 0;">
+				<p class="modal-description">
 					The database will be encrypted with AES-256. You will need this password every time you open the file.
-					<strong style="color:#e67e22;"> Do not lose it — there is no recovery.</strong>
+					<strong class="text-accent"> Do not lose it — there is no recovery.</strong>
 				</p>
 				<div class="form-group">
 					<label class="form-label">Password</label>
 					<input type="password" id="encrypt-db-password" class="form-input" placeholder="Enter password..." onkeydown="handleEncryptKeydown(event)"/>
 				</div>
-				<div class="form-group" style="margin-bottom:8px;">
+				<div class="form-group form-group-last">
 					<label class="form-label">Confirm password</label>
 					<input type="password" id="encrypt-db-confirm" class="form-input" placeholder="Repeat password..." onkeydown="handleEncryptKeydown(event)"/>
 				</div>
@@ -837,18 +837,18 @@
 	</div>
 
 	<!-- MODAL: Decrypt database -->
-	<div id="modal-decrypt-database" class="modal">
-		<div class="modal-content" style="max-width: 420px;">
+	<div id="modal-decrypt-database" class="modal modal-md">
+		<div class="modal-content">
 			<div class="modal-header">
 				<span>&#128275; Decrypt Database</span>
 				<span class="close-btn" onclick="closeModal('modal-decrypt-database')">&times;</span>
 			</div>
 			<div class="modal-body">
-				<p style="color:#cccccc; font-size:14px; margin:0 0 18px 0;">
+				<p class="modal-description">
 					The database will be decrypted and saved as plain JSON.
-					<strong style="color:#e67e22;"> Make sure you are in a secure environment.</strong>
+					<strong class="text-accent"> Make sure you are in a secure environment.</strong>
 				</p>
-				<div class="form-group" style="margin-bottom:8px;">
+				<div class="form-group form-group-last">
 					<label class="form-label">Current password</label>
 					<input type="password" id="decrypt-db-password" class="form-input" placeholder="Enter current password..." onkeydown="handleDecryptKeydown(event)"/>
 				</div>
@@ -862,8 +862,8 @@
 	</div>
 
 	<!-- MODAL: Change password -->
-	<div id="modal-change-password" class="modal">
-		<div class="modal-content" style="max-width: 420px;">
+	<div id="modal-change-password" class="modal modal-md">
+		<div class="modal-content">
 			<div class="modal-header">
 				<span>&#128274; Change Password</span>
 				<span class="close-btn" onclick="closeModal('modal-change-password')">&times;</span>
@@ -877,7 +877,7 @@
 					<label class="form-label">New password</label>
 					<input type="password" id="change-pw-new" class="form-input" placeholder="Enter new password..." onkeydown="handleChangePwKeydown(event)"/>
 				</div>
-				<div class="form-group" style="margin-bottom:8px;">
+				<div class="form-group form-group-last">
 					<label class="form-label">Confirm new password</label>
 					<input type="password" id="change-pw-confirm" class="form-input" placeholder="Repeat new password..." onkeydown="handleChangePwKeydown(event)"/>
 				</div>
@@ -890,16 +890,16 @@
 		</div>
 	</div>
 
-	<div id="modal-unsupported-encryption" class="modal">
-		<div class="modal-content" style="max-width: 440px;">
+	<div id="modal-unsupported-encryption" class="modal modal-lg">
+		<div class="modal-content">
 			<div class="modal-header">
 				<span>&#128274; Unsupported Encryption</span>
 			</div>
 			<div class="modal-body">
-				<p id="unsupported-enc-name" style="color:#fff; font-weight:bold; word-break:break-all; margin-bottom:12px;"></p>
-				<p style="color:#ccc; line-height:1.5;">This database was encrypted with a newer encryption version (<strong id="unsupported-enc-version" style="color:#fff;"></strong>) that this version of CoinMan does not support.</p>
-				<p style="color:#ccc; line-height:1.5; margin-top:10px;">Please update CoinMan to the latest version to open this file.</p>
-				<p style="color:#ccc; line-height:1.5; margin-top:10px;">The file has <strong style="color:#fff;">not</strong> been modified.</p>
+				<p id="unsupported-enc-name" class="error-filename"></p>
+				<p class="error-text">This database was encrypted with a newer encryption version (<strong id="unsupported-enc-version"></strong>) that this version of CoinMan does not support.</p>
+				<p class="error-hint">Please update CoinMan to the latest version to open this file.</p>
+				<p class="error-hint">The file has <strong>not</strong> been modified.</p>
 			</div>
 			<div class="modal-footer">
 				<button class="btn btn-outline" onclick="closeUnsupportedEncryptionModal()">OK</button>
@@ -907,15 +907,15 @@
 		</div>
 	</div>
 
-	<div id="modal-db-unreadable" class="modal">
-		<div class="modal-content" style="max-width: 440px;">
+	<div id="modal-db-unreadable" class="modal modal-lg">
+		<div class="modal-content">
 			<div class="modal-header">
 				<span>&#9888; Cannot Read Database File</span>
 			</div>
 			<div class="modal-body">
-				<p id="db-unreadable-name" style="color:#fff; font-weight:bold; word-break:break-all; margin-bottom:12px;"></p>
-				<p style="color:#ccc; line-height:1.5;">The file format is not recognized. This may not be a CoinMan database file, or the file may be corrupted.</p>
-				<p style="color:#ccc; line-height:1.5; margin-top:10px;">The file has <strong style="color:#fff;">not</strong> been modified.</p>
+				<p id="db-unreadable-name" class="error-filename"></p>
+				<p class="error-text">The file format is not recognized. This may not be a CoinMan database file, or the file may be corrupted.</p>
+				<p class="error-hint">The file has <strong>not</strong> been modified.</p>
 			</div>
 			<div class="modal-footer">
 				<button class="btn btn-outline" onclick="closeModal('modal-db-unreadable')">OK</button>
