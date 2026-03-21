@@ -15,7 +15,7 @@ window.DEBUG_MODE = false;
 var ENC_V1 = 1;
 
 var CONFIG = {
-    APP_VERSION: "0.4.0-alpha",
+    APP_VERSION: "0.5.0-alpha",
     IMAGE_DIR: "images/logo/",
     MAX_COIN_NAME_LEN: 64,
     MAX_SYMBOL_LEN: 16,
