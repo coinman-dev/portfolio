@@ -15,6 +15,7 @@ window.DEBUG_MODE = false;
 var ENC_V1 = 1;
 
 var CONFIG = {
+    APP_VERSION: "0.4.0-alpha",
     IMAGE_DIR: "images/logo/",
     MAX_COIN_NAME_LEN: 64,
     MAX_SYMBOL_LEN: 16,
@@ -4636,7 +4637,6 @@ window.handleDoEncryptDatabase = function () {
 // ─── Update Checker ──────────────────────────────────────────────────────────
 
 var UpdateChecker = {
-    APP_VERSION: "0.4.0",
     GITHUB_REPO: "coinman-dev/portfolio",
     CHECK_INTERVAL_MS: 7 * 24 * 60 * 60 * 1000, // 7 days
     STARTUP_DELAY_MS: 3000,
@@ -4684,8 +4684,8 @@ var UpdateChecker = {
                     if (latestStable && latestPre) break;
                 }
 
-                var hasStable = latestStable && UpdateChecker.isNewer(latestStable.version, UpdateChecker.APP_VERSION);
-                var hasPre = latestPre && UpdateChecker.isNewer(latestPre.version, UpdateChecker.APP_VERSION);
+                var hasStable = latestStable && UpdateChecker.isNewer(latestStable.version, CONFIG.APP_VERSION);
+                var hasPre = latestPre && UpdateChecker.isNewer(latestPre.version, CONFIG.APP_VERSION);
 
                 if (hasStable) UpdateChecker.stable = latestStable;
                 if (hasPre) UpdateChecker.prerelease = latestPre;
@@ -4753,6 +4753,8 @@ var UpdateChecker = {
 
 window.onload = function () {
     AppSettings.init();
+    var aboutVerEl = document.getElementById("about-version");
+    if (aboutVerEl) aboutVerEl.textContent = "Version " + CONFIG.APP_VERSION;
     AppBridge.bootstrap()
         .catch(function (e) {
             console.error("Bootstrap failed:", e);
