@@ -1,4 +1,4 @@
-# CoinMan Portfolio
+# CoinMan Portfolio Tracker
 
 A simple desktop application for tracking and managing your cryptocurrency portfolio. All data is stored **locally on your hard drive** — no cloud, no servers, no registration required.
 
@@ -6,7 +6,7 @@ A simple desktop application for tracking and managing your cryptocurrency portf
 
 ## Why CoinMan?
 
-Most portfolio tracking services store your data on their servers, where third parties can potentially access it. CoinMan Portfolio works differently: all information about your coins, transactions, and amounts stays exclusively on your machine in a plain JSON file.
+Most portfolio tracking services store your data on their servers, where third parties can potentially access it. CoinMan Portfolio Tracker works differently: all information about your coins, transactions, and amounts stays exclusively on your machine in a plain JSON file.
 
 - **Privacy first** — nobody knows what you hold
 - **No registration** — no account, no email, no phone number
@@ -43,9 +43,9 @@ Most portfolio tracking services store your data on their servers, where third p
 
 ## Screenshots
 
-![CoinMan Portfolio — Current tab](docs/screenshots/screenshot1.png)
+![CoinMan Portfolio Tracker — Current tab](docs/screenshots/screenshot1.png)
 
-![CoinMan Portfolio — Sold tab](docs/screenshots/screenshot2.png)
+![CoinMan Portfolio Tracker — Sold tab](docs/screenshots/screenshot2.png)
 
 ---
 
@@ -128,7 +128,7 @@ By default, data is saved to `database/default.json` next to the executable. You
 
 ## Database Encryption
 
-CoinMan Portfolio supports **AES-256-GCM** encryption for database files, with keys derived via **Argon2id** (memory-hard key derivation). Your data is protected with modern, battle-tested cryptography.
+CoinMan Portfolio Tracker supports **AES-256-GCM** encryption for database files, with keys derived via **Argon2id** (memory-hard key derivation). Your data is protected with modern, battle-tested cryptography.
 
 ### How it works
 
@@ -178,15 +178,15 @@ This project was developed with the help of AI tools:
 
 ## Disclaimer
 
-CoinMan Portfolio is provided **for informational purposes only**. It is not financial, investment, or trading advice. The authors are not responsible for any financial decisions made based on data displayed by this application. Use at your own risk.
+CoinMan Portfolio Tracker is provided **for informational purposes only**. It is not financial, investment, or trading advice. The authors are not responsible for any financial decisions made based on data displayed by this application. Use at your own risk.
 
 ---
 
 ## Data Attribution
 
-Market price data is provided by the [CoinGecko API](https://www.coingecko.com/). CoinMan Portfolio is not affiliated with or endorsed by CoinGecko.
+Market price data is provided by the [CoinGecko API](https://www.coingecko.com/). CoinMan Portfolio Tracker is not affiliated with or endorsed by CoinGecko.
 
-Coin catalog data (names, symbols, IDs) and coin logos are provided by [CoinMarketCap](https://coinmarketcap.com/). CoinMan Portfolio is not affiliated with or endorsed by CoinMarketCap.
+Coin catalog data (names, symbols, IDs) and coin logos are provided by [CoinMarketCap](https://coinmarketcap.com/). CoinMan Portfolio Tracker is not affiliated with or endorsed by CoinMarketCap.
 
 ---
 

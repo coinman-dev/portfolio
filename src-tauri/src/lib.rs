@@ -455,7 +455,7 @@ pub fn run() {
                         .level(log::LevelFilter::Info)
                         .build(),
                 )?;
-                log::info!("=== CoinMan Portfolio started ===");
+                log::info!("=== CoinMan Portfolio Tracker started ===");
             }
             create_main_window(app, debug_mode)?;
             Ok(())
@@ -534,7 +534,7 @@ fn create_main_window<R: tauri::Runtime>(app: &mut tauri::App<R>, debug_mode: bo
 
     let runtime_paths = app.state::<RuntimePaths>();
     let mut builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
-        .title("CoinMan Portfolio")
+        .title("CoinMan Portfolio Tracker")
         .inner_size(width, height)
         .min_inner_size(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT)
         .resizable(true)
