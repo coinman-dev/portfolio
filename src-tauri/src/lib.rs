@@ -296,6 +296,11 @@ fn save_portfolio_order(app: tauri::AppHandle, user: Option<String>, order: Vec<
 }
 
 #[tauri::command]
+fn save_last_update_check(app: tauri::AppHandle, timestamp: u64) {
+    settings::update_last_update_check(&app, timestamp);
+}
+
+#[tauri::command]
 fn debug_log(message: String) {
     log::info!("{}", message);
 }
@@ -428,7 +433,8 @@ pub fn run() {
             open_url,
             open_file_dialog,
             copy_database,
-            save_portfolio_order
+            save_portfolio_order,
+            save_last_update_check
         ])
         .setup(|app| {
             let debug_mode = std::env::args()
@@ -511,7 +517,7 @@ fn create_main_window<R: tauri::Runtime>(app: &mut tauri::App<R>, debug_mode: bo
     let mut height = DEFAULT_WINDOW_HEIGHT;
     let mut position = None;
 
-    // Prefer settings.json for window state (works even when DB is encrypted).
+    // Prefer settings-cache.json for window state (works even when DB is encrypted).
     // Fall back to DB window_state for backward compatibility with older installs.
     let app_settings = settings::load_global(app.handle());
     if let Some(ws) = app_settings.window_state {

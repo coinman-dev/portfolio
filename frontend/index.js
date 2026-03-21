@@ -3075,6 +3075,11 @@ function handleAddCoin() {
         return window.alert("Please fill in: " + missing.join(", "));
 
     var catalogId = Market.resolveCatalogId(state.addCatalogId, symbol, name);
+    if (!catalogId)
+        return window.alert(
+            "Coin \"" + name + " (" + symbol + ")\" was not found in the database.\n" +
+            "Please select a coin from the suggestions list."
+        );
     Tx.add(state.activePortfolioId, {
         coin: name,
         symbol: symbol,
@@ -3193,6 +3198,11 @@ function handleUpdateTransaction() {
     if (!symbol) return window.alert("Symbol cannot be empty");
     if (!coin) return window.alert("Coin Name cannot be empty");
     var catalogId = Market.resolveCatalogId(state.editCatalogId, symbol, coin);
+    if (!catalogId)
+        return window.alert(
+            "Coin \"" + coin + " (" + symbol + ")\" was not found in the database.\n" +
+            "Please select a coin from the suggestions list."
+        );
 
     Tx.update(state.activePortfolioId, state.currentEditingId, {
         symbol: symbol,
@@ -3894,18 +3904,18 @@ function createRow(tpl, d) {
             if (cat.website) {
                 tokens["[[WWW_URL]]"] = '<a href="#" class="coin-ext-link" title="https://' +
                     Utils.escapeAttr(cat.website) + '" onclick="AppBridge.invoke(\'open_url\',{url:\'https://' +
-                    Utils.escapeAttr(cat.website) + '\'});return false;">Site</a>';
+                    Utils.escapeAttr(cat.website) + '\'});return false;">site</a>';
             }
             if (cat.sourceCode) {
                 tokens["[[GITHUB_URL]]"] = '<a href="#" class="coin-ext-link" title="https://' +
                     Utils.escapeAttr(cat.sourceCode) + '" onclick="AppBridge.invoke(\'open_url\',{url:\'https://' +
-                    Utils.escapeAttr(cat.sourceCode) + '\'});return false;">GitHub</a>';
+                    Utils.escapeAttr(cat.sourceCode) + '\'});return false;">github</a>';
             }
         }
         if (cat.explorer && d.wallet) {
             var explorerFullUrl = 'https://' + Utils.escapeAttr(cat.explorer) + '?' + Utils.escapeAttr(d.wallet);
             tokens["[[EXPLORER_URL]]"] = '<a href="#" class="coin-ext-link" title="' + explorerFullUrl +
-                '" onclick="AppBridge.invoke(\'open_url\',{url:\'' + explorerFullUrl + '\'});return false;">Explorer</a>';
+                '" onclick="AppBridge.invoke(\'open_url\',{url:\'' + explorerFullUrl + '\'});return false;">explorer</a>';
         }
     }
 
@@ -4245,7 +4255,7 @@ var DbSelector = {
                 }
                 renderApp();
                 MarketCache.clear();
-                // Restore market cache from settings.json, then schedule refresh
+                // Restore market cache from settings-cache.json, then schedule refresh
                 if (AppBridge.isTauri()) {
                     AppBridge.invoke("load_app_settings", { user: ServerSync.user })
                         .then(function (appSettings) {
@@ -4623,6 +4633,122 @@ window.handleDoEncryptDatabase = function () {
             if (errEl) { errEl.textContent = "Encryption failed: " + msg; errEl.classList.remove("hidden"); }
         });
 };
+// ─── Update Checker ──────────────────────────────────────────────────────────
+
+var UpdateChecker = {
+    APP_VERSION: "0.4.0",
+    GITHUB_REPO: "coinman-dev/portfolio",
+    CHECK_INTERVAL_MS: 7 * 24 * 60 * 60 * 1000, // 7 days
+    STARTUP_DELAY_MS: 3000,
+    // Found releases: { version, url, prerelease } or null
+    stable: null,
+    prerelease: null,
+
+    init: function (lastCheckTimestamp) {
+        var now = Date.now();
+        var needsCheck = !lastCheckTimestamp ||
+            (now - lastCheckTimestamp) >= UpdateChecker.CHECK_INTERVAL_MS;
+        if (needsCheck) {
+            setTimeout(function () { UpdateChecker.check(); }, UpdateChecker.STARTUP_DELAY_MS);
+        }
+    },
+
+    check: function () {
+        var url = "https://api.github.com/repos/" + UpdateChecker.GITHUB_REPO + "/releases?per_page=20";
+        fetch(url, { headers: { "Accept": "application/vnd.github.v3+json" } })
+            .then(function (res) {
+                if (!res.ok) throw new Error("HTTP " + res.status);
+                return res.json();
+            })
+            .then(function (releases) {
+                // Save check timestamp on any successful response
+                var now = Date.now();
+                if (AppBridge.isTauri()) {
+                    AppBridge.invoke("save_last_update_check", { timestamp: now }).catch(function () {});
+                }
+
+                if (!Array.isArray(releases) || !releases.length) return;
+
+                // Find latest stable and latest pre-release
+                var latestStable = null;
+                var latestPre = null;
+                for (var i = 0; i < releases.length; i++) {
+                    var r = releases[i];
+                    var tag = (r.tag_name || "").replace(/^v/, "");
+                    if (!tag) continue;
+                    if (r.prerelease) {
+                        if (!latestPre) latestPre = { version: tag, url: r.html_url || "" };
+                    } else {
+                        if (!latestStable) latestStable = { version: tag, url: r.html_url || "" };
+                    }
+                    if (latestStable && latestPre) break;
+                }
+
+                var hasStable = latestStable && UpdateChecker.isNewer(latestStable.version, UpdateChecker.APP_VERSION);
+                var hasPre = latestPre && UpdateChecker.isNewer(latestPre.version, UpdateChecker.APP_VERSION);
+
+                if (hasStable) UpdateChecker.stable = latestStable;
+                if (hasPre) UpdateChecker.prerelease = latestPre;
+
+                if (hasStable || hasPre) {
+                    UpdateChecker.showStatusIndicator();
+                    UpdateChecker.showModal();
+                }
+            })
+            .catch(function (e) {
+                console.warn("Update check failed:", e);
+            });
+    },
+
+    isNewer: function (remote, local) {
+        if (!remote || !local) return false;
+        var rParts = remote.replace(/-.*$/, "").split(".").map(Number);
+        var lParts = local.replace(/-.*$/, "").split(".").map(Number);
+        for (var i = 0; i < Math.max(rParts.length, lParts.length); i++) {
+            var r = rParts[i] || 0;
+            var l = lParts[i] || 0;
+            if (r > l) return true;
+            if (r < l) return false;
+        }
+        return false;
+    },
+
+    showModal: function () {
+        var info = document.getElementById("update-info");
+        if (!info) return;
+        var html = "";
+        if (UpdateChecker.stable) {
+            html += '<p class="update-version update-stable">' +
+                'Release: v' + Utils.escapeHtml(UpdateChecker.stable.version) +
+                '</p>';
+        }
+        if (UpdateChecker.prerelease) {
+            html += '<p class="update-version update-prerelease">' +
+                'Pre-release: v' + Utils.escapeHtml(UpdateChecker.prerelease.version) +
+                '</p>';
+        }
+        info.innerHTML = html;
+        UI.applyModalSize("modal-update-available", "DEFAULT");
+        UI.openModal("modal-update-available");
+    },
+
+    showStatusIndicator: function () {
+        var el = document.getElementById("update-status");
+        if (el) el.style.display = "";
+    },
+
+    openRelease: function () {
+        // Prefer stable, fallback to pre-release
+        var target = UpdateChecker.stable || UpdateChecker.prerelease;
+        if (!target) return;
+        if (AppBridge.isTauri()) {
+            AppBridge.invoke("open_url", { url: target.url });
+        } else {
+            window.open(target.url, "_blank");
+        }
+    },
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 window.onload = function () {
@@ -4713,6 +4839,10 @@ window.onload = function () {
                                     }
                                 });
                             }
+                            UpdateChecker.init(
+                                appSettings && appSettings.lastUpdateCheck
+                                    ? appSettings.lastUpdateCheck : 0
+                            );
                             if (appSettings && Array.isArray(appSettings.marketCache) && appSettings.marketCache.length) {
                                 Market.setStateMarketData(appSettings.marketCache);
                                 Market.fileCacheSavedAt = appSettings.marketCacheSavedAt || 0;

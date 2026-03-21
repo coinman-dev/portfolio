@@ -990,6 +990,33 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     flex-shrink: 0;
 }
 
+/* --- UPDATE STATUS (status bar, right side) --- */
+.ie-statusbar-panel-update {
+    flex: 0 0 auto;
+    color: #4FC3F7;
+    cursor: pointer;
+    margin-left: auto;
+    padding: 0 10px;
+}
+.ie-statusbar-panel-update:hover {
+    color: #81D4FA;
+    text-decoration: underline;
+}
+
+/* --- UPDATE MODAL --- */
+.update-version {
+    font-size: 16px;
+    font-weight: bold;
+    text-align: center;
+    margin: 6px 0;
+}
+.update-stable {
+    color: #66BB6A;
+}
+.update-prerelease {
+    color: #FFA726;
+}
+
 /* --- CURRENT PRICE COLUMN TOGGLE --- */
 .col-cur-price {
     display: none;

@@ -316,7 +316,7 @@ pub fn save_db<R: Runtime>(
     }
 
     // Always store portfolios sorted by id so the file has a stable, predictable order.
-    // Display order is kept separately in settings.json (portfolioOrder).
+    // Display order is kept separately in settings-cache.json (portfolioOrder).
     data.portfolios.sort_by(|a, b| {
         match (a.get("id").and_then(|v| v.as_i64()), b.get("id").and_then(|v| v.as_i64())) {
             (Some(x), Some(y)) => x.cmp(&y),

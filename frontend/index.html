@@ -736,6 +736,24 @@
 			</div>
 		</div>
 
+	<div id="modal-update-available" class="modal modal-sm">
+		<div class="modal-content">
+			<div class="modal-header">
+				<span>Update Available</span>
+				<span class="close-btn" onclick="closeModal('modal-update-available')">&times;</span>
+			</div>
+			<div class="modal-body about-body">
+				<p>New version of CoinMan Portfolio is available:</p>
+				<div id="update-info"></div>
+				<p>Would you like to go to the download page?</p>
+			</div>
+			<div class="modal-footer modal-footer-split">
+				<button class="btn btn-outline" onclick="closeModal('modal-update-available')">LATER</button>
+				<button class="btn btn-orange" onclick="UpdateChecker.openRelease(); closeModal('modal-update-available')">DOWNLOAD</button>
+			</div>
+		</div>
+	</div>
+
 	<div id="modal-open-database" class="modal modal-wide">
 		<div class="modal-content">
 			<div class="modal-header">
@@ -759,6 +777,7 @@
 			<div class="ie-statusbar-panel ie-statusbar-panel-enc" id="enc-status"><span id="enc-lock-icon" class="enc-lock-icon">&#128275;</span><span id="enc-label">Not encrypted</span></div>
 			<div class="ie-statusbar-divider"></div>
 			<div class="ie-statusbar-panel" id="market-status">Market data: waiting for auto update...</div>
+			<div class="ie-statusbar-panel ie-statusbar-panel-update" id="update-status" style="display:none;" onclick="UpdateChecker.openRelease()">Update available</div>
 		</div>
 
 		<!-- MODAL: Unlock encrypted database -->

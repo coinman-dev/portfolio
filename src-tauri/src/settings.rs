@@ -14,7 +14,7 @@ pub struct WinState {
     pub y: f64,
 }
 
-/// Per-user settings stored inside the "users" map in settings.json.
+/// Per-user settings stored inside the "users" map in settings-cache.json.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct UserSettings {
@@ -28,7 +28,7 @@ pub struct UserSettings {
     pub market_cache_saved_at: Option<u64>,
 }
 
-/// The on-disk settings.json structure.
+/// The on-disk settings-cache.json structure.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct AppSettings {
@@ -43,6 +43,9 @@ pub struct AppSettings {
     /// Global: column widths, shared across all databases.
     #[serde(default)]
     pub column_widths: Option<Value>,
+    /// Global: timestamp (ms since epoch) of the last update check.
+    #[serde(default)]
+    pub last_update_check: Option<u64>,
     /// Per-user (per-database) settings keyed by database filename stem.
     #[serde(default)]
     pub users: HashMap<String, UserSettings>,
@@ -61,6 +64,7 @@ pub struct AppSettingsForUser {
     pub portfolio_order: Option<Vec<Value>>,
     pub market_cache: Option<Value>,
     pub market_cache_saved_at: Option<u64>,
+    pub last_update_check: Option<u64>,
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
@@ -83,6 +87,7 @@ pub fn load_for_user<R: Runtime>(app: &AppHandle<R>, user: &str) -> AppSettingsF
         portfolio_order: u.portfolio_order,
         market_cache: u.market_cache,
         market_cache_saved_at: u.market_cache_saved_at,
+        last_update_check: settings.last_update_check,
     }
 }
 
@@ -121,6 +126,12 @@ pub fn update_show_cur_price<R: Runtime>(app: &AppHandle<R>, show: bool) {
 pub fn update_is_collapsed<R: Runtime>(app: &AppHandle<R>, collapsed: bool) {
     let mut settings = load(app);
     settings.is_collapsed = Some(collapsed);
+    save(app, &settings);
+}
+
+pub fn update_last_update_check<R: Runtime>(app: &AppHandle<R>, timestamp: u64) {
+    let mut settings = load(app);
+    settings.last_update_check = Some(timestamp);
     save(app, &settings);
 }
 
@@ -182,7 +193,7 @@ fn save<R: Runtime>(app: &AppHandle<R>, settings: &AppSettings) {
 }
 
 fn settings_path<R: Runtime>(app: &AppHandle<R>) -> PathBuf {
-    base_dir(app).join("settings.json")
+    base_dir(app).join("settings-cache.json")
 }
 
 fn base_dir<R: Runtime>(_app: &AppHandle<R>) -> PathBuf {
