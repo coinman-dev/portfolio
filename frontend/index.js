@@ -3903,7 +3903,7 @@ function createRow(tpl, d) {
             }
         }
         if (cat.explorer && d.wallet) {
-            var explorerFullUrl = 'https://' + Utils.escapeAttr(cat.explorer) + Utils.escapeAttr(d.wallet);
+            var explorerFullUrl = 'https://' + Utils.escapeAttr(cat.explorer) + '?' + Utils.escapeAttr(d.wallet);
             tokens["[[EXPLORER_URL]]"] = '<a href="#" class="coin-ext-link" title="' + explorerFullUrl +
                 '" onclick="AppBridge.invoke(\'open_url\',{url:\'' + explorerFullUrl + '\'});return false;">Explorer</a>';
         }
