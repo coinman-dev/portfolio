@@ -7,36 +7,34 @@
 		<link rel="stylesheet" href="index.css"/>
 		<link rel="icon" type="image/webp" href="images/coinman.dev.webp"/>
 	</head>
-		<body>
+	<body>
 		<div class="desktop-menu-bar">
-			<div class="menu-item" onclick="toggleDropdown('file-dropdown', event)">
-				File
-				<div class="dropdown-menu" id="file-dropdown">
-					<div class="dropdown-item" onclick="handleMenuOpenDatabase()">Open database file</div>
-					<div class="dropdown-item" onclick="handleMenuSaveDbAs()">Save database as...</div>
-					<div class="dropdown-item" onclick="openClearDatabaseModal()">Clear the database</div>
+			<div class="menu-item" onclick="toggleDropdown('file-dropdown', event)"> File
+      <div class="dropdown-menu" id="file-dropdown">
+					<div class="dropdown-item" onclick="handleMenuOpenDatabase()"> Open database file </div>
+					<div class="dropdown-item" onclick="handleMenuSaveDbAs()"> Save database as... </div>
+					<div class="dropdown-item" onclick="openClearDatabaseModal()"> Clear the database </div>
 					<div class="dropdown-divider"></div>
-					<div class="dropdown-item" id="menu-encrypt-database" onclick="handleMenuEncryptDatabase()">Encrypt database</div>
-					<div class="dropdown-item dropdown-item-disabled" id="menu-decrypt-database" onclick="handleMenuDecryptDatabase()">Decrypt database</div>
-					<div class="dropdown-item dropdown-item-disabled" id="menu-change-password" onclick="handleMenuChangePassword()">Change password</div>
+					<div class="dropdown-item" id="menu-encrypt-database" onclick="handleMenuEncryptDatabase()"> Encrypt database </div>
+					<div class="dropdown-item dropdown-item-disabled" id="menu-decrypt-database" onclick="handleMenuDecryptDatabase()"> Decrypt database </div>
+					<div class="dropdown-item dropdown-item-disabled" id="menu-change-password" onclick="handleMenuChangePassword()"> Change password </div>
 					<div class="dropdown-divider"></div>
 					<div class="dropdown-item" onclick="handleMenuExit()">Exit</div>
 				</div>
 			</div>
-			<div class="menu-item" onclick="toggleDropdown('settings-dropdown', event)">
-				Settings
-				<div class="dropdown-menu" id="settings-dropdown">
-					<div class="dropdown-item dropdown-item-check" id="menu-toggle-cur-price" onclick="AppSettings.handleToggleCurPrice()">Show Current Price column</div>
+			<div class="menu-item" onclick="toggleDropdown('settings-dropdown', event)"> Settings
+      <div class="dropdown-menu" id="settings-dropdown">
+					<div class="dropdown-item dropdown-item-check" id="menu-toggle-cur-price" onclick="AppSettings.handleToggleCurPrice()"> Show Current Price column </div>
+					<div class="dropdown-item dropdown-item-check" id="menu-toggle-auto-align" onclick="AppSettings.handleToggleAutoAlign()"> Auto-align columns </div>
+					<div class="dropdown-item dropdown-item-check" id="menu-toggle-table-footer" onclick="AppSettings.handleToggleTableFooter()"> Show table footer </div>
 				</div>
 			</div>
-			<div class="menu-item menu-item-right" onclick="toggleDropdown('about-dropdown', event)">
-				About
-				<div class="dropdown-menu dropdown-menu-right" id="about-dropdown">
-					<div class="dropdown-item" onclick="openAboutModal()">About CoinMan</div>
+			<div class="menu-item menu-item-right" onclick="toggleDropdown('about-dropdown', event)"> About
+      <div class="dropdown-menu dropdown-menu-right" id="about-dropdown">
+					<div class="dropdown-item" onclick="openAboutModal()"> About CoinMan </div>
 				</div>
 			</div>
 		</div>
-
 		<div class="container">
 			<!-- HEADER (табличная разметка для Dreamweaver) -->
 			<table id="brand-header-table" class="header-table">
@@ -48,9 +46,7 @@
 						</div>
 					</td>
 					<td class="header-actions-cell">
-						<button class="add-portfolio-btn" onclick="openCreatePortfolioModal()">
-                            + PORTFOLIO
-                        </button>
+						<button class="add-portfolio-btn" onclick="openCreatePortfolioModal()"> + PORTFOLIO </button>
 					</td>
 				</tr>
 			</table>
@@ -59,889 +55,889 @@
 				<tr>
 					<td class="action-bar-tabs-cell">
 						<!-- Вкладки портфелей перенесены сюда -->
-						<div id="portfolioTabsRow">
-							<!-- [PORTFOLIO_TAB_BEGIN] -->
-							<div id="template-portfolio-tab" class="p-tab" title="Created: [Date]">
-                                    [[PORTFOLIO_NAME]]
-                                </div>
-							<!-- [PORTFOLIO_TAB_END] -->
-						</div>
-					</td>
-					<td class="action-bar-buttons-cell">
-						<div class="action-buttons-row">
-							<button class="btn btn-blue" onclick="openEditPortfolioModal()">
-                                EDIT PORTFOLIO
-                            </button>
-						</div>
-					</td>
-				</tr>
-			</table>
-			<!-- METRICS -->
-			<table id="portfolio-metrics-table" class="metrics-table">
-				<tr>
-					<td class="metric-card">
-						<div class="metric-title">Acquisition Cost</div>
-						<div class="metric-value" id="m-acq-cost">
-                            [[ACQUISITION_COST]]
-                        </div>
-					</td>
-					<td class="metric-card">
-						<div class="metric-title">Realized P/L</div>
-						<div class="metric-value" id="m-realized-pl">
-                            [[REALIZED_P/L]]
-                        </div>
-						<div id="m-realized-pct">[[REALIZED_%]]</div>
-					</td>
-					<td class="metric-card">
-						<div class="metric-title">Profit / Loss</div>
-						<div class="metric-value" id="m-unrealized-pl">
-                            [[PROFIT_LOSS]]
-                        </div>
-						<div class="metric-sub" id="m-unrealized-pct">
-                            [[PROFIT_LOSS_%]]
-                        </div>
-					</td>
-					<td class="metric-card">
-						<div class="metric-title">Holdings</div>
-						<div class="metric-value" id="m-holdings">
-                            [[HOLDINGS]]
-                        </div>
-					</td>
-					<td class="metric-card">
-						<div class="metric-title">24H Profit / Loss</div>
-						<div class="metric-value" id="m-24h">
-                            [[24H_PROFIT_LOSS]]
-                        </div>
-						<div class="metric-sub" id="m-24h-pct">
-                            [[24H_PROFIT_LOSS_%]]
-                        </div>
-					</td>
-				</tr>
-			</table>
-			<!-- TABLE CONTROLS -->
-			<table id="portfolio-controls-table">
-				<tr>
-					<td class="controls-tabs-cell">
-						<div class="view-tabs-row">
-							<div id="tab-current" class="view-tab active" onclick="switchView('current')">❤ CURRENT</div>
-							<div id="tab-sold" class="view-tab" onclick="switchView('sold')">─ SOLD ⚡</div>
-						</div>
-					</td>
-					<!-- NEW: Portfolio info block (created + description) -->
-					<td>
-						<div class="portfolio-meta">
-							<div id="portfolio-created-text" class="portfolio-created">
-                                Portfolio created: [[PORTFOLIO_CREATED]]
-                            </div>
-							<div id="portfolio-description-text" class="portfolio-description">
-                                Description: [[PORTFOLIO_DESCRIPTION]]
-                            </div>
-						</div>
-					</td>
-					<td class="controls-action-cell">
-						<div class="action-buttons-row">
-							<button class="btn btn-blue" id="btn-collapse" onclick="toggleCollapse()">
-                                COLLAPSE
-                            </button>
-							<button class="btn btn-orange btn-inline" onclick="openAddCoinModal()">
-                                + COIN
-                            </button>
-						</div>
-					</td>
-				</tr>
-			</table>
-			<!-- TRANSACTIONS TABLE (скрытый шаблон внутри tbody) -->
-			<table id="portfolio-transactions-table">
-				<thead>
-					<tr>
-						<th class="col-logo" id="th-logo">Logo</th>
-						<th class="col-coin-date" id="th-coin">
-							<span class="th-sort-btn" data-sort-key="coinDate">
-								<span class="th-sort-label">Coin / Date</span>
-								<span class="th-sort-arrows">
-									<span class="sort-arrow" data-sort-dir="asc">▲</span>
-									<span class="sort-arrow" data-sort-dir="desc">▼</span>
+						<div id="portfolioTabsRow" data-tpl-root>
+						<!--{{#PORTFOLIO_TABS}}-->
+						<div class="p-tab" data-portfolio-id="{{ID}}"> {{PORTFOLIO_NAME}} </div>
+						<!--{{/PORTFOLIO_TABS}}-->
+					</div>
+				</td>
+				<td class="action-bar-buttons-cell">
+					<div class="action-buttons-row">
+						<button class="btn btn-blue" onclick="openEditPortfolioModal()"> EDIT PORTFOLIO </button>
+					</div>
+				</td>
+			</tr>
+		</table>
+		<!-- METRICS -->
+		<table id="portfolio-metrics-table" class="metrics-table" data-tpl-root="METRICS">
+		<tr>
+			<td class="metric-card">
+				<div class="metric-title">Acquisition Cost</div>
+				<div class="metric-value">{{ACQUISITION_COST}}</div>
+			</td>
+			<td class="metric-card">
+				<div class="metric-title">Realized P/L</div>
+				<div class="metric-value m-realized-pl">{{REALIZED_PL}}</div>
+				<div class="m-realized-pct">{{REALIZED_PCT}}</div>
+			</td>
+			<td class="metric-card">
+				<div class="metric-title">Profit / Loss</div>
+				<div class="metric-value m-unrealized-pl">{{UNREALIZED_PL}}</div>
+				<div class="metric-sub m-unrealized-pct">{{UNREALIZED_PCT}}</div>
+			</td>
+			<td class="metric-card">
+				<div class="metric-title">Holdings</div>
+				<div class="metric-value">{{HOLDINGS}}</div>
+			</td>
+			<td class="metric-card">
+				<div class="metric-title">24H Profit / Loss</div>
+				<div class="metric-value m-24h-pl">{{PL_24H}}</div>
+				<div class="metric-sub m-24h-pct">{{PCT_24H}}</div>
+			</td>
+		</tr>
+	</table>
+	<!-- TABLE CONTROLS -->
+	<table id="portfolio-controls-table">
+		<tr>
+			<td class="controls-tabs-cell">
+				<div class="view-tabs-row">
+					<div id="tab-current" class="view-tab active" onclick="switchView('current')"> ❤ CURRENT </div>
+					<div id="tab-sold" class="view-tab" onclick="switchView('sold')"> ─ SOLD ⚡ </div>
+				</div>
+			</td>
+			<!-- Portfolio info block (created + description) -->
+			<td>
+				<div class="portfolio-meta" data-tpl-root="META">
+				<div class="portfolio-created"> Portfolio created: {{PORTFOLIO_CREATED}} </div>
+				<div class="portfolio-description"> Description: {{PORTFOLIO_DESCRIPTION}} </div>
+			</div>
+		</td>
+		<td class="controls-action-cell">
+			<div class="action-buttons-row">
+				<button class="btn btn-blue" id="btn-collapse" data-tpl-root="COLLAPSE" onclick="toggleCollapse()">
+					{{COLLAPSE_LABEL}}
+				</button>
+				<button class="btn btn-orange btn-inline" onclick="openAddCoinModal()"> + COIN </button>
+			</div>
+		</td>
+	</tr>
+</table>
+<!-- TRANSACTIONS TABLE (скрытый шаблон внутри tbody) -->
+<table id="portfolio-transactions-table">
+	<thead>
+		<tr>
+			<th class="col-logo" id="th-logo">Logo</th>
+			<th class="col-coin-date" id="th-coin">
+				<span class="th-sort-btn" data-sort-key="coinDate">
+					<span class="th-sort-label">Coin / Date</span>
+					<span class="th-sort-arrows">
+						<span class="sort-arrow" data-sort-dir="asc">▲</span>
+						<span class="sort-arrow" data-sort-dir="desc">▼</span>
+					</span>
+				</span>
+			</th>
+			<th id="th-holdings">
+				<div class="resizer"></div>
+				<span class="th-sort-btn" data-sort-key="holdings">
+					<span class="th-sort-label">Holdings</span>
+					<span class="th-sort-arrows">
+						<span class="sort-arrow" data-sort-dir="asc">▲</span>
+						<span class="sort-arrow" data-sort-dir="desc">▼</span>
+					</span>
+				</span>
+			</th>
+			<th id="col-header-price">
+				<div class="resizer"></div>
+				<span class="th-sort-btn" data-sort-key="price">
+					<span class="th-sort-label" id="col-header-price-label" data-tpl-root="PRICE_HEADER">
+						{{PRICE_LABEL}}
+					</span>
+					<span class="th-sort-arrows">
+						<span class="sort-arrow" data-sort-dir="asc">▲</span>
+						<span class="sort-arrow" data-sort-dir="desc">▼</span>
+					</span>
+				</span>
+			</th>
+			<th class="col-cur-price" id="th-cur-price">
+				<div class="resizer"></div>
+				<span class="th-sort-btn" data-sort-key="currentPrice">
+					<span class="th-sort-label">Cur. Price</span>
+					<span class="th-sort-arrows">
+						<span class="sort-arrow" data-sort-dir="asc">▲</span>
+						<span class="sort-arrow" data-sort-dir="desc">▼</span>
+					</span>
+				</span>
+			</th>
+			<th id="th-profit">
+				<div class="resizer"></div>
+				<span class="th-sort-btn" data-sort-key="profit">
+					<span class="th-sort-label">Profit/Loss</span>
+					<span class="th-sort-arrows">
+						<span class="sort-arrow" data-sort-dir="asc">▲</span>
+						<span class="sort-arrow" data-sort-dir="desc">▼</span>
+					</span>
+				</span>
+			</th>
+			<th id="th-change">
+				<div class="resizer"></div>
+				<span class="th-sort-btn" data-sort-key="change">
+					<span class="th-sort-label">Change</span>
+					<span class="th-sort-arrows">
+						<span class="sort-arrow" data-sort-dir="asc">▲</span>
+						<span class="sort-arrow" data-sort-dir="desc">▼</span>
+					</span>
+				</span>
+			</th>
+		</tr>
+	</thead>
+	<tbody id="transactions-table-body" data-tpl-root>
+	<!--{{#TRANSACTIONS}}-->
+	<!--{{#if HAS_TRANSACTIONS}}-->
+	<!--{{#COIN_ROWS}}-->
+	<tr data-tx-id="{{TX_ID}}" data-symbol="{{SYMBOL}}" data-catalog-id="{{CATALOG_ID}}" data-collapsed="{{IS_COLLAPSED}}">
+		<td>
+			<div class="coin-icon">{{{ICON}}}</div>
+		</td>
+		<td>
+			<div class="coin-cell-content">
+				<div class="coin-info-block">
+					<span class="coin-name">{{COINNAME}}</span>
+					<span class="coin-date">{{DATE}}</span>
+				</div>
+				<div class="coin-ext-links">
+					<span class="coin-link-slot">{{{WWW_URL}}}</span>
+					<span class="coin-link-slot">{{{GITHUB_URL}}}</span>
+					<span class="coin-link-slot">{{{EXPLORER_URL}}}</span>
+				</div>
+				<button class="btn-table-edit t-btn-edit">{{EDIT_LABEL}}</button>
+			</div>
+		</td>
+		<td>
+			<div class="text-bold">{{AMOUNT}} {{SYMBOL}}</div>
+			<span class="sub-value">{{MARKET_PRICE}}</span>
+		</td>
+		<td>
+			<div class="text-bold">{{PRICE}}</div>
+			<span class="sub-value">{{TOTAL_PRICE}}</span>
+		</td>
+		<td class="col-cur-price">
+			<div class="text-bold">{{CUR_PRICE}}</div>
+		</td>
+		<td>
+			<div class="text-bold t-profit" data-profit="{{PROFIT_RAW}}">{{PROFIT}}</div>
+		</td>
+		<td>
+			<div class="text-bold t-change" data-pct="{{PCT_RAW}}">{{CHANGE_PCT}}</div>
+		</td>
+	</tr>
+	<!--{{/COIN_ROWS}}-->
+	<!--{{#SUMMARY}}-->
+	<tr class="summary-row">
+		<td>
+			<div class="coin-icon">
+				<img src="images/coinman.dev.webp" alt="COINMAN"/>
+			</div>
+		</td>
+		<td>
+			<div class="coin-cell-content">
+				<div class="coin-info-block">
+					<span class="coin-name">TOTAL</span>
+					<span class="coin-date">Total number of coins purchased: {{TOTAL_COINS}}, Total
+              transactions: {{TOTAL_TRN}}</span>
+				</div>
+			</div>
+		</td>
+		<td>
+			<div class="text-bold">{{TOTAL_AMOUNT}} COINS</div>
+			<span class="sub-value">{{A_MARKET_PRICE}}</span>
+		</td>
+		<td>
+			<div class="text-bold">{{AVG_PRICE}}</div>
+			<span class="sub-value">{{A_TOTAL_PRICE}}</span>
+		</td>
+		<td class="col-cur-price">
+			<div class="text-bold">{{A_CUR_PRICE}}</div>
+		</td>
+		<td>
+			<div class="text-bold s-profit" data-profit="{{S_PROFIT_RAW}}">{{A_PROFIT}}</div>
+		</td>
+		<td>
+			<div class="text-bold s-change" data-pct="{{S_PCT_RAW}}">{{A_CHANGE_PCT}}</div>
+		</td>
+	</tr>
+	<!--{{/SUMMARY}}-->
+	<!--{{else}}-->
+	<tr>
+		<td colspan="{{COLSPAN}}" class="empty-state-cell"> No transactions found </td>
+	</tr>
+	<!--{{/if}}-->
+	<!--{{/TRANSACTIONS}}-->
+</tbody>
+<tfoot>
+	<tr>
+		<th class="col-logo">Logo</th>
+		<th class="col-coin-date">
+			<span class="th-sort-btn" data-sort-key="coinDate">
+				<span class="th-sort-label">Coin / Date</span>
+				<span class="th-sort-arrows">
+					<span class="sort-arrow" data-sort-dir="asc">▲</span>
+					<span class="sort-arrow" data-sort-dir="desc">▼</span>
+				</span>
+			</span>
+		</th>
+		<th>
+			<div class="resizer"></div>
+			<span class="th-sort-btn" data-sort-key="holdings">
+				<span class="th-sort-label">Holdings</span>
+				<span class="th-sort-arrows">
+					<span class="sort-arrow" data-sort-dir="asc">▲</span>
+					<span class="sort-arrow" data-sort-dir="desc">▼</span>
+				</span>
+			</span>
+		</th>
+		<th>
+			<div class="resizer"></div>
+			<span class="th-sort-btn" data-sort-key="price">
+				<span class="th-sort-label" id="col-footer-price-label" data-tpl-root="PRICE_FOOTER">
+					{{PRICE_LABEL_FOOTER}}
+				</span>
+				<span class="th-sort-arrows">
+					<span class="sort-arrow" data-sort-dir="asc">▲</span>
+					<span class="sort-arrow" data-sort-dir="desc">▼</span>
+				</span>
+			</span>
+		</th>
+		<th class="col-cur-price" id="tf-cur-price">
+			<div class="resizer"></div>
+			<span class="th-sort-btn" data-sort-key="currentPrice">
+				<span class="th-sort-label">Cur. Price</span>
+				<span class="th-sort-arrows">
+					<span class="sort-arrow" data-sort-dir="asc">▲</span>
+					<span class="sort-arrow" data-sort-dir="desc">▼</span>
+				</span>
+			</span>
+		</th>
+		<th>
+			<div class="resizer"></div>
+			<span class="th-sort-btn" data-sort-key="profit">
+				<span class="th-sort-label">Profit/Loss</span>
+				<span class="th-sort-arrows">
+					<span class="sort-arrow" data-sort-dir="asc">▲</span>
+					<span class="sort-arrow" data-sort-dir="desc">▼</span>
+				</span>
+			</span>
+		</th>
+		<th>
+			<div class="resizer"></div>
+			<span class="th-sort-btn" data-sort-key="change">
+				<span class="th-sort-label">Change</span>
+				<span class="th-sort-arrows">
+					<span class="sort-arrow" data-sort-dir="asc">▲</span>
+					<span class="sort-arrow" data-sort-dir="desc">▼</span>
+				</span>
+			</span>
+		</th>
+	</tr>
+</tfoot>
+</table>
+<div class="table-footer-bar">
+	<button class="btn btn-blue btn-inline" id="btn-collapse-footer" data-tpl-root="COLLAPSE_FOOTER" onclick="toggleCollapse()">
+		{{COLLAPSE_LABEL_FOOTER}}
+	</button>
+	<button class="btn btn-orange btn-inline" onclick="openAddCoinModal()"> + COIN </button>
+</div>
+<div class="bottom-refresh-container"></div>
+</div>
+<!-- MODALS -->
+<div id="modal-create-portfolio" class="modal">
+	<div class="modal-content">
+		<div class="modal-header">
+			<span>Add a new portfolio</span>
+			<span class="close-btn" onclick="closeModal('modal-create-portfolio')">&times;</span>
+		</div>
+		<div class="modal-body">
+			<div class="form-group form-group-flex">
+				<div class="flex-2">
+					<label class="form-label">Name</label>
+					<input type="text" id="create-p-name" class="form-input" placeholder="Enter portfolio name"/>
+					<div class="form-hint-row">
+						<div class="form-hint"> For example: BTC/USD, ETH/SOL, ALTS/USD, and so on. </div>
+					</div>
+				</div>
+				<div class="flex-1">
+					<label class="form-label">Currency</label>
+					<select name="create-p-currency" class="form-input select-transparent" id="create-p-currency">
+						<option value="USD">USD</option>
+						<option value="EUR">EUR</option>
+						<option value="BTC">BTC</option>
+					</select>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="form-label">Description</label>
+				<input type="text" id="create-p-desc" class="form-input" placeholder="Portfolio description" maxlength="128"/>
+				<div class="form-hint-row">
+					<div class="form-hint">Max 128 characters.</div>
+					<div class="form-counter" id="create-p-desc-counter">0/128</div>
+				</div>
+			</div>
+		</div>
+		<div class="modal-footer modal-footer-right">
+			<button class="btn btn-orange" onclick="handleCreatePortfolio()"> CREATE </button>
+		</div>
+	</div>
+</div>
+<div id="modal-edit-portfolio" class="modal">
+	<div class="modal-content">
+		<div class="modal-header">
+			<span>Edit portfolio</span>
+			<span class="close-btn" onclick="closeModal('modal-edit-portfolio')">&times;</span>
+		</div>
+		<div class="modal-body">
+			<div class="form-group form-group-flex">
+				<div class="flex-2">
+					<label class="form-label">Name</label>
+					<input type="text" id="edit-p-name" class="form-input"/>
+				</div>
+				<div class="flex-1">
+					<label class="form-label">Currency</label>
+					<select name="edit-p-currency" class="form-input select-transparent" id="edit-p-currency">
+						<option value="USD">USD</option>
+						<option value="EUR">EUR</option>
+						<option value="BTC">BTC</option>
+					</select>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="form-label">Description</label>
+				<input type="text" id="edit-p-desc" class="form-input" maxlength="128"/>
+				<div class="form-hint-row">
+					<div class="form-hint">Max 128 characters.</div>
+					<div class="form-counter" id="edit-p-desc-counter">0/128</div>
+				</div>
+			</div>
+		</div>
+		<div class="modal-footer modal-footer-split">
+			<button class="btn btn-red" onclick="handleDeletePortfolio()"> DELETE </button>
+			<button class="btn btn-orange" onclick="handleUpdatePortfolio()"> UPDATE </button>
+		</div>
+	</div>
+</div>
+<div id="modal-add-coin" class="modal">
+	<div class="modal-content">
+		<div class="modal-header">
+			<span>Add Transaction</span>
+			<span class="close-btn" onclick="closeModal('modal-add-coin')">&times;</span>
+		</div>
+		<div class="modal-body">
+			<div class="modal-tabs">
+				<div class="modal-tab active">BUY</div>
+			</div>
+			<div class="form-group form-group-flex">
+				<div class="flex-2">
+					<label class="form-label">Coin Name</label>
+					<input type="text" id="add-coin-name" class="form-input" maxlength="32" placeholder="Start typing..." oninput="handleSearch('add-coin-name', 'suggestions-add')"/>
+					<ul id="suggestions-add" class="suggestions-list"></ul>
+				</div>
+				<div class="flex-1 suggestions-wide-right">
+					<label class="form-label">Symbol</label>
+					<input type="text" id="add-coin-symbol" class="form-input" maxlength="8" placeholder="e.g. BTC" oninput="
+                  handleSearchBySymbol(
+                    'add-coin-symbol',
+                    'suggestions-add-symbol',
+                  )
+                "/>
+					<ul id="suggestions-add-symbol" class="suggestions-list"></ul>
+				</div>
+				<div class="flex-1">
+					<label class="form-label">Currency</label>
+					<input type="text" id="add-coin-currency" class="form-input input-readonly" value="USD" readonly/>
+				</div>
+			</div>
+			<div class="form-group form-group-flex">
+				<div class="flex-1">
+					<label class="form-label">Buy Price <span class="form-hint inline-label-note">(per coin)</span>
+					</label>
+					<input type="number" id="add-coin-price" class="form-input" placeholder="0.00"/>
+				</div>
+				<div class="flex-1">
+					<label class="form-label">Amount</label>
+					<input type="number" id="add-coin-amount" class="form-input" placeholder="0.00"/>
+				</div>
+			</div>
+			<div class="form-group date-time-group">
+				<div>
+					<label class="form-label">Date</label>
+					<input type="date" id="add-coin-date" class="form-input"/>
+				</div>
+				<div class="time-picker">
+					<label class="form-label">Time</label>
+					<input type="text" id="add-coin-time" class="form-input time-input" placeholder="HH:MM" autocomplete="off"/>
+					<ul id="time-suggestions-add" class="time-suggestions"></ul>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="form-label">Wallet Address</label>
+				<input type="text" id="add-coin-wallet" class="form-input" maxlength="220" placeholder="Optional wallet address where coins are stored..."/>
+			</div>
+			<div class="form-group">
+				<label class="form-label">Notes</label>
+				<input type="text" id="add-coin-note" class="form-input" placeholder="Optional notes..."/>
+			</div>
+		</div>
+		<div class="modal-footer">
+			<button class="btn btn-orange" onclick="handleAddCoin()"> ADD TO PORTFOLIO </button>
+		</div>
+	</div>
+</div>
+<!-- NEW: SELL (BULK) MODAL -->
+<div id="modal-sell-coins" class="modal">
+	<div class="modal-content modal-sell-content">
+		<div class="modal-header">
+			<span>Sell Coins</span>
+			<span class="close-btn" onclick="closeModal('modal-sell-coins')">&times;</span>
+		</div>
+		<div class="modal-body">
+			<div class="form-group form-group-flex">
+				<div class="flex-1">
+					<label class="form-label">Sell Price <span class="form-hint inline-label-note">(per coin)</span>
+					</label>
+					<input type="number" id="bulk-sell-price" class="form-input" placeholder="0.00"/>
+				</div>
+				<div class="flex-1">
+					<!-- Перенесено: подсказка "Sell All" теперь справа от метки Sell Amount -->
+					<label class="form-label">Sell Amount <span id="bulk-sell-sell-all" class="form-hint inline-label-note form-hint-action">[sell all: 0]</span>
+					</label>
+					<input type="number" id="bulk-sell-amount" class="form-input" placeholder="0.00"/>
+				</div>
+			</div>
+			<div class="form-group date-time-group">
+				<div>
+					<label class="form-label">Sell Date</label>
+					<input type="date" id="bulk-sell-date" class="form-input"/>
+				</div>
+				<div class="time-picker">
+					<label class="form-label">Sell Time</label>
+					<input type="text" id="bulk-sell-time" class="form-input time-input" placeholder="HH:MM" autocomplete="off"/>
+					<ul id="time-suggestions-bulk-sell" class="time-suggestions"></ul>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="form-label">Sell Notes</label>
+				<input type="text" id="bulk-sell-note" class="form-input" placeholder="Reason for selling..."/>
+			</div>
+			<!-- NEW: hint + counter above table -->
+			<!-- Подсказка и счётчик на одной строке: убран inline display, используем flex из CSS (.sell-table-top) -->
+			<div class="sell-table-top">
+				<div class="sell-table-hint">Select coins to sell</div>
+				<div class="sell-table-counter" id="bulk-sell-counter"> 0 selected </div>
+			</div>
+			<!-- NEW: scroll table -->
+			<div class="sell-tx-table-wrap">
+				<table id="bulk-sell-transactions-table" class="sell-tx-table">
+					<thead>
+						<tr>
+							<th class="col-logo">Logo</th>
+							<th class="bulk-sell-coin-date-col">
+								<!-- Добавлен элемент сортировки (аналог основной таблицы).
+                     По клику будет сортировать транзакции по дате (поле date) -->
+								<span id="bulk-th-coindate" class="th-sort-btn" data-sort-key="coinDate">
+									<span class="th-sort-label">Coin / Date</span>
+									<span class="th-sort-arrows">
+										<span class="sort-arrow" data-sort-dir="asc">▲</span>
+										<span class="sort-arrow" data-sort-dir="desc">▼</span>
+									</span>
 								</span>
-							</span>
-						</th>
-						<th id="th-holdings">
-							<div class="resizer"></div>
-							<span class="th-sort-btn" data-sort-key="holdings">
-								<span class="th-sort-label">Holdings</span>
-								<span class="th-sort-arrows">
-									<span class="sort-arrow" data-sort-dir="asc">▲</span>
-									<span class="sort-arrow" data-sort-dir="desc">▼</span>
-								</span>
-							</span>
-						</th>
-						<th id="col-header-price">
-							<div class="resizer"></div>
-							<span class="th-sort-btn" data-sort-key="price">
-								<span class="th-sort-label" id="col-header-price-label">[[PRICE_INFO]]</span>
-								<span class="th-sort-arrows">
-									<span class="sort-arrow" data-sort-dir="asc">▲</span>
-									<span class="sort-arrow" data-sort-dir="desc">▼</span>
-								</span>
-							</span>
-						</th>
-						<th class="col-cur-price" id="th-cur-price">
-							<div class="resizer"></div>
-							<span class="th-sort-btn" data-sort-key="currentPrice">
-								<span class="th-sort-label">Cur. Price</span>
-								<span class="th-sort-arrows">
-									<span class="sort-arrow" data-sort-dir="asc">▲</span>
-									<span class="sort-arrow" data-sort-dir="desc">▼</span>
-								</span>
-							</span>
-						</th>
-						<th id="th-profit">
-							<div class="resizer"></div>
-							<span class="th-sort-btn" data-sort-key="profit">
-								<span class="th-sort-label">Profit/Loss</span>
-								<span class="th-sort-arrows">
-									<span class="sort-arrow" data-sort-dir="asc">▲</span>
-									<span class="sort-arrow" data-sort-dir="desc">▼</span>
-								</span>
-							</span>
-						</th>
-						<th id="th-change">
-							<div class="resizer"></div>
-							<span class="th-sort-btn" data-sort-key="change">
-								<span class="th-sort-label">Change</span>
-								<span class="th-sort-arrows">
-									<span class="sort-arrow" data-sort-dir="asc">▲</span>
-									<span class="sort-arrow" data-sort-dir="desc">▼</span>
-								</span>
-							</span>
-						</th>
-					</tr>
-				</thead>
-				<tbody id="transactions-table-body">
-					<!-- [COIN_ROW_BEGIN] -->
-					<tr id="template-coin-row">
+							</th>
+							<th>Buy Price</th>
+							<th>Total Value</th>
+							<th class="bulk-sell-use-col">Use</th>
+						</tr>
+					</thead>
+					<tbody id="bulk-sell-tbody" data-tpl-root>
+					<!--{{#BULK_SELL_ROWS}}-->
+					<tr data-txid="{{TX_ID}}" data-amount="{{RAW_AMOUNT}}">
 						<td>
-							<div class="coin-icon">[[ICON]]</div>
+							<div class="coin-icon">{{{ICON}}}</div>
 						</td>
 						<td>
-							<div class="coin-cell-content">
-								<div class="coin-info-block">
-									<span class="coin-name">[[COINNAME]]</span>
-									<span class="coin-date">[[DATE]]</span>
-								</div>
-								<div class="coin-ext-links">
-									<span class="coin-link-slot">[[WWW_URL]]</span>
-									<span class="coin-link-slot">[[GITHUB_URL]]</span>
-									<span class="coin-link-slot">[[EXPLORER_URL]]</span>
-								</div>
-								<button class="btn-table-edit t-btn-edit">EDIT</button>
+							<div class="coin-info-block">
+								<span class="coin-name">{{COINNAME}}</span>
+								<span class="coin-date">{{DATE}}</span>
 							</div>
 						</td>
 						<td>
-							<div class="text-bold">[[AMOUNT]] [[SYMBOL]]</div>
-							<span class="sub-value">[[MARKET_PRICE]]</span>
+							<div class="text-bold">{{BUY_PRICE}}</div>
+							<span class="sub-value">{{TOTAL_BUY_PRICE}}</span>
 						</td>
 						<td>
-							<div class="text-bold">[[PRICE]]</div>
-							<span class="sub-value">[[TOTAL_PRICE]]</span>
-						</td>
-						<td class="col-cur-price">
-							<div class="text-bold">[[CUR_PRICE]]</div>
+							<div class="text-bold">{{AMOUNT}}</div>
+							<span class="sub-value">{{LAST_PRICE}}</span>
 						</td>
 						<td>
-							<div class="text-bold t-profit">[[PROFIT]]</div>
-						</td>
-						<td>
-							<div class="text-bold t-change">[[CHANGE_%]]</div>
+							<input type="checkbox" class="bs-check"/>
 						</td>
 					</tr>
-					<!-- [COIN_ROW_END] -->
-					<!-- [SUMMARY_ROW_BEGIN] -->
-					<tr id="template-summary-row" class="summary-row">
-						<td>
-							<div class="coin-icon">
-									<img src="images/coinman.dev.webp" alt="COINMAN"/>
-							</div>
-						</td>
-						<td>
-							<div class="coin-cell-content">
-								<div class="coin-info-block">
-									<span class="coin-name">TOTAL</span>
-									<span class="coin-date">Total number of coins purchased:
-                                        [[TOTAL_COINS]], Total transactions:
-                                        [[TOTAL_TRN]]</span>
-								</div>
-							</div>
-						</td>
-						<td>
-							<div class="text-bold">[[TOTAL_AMOUNT]] COINS</div>
-							<span class="sub-value">[[A_MARKET_PRICE]]</span>
-						</td>
-						<td>
-							<div class="text-bold">[[AVG_PRICE]]</div>
-							<span class="sub-value">[[A_TOTAL_PRICE]]</span>
-						</td>
-						<td class="col-cur-price">
-							<div class="text-bold">[[A_CUR_PRICE]]</div>
-						</td>
-						<td>
-							<div class="text-bold s-profit">[[A_PROFIT]]</div>
-						</td>
-						<td>
-							<div class="text-bold s-change">[[A_CHANGE_%]]</div>
-						</td>
-					</tr>
-					<!-- [SUMMARY_ROW_END] -->
-					<!-- [EMPTY_ROW_BEGIN] -->
-					<tr id="template-empty-row">
-						<td id="empty-row-colspan-td" colspan="7" class="empty-state-cell">
-                            No transactions found
-                        </td>
-					</tr>
-					<!-- [EMPTY_ROW_END] -->
+					<!--{{/BULK_SELL_ROWS}}-->
 				</tbody>
 			</table>
-			<div class="table-footer-bar">
-				<button class="btn btn-blue btn-inline" id="btn-collapse-footer" onclick="toggleCollapse()">
-                    COLLAPSE
-                </button>
-				<button class="btn btn-orange btn-inline" onclick="openAddCoinModal()">
-                    + COIN
-                </button>
-			</div>
-			<div class="bottom-refresh-container">
-			</div>
-		</div>
-		<!-- MODALS -->
-		<div id="modal-create-portfolio" class="modal">
-			<div class="modal-content">
-				<div class="modal-header">
-					<span>Add a new portfolio</span>
-					<span class="close-btn" onclick="closeModal('modal-create-portfolio')">&times;</span>
-				</div>
-				<div class="modal-body">
-					<div class="form-group form-group-flex">
-						<div class="flex-2">
-							<label class="form-label">Name</label>
-							<input type="text" id="create-p-name" class="form-input" placeholder="Enter portfolio name"/>
-							<div class="form-hint-row">
-								<div class="form-hint">
-                                    For example: BTC/USD, ETH/SOL, ALTS/USD, and
-                                    so on.
-                                </div>
-							</div>
-						</div>
-						<div class="flex-1">
-							<label class="form-label">Currency</label>
-							<select name="create-p-currency" class="form-input select-transparent" id="create-p-currency">
-								<option value="USD">USD</option>
-								<option value="EUR">EUR</option>
-								<option value="BTC">BTC</option>
-							</select>
-						</div>
-					</div>
-					<div class="form-group">
-						<label class="form-label">Description</label>
-						<input type="text" id="create-p-desc" class="form-input" placeholder="Portfolio description" maxlength="128"/>
-						<div class="form-hint-row">
-							<div class="form-hint">Max 128 characters.</div>
-							<div class="form-counter" id="create-p-desc-counter">
-                                0/128
-                            </div>
-						</div>
-					</div>
-				</div>
-				<div class="modal-footer modal-footer-right">
-					<button class="btn btn-orange" onclick="handleCreatePortfolio()">
-                        CREATE
-                    </button>
-				</div>
-			</div>
-		</div>
-		<div id="modal-edit-portfolio" class="modal">
-			<div class="modal-content">
-				<div class="modal-header">
-					<span>Edit portfolio</span>
-					<span class="close-btn" onclick="closeModal('modal-edit-portfolio')">&times;</span>
-				</div>
-				<div class="modal-body">
-					<div class="form-group form-group-flex">
-						<div class="flex-2">
-							<label class="form-label">Name</label>
-							<input type="text" id="edit-p-name" class="form-input"/>
-						</div>
-						<div class="flex-1">
-							<label class="form-label">Currency</label>
-							<select name="edit-p-currency" class="form-input select-transparent" id="edit-p-currency">
-								<option value="USD">USD</option>
-								<option value="EUR">EUR</option>
-								<option value="BTC">BTC</option>
-							</select>
-						</div>
-					</div>
-					<div class="form-group">
-						<label class="form-label">Description</label>
-						<input type="text" id="edit-p-desc" class="form-input" maxlength="128"/>
-						<div class="form-hint-row">
-							<div class="form-hint">Max 128 characters.</div>
-							<div class="form-counter" id="edit-p-desc-counter">
-                                0/128
-                            </div>
-						</div>
-					</div>
-				</div>
-				<div class="modal-footer modal-footer-split">
-					<button class="btn btn-red" onclick="handleDeletePortfolio()">
-                        DELETE
-                    </button>
-					<button class="btn btn-orange" onclick="handleUpdatePortfolio()">
-                        UPDATE
-                    </button>
-				</div>
-			</div>
-		</div>
-		<div id="modal-add-coin" class="modal">
-			<div class="modal-content">
-				<div class="modal-header">
-					<span>Add Transaction</span>
-					<span class="close-btn" onclick="closeModal('modal-add-coin')">&times;</span>
-				</div>
-				<div class="modal-body">
-					<div class="modal-tabs">
-						<div class="modal-tab active">BUY</div>
-					</div>
-					<div class="form-group form-group-flex">
-						<div class="flex-2">
-							<label class="form-label">Coin Name</label>
-							<input type="text" id="add-coin-name" class="form-input" maxlength="32" placeholder="Start typing..." oninput="
-                                    handleSearch(
-                                        'add-coin-name',
-                                        'suggestions-add',
-                                    )
-                                "/>
-							<ul id="suggestions-add" class="suggestions-list"/>
-						</div>
-						<div class="flex-1 suggestions-wide-right">
-							<label class="form-label">Symbol</label>
-							<input type="text" id="add-coin-symbol" class="form-input" maxlength="8" placeholder="e.g. BTC" oninput="
-                                    handleSearchBySymbol(
-                                        'add-coin-symbol',
-                                        'suggestions-add-symbol',
-                                    )
-                                "/>
-							<ul id="suggestions-add-symbol" class="suggestions-list"/>
-						</div>
-						<div class="flex-1">
-							<label class="form-label">Currency</label>
-							<input type="text" id="add-coin-currency" class="form-input input-readonly" value="USD" readonly/>
-						</div>
-					</div>
-					<div class="form-group form-group-flex">
-						<div class="flex-1">
-							<label class="form-label">Buy Price
-                                <span class="form-hint inline-label-note">(per coin)</span>
-							</label>
-							<input type="number" id="add-coin-price" class="form-input" placeholder="0.00"/>
-						</div>
-						<div class="flex-1">
-							<label class="form-label">Amount</label>
-							<input type="number" id="add-coin-amount" class="form-input" placeholder="0.00"/>
-						</div>
-					</div>
-					<div class="form-group date-time-group">
-						<div>
-							<label class="form-label">Date</label>
-							<input type="date" id="add-coin-date" class="form-input"/>
-						</div>
-						<div class="time-picker">
-							<label class="form-label">Time</label>
-							<input type="text" id="add-coin-time" class="form-input time-input" placeholder="HH:MM" autocomplete="off"/>
-							<ul id="time-suggestions-add" class="time-suggestions"/>
-						</div>
-					</div>
-					<div class="form-group">
-						<label class="form-label">Wallet Address</label>
-						<input type="text" id="add-coin-wallet" class="form-input" maxlength="220" placeholder="Optional wallet address where coins are stored..."/>
-					</div>
-					<div class="form-group">
-						<label class="form-label">Notes</label>
-						<input type="text" id="add-coin-note" class="form-input" placeholder="Optional notes..."/>
-					</div>
-				</div>
-				<div class="modal-footer">
-					<button class="btn btn-orange" onclick="handleAddCoin()">
-                        ADD TO PORTFOLIO
-                    </button>
-				</div>
-			</div>
-		</div>
-		<!-- NEW: SELL (BULK) MODAL -->
-		<div id="modal-sell-coins" class="modal">
-			<div class="modal-content modal-sell-content">
-				<div class="modal-header">
-					<span>Sell Coins</span>
-					<span class="close-btn" onclick="closeModal('modal-sell-coins')">&times;</span>
-				</div>
-				<div class="modal-body">
-					<div class="form-group form-group-flex">
-						<div class="flex-1">
-							<label class="form-label">Sell Price
-                                <span class="form-hint inline-label-note">(per coin)</span>
-							</label>
-							<input type="number" id="bulk-sell-price" class="form-input" placeholder="0.00"/>
-						</div>
-						<div class="flex-1">
-							<!-- Перенесено: подсказка "Sell All" теперь справа от метки Sell Amount -->
-							<label class="form-label">Sell Amount
-                                <span id="bulk-sell-sell-all" class="form-hint inline-label-note form-hint-action">[sell all: 0]</span>
-							</label>
-							<input type="number" id="bulk-sell-amount" class="form-input" placeholder="0.00"/>
-						</div>
-					</div>
-					<div class="form-group date-time-group">
-						<div>
-							<label class="form-label">Sell Date</label>
-							<input type="date" id="bulk-sell-date" class="form-input"/>
-						</div>
-						<div class="time-picker">
-							<label class="form-label">Sell Time</label>
-							<input type="text" id="bulk-sell-time" class="form-input time-input" placeholder="HH:MM" autocomplete="off"/>
-							<ul id="time-suggestions-bulk-sell" class="time-suggestions"/>
-						</div>
-					</div>
-					<div class="form-group">
-						<label class="form-label">Sell Notes</label>
-						<input type="text" id="bulk-sell-note" class="form-input" placeholder="Reason for selling..."/>
-					</div>
-					<!-- NEW: hint + counter above table -->
-					<!-- Подсказка и счётчик на одной строке: убран inline display, используем flex из CSS (.sell-table-top) -->
-					<div class="sell-table-top">
-						<div class="sell-table-hint">Select coins to sell</div>
-						<div class="sell-table-counter" id="bulk-sell-counter">
-                            0 selected
-                        </div>
-					</div>
-					<!-- NEW: scroll table -->
-					<div class="sell-tx-table-wrap">
-						<table id="bulk-sell-transactions-table" class="sell-tx-table">
-							<thead>
-								<tr>
-									<th class="col-logo">Logo</th>
-									<th class="bulk-sell-coin-date-col">
-										<!-- Добавлен элемент сортировки (аналог основной таблицы).
-                     По клику будет сортировать транзакции по дате (поле date) -->
-										<span id="bulk-th-coindate" class="th-sort-btn" data-sort-key="coinDate">
-											<span class="th-sort-label">Coin / Date</span>
-											<span class="th-sort-arrows">
-												<span class="sort-arrow" data-sort-dir="asc">▲</span>
-												<span class="sort-arrow" data-sort-dir="desc">▼</span>
-											</span>
-										</span>
-									</th>
-									<th>Buy Price</th>
-									<th>Total Value</th>
-									<th class="bulk-sell-use-col">Use</th>
-								</tr>
-							</thead>
-							<tbody id="bulk-sell-tbody">
-								<!-- [BULK_SELL_ROW_BEGIN] -->
-								<tr id="template-bulk-sell-row">
-									<td>
-										<div class="coin-icon">[[ICON]]</div>
-									</td>
-									<td>
-										<div class="coin-info-block">
-											<span class="coin-name">[[COINNAME]]</span>
-											<span class="coin-date">[[DATE]]</span>
-										</div>
-									</td>
-									<td>
-										<div class="text-bold">
-                                            [[BUY_PRICE]]
-                                        </div>
-										<span class="sub-value">[[TOTAL_BUY_PRICE]]</span>
-									</td>
-									<td>
-										<div class="text-bold">[[AMOUNT]]</div>
-										<span class="sub-value">[[LAST_PRICE]]</span>
-									</td>
-									<td>
-										<input type="checkbox" class="bs-check"/>
-									</td>
-								</tr>
-															<!-- [BULK_SELL_ROW_END] -->
-</tbody>
-						</table>
-					</div>
-				</div>
-				<div class="modal-footer modal-footer-split">
-					<button class="btn btn-outline" onclick="closeModal('modal-sell-coins')">
-                        CANCEL
-                    </button>
-					<button class="btn btn-orange" onclick="handleBulkSell()">
-                        SELL
-                    </button>
-				</div>
-			</div>
-		</div>
-		<div id="modal-clear-database" class="modal">
-			<div class="modal-content">
-				<div class="modal-header">
-					<span>Clear Coin Database</span>
-					<span class="close-btn" onclick="closeModal('modal-clear-database')">&times;</span>
-				</div>
-				<div class="modal-body">
-                    Are you sure you want to delete the entire coin database?
-                </div>
-				<div class="modal-footer modal-footer-split">
-					<button class="btn btn-red" onclick="handleClearDatabase()">DELETE ALL</button>
-					<button class="btn btn-outline" onclick="closeModal('modal-clear-database')">CANCEL</button>
-				</div>
-			</div>
-		</div>
-		<div id="modal-edit-coin" class="modal">
-			<div class="modal-content">
-				<div class="modal-header">
-					<span>Edit Transaction</span>
-					<span class="close-btn" onclick="closeModal('modal-edit-coin')">&times;</span>
-				</div>
-				<div class="modal-body">
-					<div class="modal-tabs">
-						<div id="tab-btn-buy" class="modal-tab active" onclick="switchEditTab('buy')">
-                            BUY
-                        </div>
-						<div id="tab-btn-sell" class="modal-tab" onclick="switchEditTab('sell')">
-                            SELL
-                        </div>
-					</div>
-					<div class="form-group form-group-flex">
-						<div class="flex-2">
-							<label class="form-label">Coin Name</label>
-							<input type="text" id="edit-coin-name" class="form-input" maxlength="32" oninput="
-                                    handleSearch(
-                                        'edit-coin-name',
-                                        'suggestions-edit',
-                                    )
-                                "/>
-							<ul id="suggestions-edit" class="suggestions-list"/>
-						</div>
-						<div class="flex-1">
-							<label class="form-label">Symbol</label>
-							<input type="text" id="edit-coin-symbol" class="form-input" maxlength="8"/>
-						</div>
-						<div class="flex-1">
-							<label class="form-label">Currency</label>
-							<input type="text" id="edit-coin-currency" class="form-input input-readonly" readonly/>
-						</div>
-					</div>
-					<div id="edit-section-buy">
-						<div class="form-group form-group-flex">
-							<div class="flex-1">
-								<label class="form-label">Buy Price
-                                    <span class="form-hint inline-label-note">(per coin)</span>
-								</label>
-								<input type="number" id="edit-coin-price" class="form-input"/>
-							</div>
-							<div class="flex-1">
-								<label class="form-label">Amount</label>
-								<input type="number" id="edit-coin-amount" class="form-input"/>
-							</div>
-						</div>
-						<div class="form-group date-time-group">
-							<div>
-								<label class="form-label">Date</label>
-								<input type="date" id="edit-coin-date" class="form-input"/>
-							</div>
-							<div class="time-picker">
-								<label class="form-label">Time</label>
-								<input type="text" id="edit-coin-time" class="form-input time-input" placeholder="HH:MM" autocomplete="off"/>
-								<ul id="time-suggestions-edit" class="time-suggestions"/>
-							</div>
-						</div>
-						<div class="form-group">
-							<label class="form-label">Wallet Address</label>
-							<input type="text" id="edit-coin-wallet" class="form-input" maxlength="220" placeholder="Optional wallet address where coins are stored..."/>
-						</div>
-						<div class="form-group">
-							<label class="form-label">Notes</label>
-							<input type="text" id="edit-coin-note" class="form-input"/>
-						</div>
-					</div>
-					<div id="edit-section-sell" class="hidden">
-						<div class="form-group form-group-flex">
-							<div class="flex-1">
-								<label class="form-label">Sell Price
-                                    <span class="form-hint inline-label-note">(per coin)</span>
-								</label>
-								<input type="number" id="sell-coin-price" class="form-input" placeholder="0.00"/>
-							</div>
-							<div class="flex-1">
-								<label class="form-label">Sell Amount</label>
-								<input type="number" id="sell-coin-amount" class="form-input" placeholder="0.00"/>
-							</div>
-						</div>
-						<div class="form-group date-time-group">
-							<div>
-								<label class="form-label">Sell Date</label>
-								<input type="date" id="sell-coin-date" class="form-input"/>
-							</div>
-							<div class="time-picker">
-								<label class="form-label">Sell Time</label>
-								<input type="text" id="sell-coin-time" class="form-input time-input" placeholder="HH:MM" autocomplete="off"/>
-								<ul id="time-suggestions-sell" class="time-suggestions"/>
-							</div>
-						</div>
-						<div class="form-group">
-							<label class="form-label">Sell Notes</label>
-							<input type="text" id="sell-coin-note" class="form-input" placeholder="Reason for selling..."/>
-						</div>
-					</div>
-				</div>
-				<div class="modal-footer modal-footer-split">
-					<button class="btn btn-red" onclick="handleDeleteTransaction()">
-                        DELETE
-                    </button>
-					<button id="btn-edit-action" class="btn btn-orange" onclick="handleEditModalAction()">
-                        UPDATE
-                    </button>
-				</div>
-			</div>
-		</div>
-
-		<div id="modal-about" class="modal modal-sm">
-			<div class="modal-content">
-				<div class="modal-header">
-					<span>About CoinMan</span>
-					<span class="close-btn" onclick="closeModal('modal-about')">&times;</span>
-				</div>
-				<div class="modal-body about-body">
-					<img src="images/coinman.dev.webp" alt="Logo" class="about-logo"/>
-					<h2 class="about-title">CoinMan Portfolio Tracker</h2>
-					<p class="about-subtitle" id="about-version">[[VERSION_APP]]</p>
-					<p class="about-text">
-						CoinMan Portfolio Tracker is a lightweight and secure desktop application designed to track and manage your cryptocurrency portfolios locally. Your data is stored securely on your machine.
-					</p>
-					<a href="#" onclick="AppBridge.invoke('open_url', { url: 'https://github.com/coinman-dev/portfolio' }); return false;" class="about-link">github.com/coinman-dev/portfolio</a>
-					<p class="about-credits">
-						Market data powered by <a href="#" onclick="AppBridge.invoke('open_url', { url: 'https://www.coingecko.com/' }); return false;">CoinGecko API</a><br/>
-						Coin catalog &amp; logos provided by <a href="#" onclick="AppBridge.invoke('open_url', { url: 'https://coinmarketcap.com/' }); return false;">CoinMarketCap</a><br/>
-						This software is for informational purposes only.<br/>
-						Not financial advice. Licensed under MIT.
-					</p>
-				</div>
-				<div class="modal-footer">
-					<button class="btn btn-outline" onclick="closeModal('modal-about')">
-                        CLOSE
-                    </button>
-				</div>
-			</div>
-		</div>
-
-	<div id="modal-update-available" class="modal modal-sm">
-		<div class="modal-content">
-			<div class="modal-header">
-				<span>Update Available</span>
-				<span class="close-btn" onclick="closeModal('modal-update-available')">&times;</span>
-			</div>
-			<div class="modal-body about-body">
-				<p>New version of CoinMan Portfolio Tracker is available:</p>
-				<div id="update-info"></div>
-				<p>Would you like to go to the download page?</p>
-			</div>
-			<div class="modal-footer modal-footer-split">
-				<button class="btn btn-outline" onclick="closeModal('modal-update-available')">LATER</button>
-				<button class="btn btn-orange" onclick="UpdateChecker.openRelease(); closeModal('modal-update-available')">DOWNLOAD</button>
-			</div>
 		</div>
 	</div>
-
-	<div id="modal-open-database" class="modal modal-wide">
-		<div class="modal-content">
-			<div class="modal-header">
-				<span>Select Database</span>
-				<span class="close-btn" onclick="closeModal('modal-open-database')">&times;</span>
-			</div>
-			<div class="modal-body modal-body-flush">
-				<div class="db-selector-dir" id="db-selector-dir"></div>
-				<div class="db-selector-list" id="db-selector-list"></div>
-			</div>
-			<div class="modal-footer modal-footer-split">
-				<button class="btn btn-outline" onclick="closeModal('modal-open-database')">CANCEL</button>
-				<button class="btn btn-orange" onclick="handleOpenSelectedDatabase()">OPEN</button>
-			</div>
+	<div class="modal-footer modal-footer-split">
+		<button class="btn btn-outline" onclick="closeModal('modal-sell-coins')"> CANCEL </button>
+		<button class="btn btn-orange" onclick="handleBulkSell()"> SELL </button>
+	</div>
+</div>
+</div>
+<div id="modal-clear-database" class="modal">
+	<div class="modal-content">
+		<div class="modal-header">
+			<span>Clear Coin Database</span>
+			<span class="close-btn" onclick="closeModal('modal-clear-database')">&times;</span>
+		</div>
+		<div class="modal-body"> Are you sure you want to delete the entire coin database? </div>
+		<div class="modal-footer modal-footer-split">
+			<button class="btn btn-red" onclick="handleClearDatabase()"> DELETE ALL </button>
+			<button class="btn btn-outline" onclick="closeModal('modal-clear-database')"> CANCEL </button>
 		</div>
 	</div>
-
-		<div class="ie-statusbar">
-			<div class="ie-statusbar-panel ie-statusbar-panel-db" id="db-status">Database file: default.json</div>
-			<div class="ie-statusbar-divider"></div>
-			<div class="ie-statusbar-panel ie-statusbar-panel-enc" id="enc-status"><span id="enc-lock-icon" class="enc-lock-icon">&#128275;</span><span id="enc-label">Not encrypted</span></div>
-			<div class="ie-statusbar-divider"></div>
-			<div class="ie-statusbar-panel" id="market-status">Market data: waiting for auto update...</div>
-			<div class="ie-statusbar-panel ie-statusbar-panel-update" id="update-status" style="display:none;" onclick="UpdateChecker.openRelease()">Update available</div>
+</div>
+<div id="modal-edit-coin" class="modal">
+	<div class="modal-content">
+		<div class="modal-header">
+			<span>Edit Transaction</span>
+			<span class="close-btn" onclick="closeModal('modal-edit-coin')">&times;</span>
 		</div>
-
-		<!-- MODAL: Unlock encrypted database -->
-	<div id="modal-unlock-database" class="modal modal-md">
-		<div class="modal-content">
-			<div class="modal-header">
-				<span>&#128274; Unlock Database</span>
+		<div class="modal-body">
+			<div class="modal-tabs">
+				<div id="tab-btn-buy" class="modal-tab active" onclick="switchEditTab('buy')"> BUY </div>
+				<div id="tab-btn-sell" class="modal-tab" onclick="switchEditTab('sell')"> SELL </div>
 			</div>
-			<div class="modal-body">
-				<p class="modal-description">
-					This database is encrypted. Enter the password to open it.
-				</p>
-				<div class="form-group form-group-last">
-					<label class="form-label">Password</label>
-					<input type="password" id="unlock-db-password" class="form-input" placeholder="Enter password..." onkeydown="handleUnlockKeydown(event)"/>
+			<div class="form-group form-group-flex">
+				<div class="flex-2">
+					<label class="form-label">Coin Name</label>
+					<input type="text" id="edit-coin-name" class="form-input" maxlength="32" oninput="handleSearch('edit-coin-name', 'suggestions-edit')"/>
+					<ul id="suggestions-edit" class="suggestions-list"></ul>
 				</div>
-				<div id="unlock-db-error" class="enc-modal-error hidden">Wrong password. Please try again.</div>
-			</div>
-			<div class="modal-footer modal-footer-right">
-				<button class="btn btn-orange" onclick="handleDoUnlockDatabase()">UNLOCK</button>
-			</div>
-		</div>
-	</div>
-
-	<!-- MODAL: Save database as -->
-	<div id="modal-save-db-as" class="modal modal-md">
-		<div class="modal-content">
-			<div class="modal-header">
-				<span>&#128190; Save Database As...</span>
-				<span class="close-btn" onclick="closeModal('modal-save-db-as')">&times;</span>
-			</div>
-			<div class="modal-body">
-				<p class="modal-description">
-					Save a copy of the current database under a new name. The copy will be created in the same database folder.
-				</p>
-				<div class="form-group form-group-last">
-					<label class="form-label">New database name</label>
-					<input type="text" id="save-db-as-name" class="form-input" placeholder="Enter name..." onkeydown="handleSaveDbAsKeydown(event)"/>
+				<div class="flex-1">
+					<label class="form-label">Symbol</label>
+					<input type="text" id="edit-coin-symbol" class="form-input" maxlength="8"/>
 				</div>
-				<div id="save-db-as-error" class="enc-modal-error hidden"></div>
-			</div>
-			<div class="modal-footer modal-footer-split">
-				<button class="btn btn-outline" onclick="closeModal('modal-save-db-as')">CANCEL</button>
-				<button class="btn btn-orange" onclick="handleDoSaveDbAs()">SAVE</button>
-			</div>
-		</div>
-	</div>
-
-	<!-- MODAL: Encrypt database -->
-	<div id="modal-encrypt-database" class="modal modal-md">
-		<div class="modal-content">
-			<div class="modal-header">
-				<span>&#128274; Encrypt Database</span>
-				<span class="close-btn" onclick="closeModal('modal-encrypt-database')">&times;</span>
-			</div>
-			<div class="modal-body">
-				<p class="modal-description">
-					The database will be encrypted with AES-256. You will need this password every time you open the file.
-					<strong class="text-accent"> Do not lose it — there is no recovery.</strong>
-				</p>
-				<div class="form-group">
-					<label class="form-label">Password</label>
-					<input type="password" id="encrypt-db-password" class="form-input" placeholder="Enter password..." onkeydown="handleEncryptKeydown(event)"/>
+				<div class="flex-1">
+					<label class="form-label">Currency</label>
+					<input type="text" id="edit-coin-currency" class="form-input input-readonly" readonly/>
 				</div>
-				<div class="form-group form-group-last">
-					<label class="form-label">Confirm password</label>
-					<input type="password" id="encrypt-db-confirm" class="form-input" placeholder="Repeat password..." onkeydown="handleEncryptKeydown(event)"/>
+			</div>
+			<div id="edit-section-buy">
+				<div class="form-group form-group-flex">
+					<div class="flex-1">
+						<label class="form-label">Buy Price <span class="form-hint inline-label-note">(per coin)</span>
+						</label>
+						<input type="number" id="edit-coin-price" class="form-input"/>
+					</div>
+					<div class="flex-1">
+						<label class="form-label">Amount</label>
+						<input type="number" id="edit-coin-amount" class="form-input"/>
+					</div>
 				</div>
-				<div id="encrypt-db-error" class="enc-modal-error hidden"></div>
-			</div>
-			<div class="modal-footer modal-footer-split">
-				<button class="btn btn-outline" onclick="closeModal('modal-encrypt-database')">CANCEL</button>
-				<button class="btn btn-orange" onclick="handleDoEncryptDatabase()">ENCRYPT</button>
-			</div>
-		</div>
-	</div>
-
-	<!-- MODAL: Decrypt database -->
-	<div id="modal-decrypt-database" class="modal modal-md">
-		<div class="modal-content">
-			<div class="modal-header">
-				<span>&#128275; Decrypt Database</span>
-				<span class="close-btn" onclick="closeModal('modal-decrypt-database')">&times;</span>
-			</div>
-			<div class="modal-body">
-				<p class="modal-description">
-					The database will be decrypted and saved as plain JSON.
-					<strong class="text-accent"> Make sure you are in a secure environment.</strong>
-				</p>
-				<div class="form-group form-group-last">
-					<label class="form-label">Current password</label>
-					<input type="password" id="decrypt-db-password" class="form-input" placeholder="Enter current password..." onkeydown="handleDecryptKeydown(event)"/>
-				</div>
-				<div id="decrypt-db-error" class="enc-modal-error hidden"></div>
-			</div>
-			<div class="modal-footer modal-footer-split">
-				<button class="btn btn-outline" onclick="closeModal('modal-decrypt-database')">CANCEL</button>
-				<button class="btn btn-orange" onclick="handleDoDecryptDatabase()">DECRYPT</button>
-			</div>
-		</div>
-	</div>
-
-	<!-- MODAL: Change password -->
-	<div id="modal-change-password" class="modal modal-md">
-		<div class="modal-content">
-			<div class="modal-header">
-				<span>&#128274; Change Password</span>
-				<span class="close-btn" onclick="closeModal('modal-change-password')">&times;</span>
-			</div>
-			<div class="modal-body">
-				<div class="form-group">
-					<label class="form-label">Current password</label>
-					<input type="password" id="change-pw-current" class="form-input" placeholder="Enter current password..." onkeydown="handleChangePwKeydown(event)"/>
+				<div class="form-group date-time-group">
+					<div>
+						<label class="form-label">Date</label>
+						<input type="date" id="edit-coin-date" class="form-input"/>
+					</div>
+					<div class="time-picker">
+						<label class="form-label">Time</label>
+						<input type="text" id="edit-coin-time" class="form-input time-input" placeholder="HH:MM" autocomplete="off"/>
+						<ul id="time-suggestions-edit" class="time-suggestions"></ul>
+					</div>
 				</div>
 				<div class="form-group">
-					<label class="form-label">New password</label>
-					<input type="password" id="change-pw-new" class="form-input" placeholder="Enter new password..." onkeydown="handleChangePwKeydown(event)"/>
+					<label class="form-label">Wallet Address</label>
+					<input type="text" id="edit-coin-wallet" class="form-input" maxlength="220" placeholder="Optional wallet address where coins are stored..."/>
 				</div>
-				<div class="form-group form-group-last">
-					<label class="form-label">Confirm new password</label>
-					<input type="password" id="change-pw-confirm" class="form-input" placeholder="Repeat new password..." onkeydown="handleChangePwKeydown(event)"/>
+				<div class="form-group">
+					<label class="form-label">Notes</label>
+					<input type="text" id="edit-coin-note" class="form-input"/>
 				</div>
-				<div id="change-pw-error" class="enc-modal-error hidden"></div>
 			</div>
-			<div class="modal-footer modal-footer-split">
-				<button class="btn btn-outline" onclick="closeModal('modal-change-password')">CANCEL</button>
-				<button class="btn btn-orange" onclick="handleDoChangePassword()">CHANGE PASSWORD</button>
-			</div>
-		</div>
-	</div>
-
-	<div id="modal-unsupported-encryption" class="modal modal-lg">
-		<div class="modal-content">
-			<div class="modal-header">
-				<span>&#128274; Unsupported Encryption</span>
-			</div>
-			<div class="modal-body">
-				<p id="unsupported-enc-name" class="error-filename"></p>
-				<p class="error-text">This database was encrypted with a newer encryption version (<strong id="unsupported-enc-version"></strong>) that this version of CoinMan does not support.</p>
-				<p class="error-hint">Please update CoinMan to the latest version to open this file.</p>
-				<p class="error-hint">The file has <strong>not</strong> been modified.</p>
-			</div>
-			<div class="modal-footer">
-				<button class="btn btn-outline" onclick="closeUnsupportedEncryptionModal()">OK</button>
-			</div>
-		</div>
-	</div>
-
-	<div id="modal-db-unreadable" class="modal modal-lg">
-		<div class="modal-content">
-			<div class="modal-header">
-				<span>&#9888; Cannot Read Database File</span>
-			</div>
-			<div class="modal-body">
-				<p id="db-unreadable-name" class="error-filename"></p>
-				<p class="error-text">The file format is not recognized. This may not be a CoinMan database file, or the file may be corrupted.</p>
-				<p class="error-hint">The file has <strong>not</strong> been modified.</p>
-			</div>
-			<div class="modal-footer">
-				<button class="btn btn-outline" onclick="closeModal('modal-db-unreadable')">OK</button>
+			<div id="edit-section-sell" class="hidden">
+				<div class="form-group form-group-flex">
+					<div class="flex-1">
+						<label class="form-label">Sell Price <span class="form-hint inline-label-note">(per coin)</span>
+						</label>
+						<input type="number" id="sell-coin-price" class="form-input" placeholder="0.00"/>
+					</div>
+					<div class="flex-1">
+						<label class="form-label">Sell Amount</label>
+						<input type="number" id="sell-coin-amount" class="form-input" placeholder="0.00"/>
+					</div>
+				</div>
+				<div class="form-group date-time-group">
+					<div>
+						<label class="form-label">Sell Date</label>
+						<input type="date" id="sell-coin-date" class="form-input"/>
+					</div>
+					<div class="time-picker">
+						<label class="form-label">Sell Time</label>
+						<input type="text" id="sell-coin-time" class="form-input time-input" placeholder="HH:MM" autocomplete="off"/>
+						<ul id="time-suggestions-sell" class="time-suggestions"></ul>
+					</div>
+				</div>
+				<div class="form-group">
+					<label class="form-label">Sell Notes</label>
+					<input type="text" id="sell-coin-note" class="form-input" placeholder="Reason for selling..."/>
+				</div>
 			</div>
 		</div>
+		<div class="modal-footer modal-footer-split">
+			<button class="btn btn-red" onclick="handleDeleteTransaction()"> DELETE </button>
+			<button id="btn-edit-action" class="btn btn-orange" onclick="handleEditModalAction()"> UPDATE </button>
+		</div>
 	</div>
-
-	<script src="index.js"></script>
-	</body>
+</div>
+<div id="modal-about" class="modal modal-sm">
+	<div class="modal-content">
+		<div class="modal-header">
+			<span>About CoinMan</span>
+			<span class="close-btn" onclick="closeModal('modal-about')">&times;</span>
+		</div>
+		<div class="modal-body about-body">
+			<img src="images/coinman.dev.webp" alt="Logo" class="about-logo"/>
+			<h2 class="about-title">CoinMan Portfolio Tracker</h2>
+			<p class="about-subtitle" id="about-version" data-tpl-root="APP_VERSION">
+			{{VERSION_APP}}
+		</p>
+		<p class="about-text"> CoinMan Portfolio Tracker is a lightweight and secure desktop
+          application designed to track and manage your cryptocurrency
+          portfolios locally. Your data is stored securely on your machine. </p>
+		<a href="#" onclick="
+              AppBridge.invoke('open_url', {
+                url: 'https://github.com/coinman-dev/portfolio',
+              });
+              return false;
+            " class="about-link">github.com/coinman-dev/portfolio</a>
+		<p class="about-credits"> Market data powered by <a href="#" onclick="
+                AppBridge.invoke('open_url', {
+                  url: 'https://www.coingecko.com/',
+                });
+                return false;
+              ">CoinGecko API</a>
+			<br/>
+          Coin catalog &amp; logos provided by <a href="#" onclick="
+                AppBridge.invoke('open_url', {
+                  url: 'https://coinmarketcap.com/',
+                });
+                return false;
+              ">CoinMarketCap</a>
+			<br/>
+          This software is for informational purposes only.<br/>
+          Not financial advice. Licensed under MIT. </p>
+	</div>
+	<div class="modal-footer">
+		<button class="btn btn-outline" onclick="closeModal('modal-about')"> CLOSE </button>
+	</div>
+</div>
+</div>
+<div id="modal-update-available" class="modal modal-sm">
+	<div class="modal-content">
+		<div class="modal-header">
+			<span>Update Available</span>
+			<span class="close-btn" onclick="closeModal('modal-update-available')">&times;</span>
+		</div>
+		<div class="modal-body about-body">
+			<p>New version of CoinMan Portfolio Tracker is available:</p>
+			<div id="update-info"></div>
+			<p>Would you like to go to the download page?</p>
+		</div>
+		<div class="modal-footer modal-footer-split">
+			<button class="btn btn-outline" onclick="closeModal('modal-update-available')"> LATER </button>
+			<button class="btn btn-orange" onclick="
+              UpdateChecker.openRelease();
+              closeModal('modal-update-available');
+            "> DOWNLOAD </button>
+		</div>
+	</div>
+</div>
+<div id="modal-open-database" class="modal modal-wide">
+	<div class="modal-content">
+		<div class="modal-header">
+			<span>Select Database</span>
+			<span class="close-btn" onclick="closeModal('modal-open-database')">&times;</span>
+		</div>
+		<div class="modal-body modal-body-flush">
+			<div class="db-selector-dir" id="db-selector-dir"></div>
+			<div class="db-selector-list" id="db-selector-list"></div>
+		</div>
+		<div class="modal-footer modal-footer-split">
+			<button class="btn btn-outline" onclick="closeModal('modal-open-database')"> CANCEL </button>
+			<button class="btn btn-orange" onclick="handleOpenSelectedDatabase()"> OPEN </button>
+		</div>
+	</div>
+</div>
+<div class="ie-statusbar">
+	<div id="statusbar-dynamic" data-tpl-root="STATUSBAR">
+	<div class="ie-statusbar-panel ie-statusbar-panel-db" id="db-status">{{DB_STATUS}}</div>
+	<div class="ie-statusbar-divider"></div>
+	<div class="ie-statusbar-panel ie-statusbar-panel-enc" id="enc-status">
+		<span class="enc-lock-icon">{{ENC_ICON}}</span>
+		<span id="enc-label">{{ENC_LABEL}}</span>
+	</div>
+	<div class="ie-statusbar-divider"></div>
+	<div class="ie-statusbar-panel" id="market-status">{{MARKET_STATUS}}</div>
+</div>
+<div class="ie-statusbar-panel ie-statusbar-panel-update" id="update-status" style="display: none" onclick="UpdateChecker.openRelease()"> Update available </div>
+</div>
+<!-- MODAL: Unlock encrypted database -->
+<div id="modal-unlock-database" class="modal modal-md">
+	<div class="modal-content">
+		<div class="modal-header">
+			<span>&#128274; Unlock Database</span>
+		</div>
+		<div class="modal-body">
+			<p class="modal-description"> This database is encrypted. Enter the password to open it. </p>
+			<div class="form-group form-group-last">
+				<label class="form-label">Password</label>
+				<input type="password" id="unlock-db-password" class="form-input" placeholder="Enter password..." onkeydown="handleUnlockKeydown(event)"/>
+			</div>
+			<div id="unlock-db-error" class="enc-modal-error hidden"> Wrong password. Please try again. </div>
+		</div>
+		<div class="modal-footer modal-footer-right">
+			<button class="btn btn-orange" onclick="handleDoUnlockDatabase()"> UNLOCK </button>
+		</div>
+	</div>
+</div>
+<!-- MODAL: Save database as -->
+<div id="modal-save-db-as" class="modal modal-md">
+	<div class="modal-content">
+		<div class="modal-header">
+			<span>&#128190; Save Database As...</span>
+			<span class="close-btn" onclick="closeModal('modal-save-db-as')">&times;</span>
+		</div>
+		<div class="modal-body">
+			<p class="modal-description"> Save a copy of the current database under a new name. The copy will
+          be created in the same database folder. </p>
+			<div class="form-group form-group-last">
+				<label class="form-label">New database name</label>
+				<input type="text" id="save-db-as-name" class="form-input" placeholder="Enter name..." onkeydown="handleSaveDbAsKeydown(event)"/>
+			</div>
+			<div id="save-db-as-error" class="enc-modal-error hidden"></div>
+		</div>
+		<div class="modal-footer modal-footer-split">
+			<button class="btn btn-outline" onclick="closeModal('modal-save-db-as')"> CANCEL </button>
+			<button class="btn btn-orange" onclick="handleDoSaveDbAs()"> SAVE </button>
+		</div>
+	</div>
+</div>
+<!-- MODAL: Encrypt database -->
+<div id="modal-encrypt-database" class="modal modal-md">
+	<div class="modal-content">
+		<div class="modal-header">
+			<span>&#128274; Encrypt Database</span>
+			<span class="close-btn" onclick="closeModal('modal-encrypt-database')">&times;</span>
+		</div>
+		<div class="modal-body">
+			<p class="modal-description"> The database will be encrypted with AES-256. You will need this
+          password every time you open the file. <strong class="text-accent"> Do not lose it — there is no recovery.</strong>
+			</p>
+			<div class="form-group">
+				<label class="form-label">Password</label>
+				<input type="password" id="encrypt-db-password" class="form-input" placeholder="Enter password..." onkeydown="handleEncryptKeydown(event)"/>
+			</div>
+			<div class="form-group form-group-last">
+				<label class="form-label">Confirm password</label>
+				<input type="password" id="encrypt-db-confirm" class="form-input" placeholder="Repeat password..." onkeydown="handleEncryptKeydown(event)"/>
+			</div>
+			<div id="encrypt-db-error" class="enc-modal-error hidden"></div>
+		</div>
+		<div class="modal-footer modal-footer-split">
+			<button class="btn btn-outline" onclick="closeModal('modal-encrypt-database')"> CANCEL </button>
+			<button class="btn btn-orange" onclick="handleDoEncryptDatabase()"> ENCRYPT </button>
+		</div>
+	</div>
+</div>
+<!-- MODAL: Decrypt database -->
+<div id="modal-decrypt-database" class="modal modal-md">
+	<div class="modal-content">
+		<div class="modal-header">
+			<span>&#128275; Decrypt Database</span>
+			<span class="close-btn" onclick="closeModal('modal-decrypt-database')">&times;</span>
+		</div>
+		<div class="modal-body">
+			<p class="modal-description"> The database will be decrypted and saved as plain JSON. <strong class="text-accent"> Make sure you are in a secure environment.</strong>
+			</p>
+			<div class="form-group form-group-last">
+				<label class="form-label">Current password</label>
+				<input type="password" id="decrypt-db-password" class="form-input" placeholder="Enter current password..." onkeydown="handleDecryptKeydown(event)"/>
+			</div>
+			<div id="decrypt-db-error" class="enc-modal-error hidden"></div>
+		</div>
+		<div class="modal-footer modal-footer-split">
+			<button class="btn btn-outline" onclick="closeModal('modal-decrypt-database')"> CANCEL </button>
+			<button class="btn btn-orange" onclick="handleDoDecryptDatabase()"> DECRYPT </button>
+		</div>
+	</div>
+</div>
+<!-- MODAL: Change password -->
+<div id="modal-change-password" class="modal modal-md">
+	<div class="modal-content">
+		<div class="modal-header">
+			<span>&#128274; Change Password</span>
+			<span class="close-btn" onclick="closeModal('modal-change-password')">&times;</span>
+		</div>
+		<div class="modal-body">
+			<div class="form-group">
+				<label class="form-label">Current password</label>
+				<input type="password" id="change-pw-current" class="form-input" placeholder="Enter current password..." onkeydown="handleChangePwKeydown(event)"/>
+			</div>
+			<div class="form-group">
+				<label class="form-label">New password</label>
+				<input type="password" id="change-pw-new" class="form-input" placeholder="Enter new password..." onkeydown="handleChangePwKeydown(event)"/>
+			</div>
+			<div class="form-group form-group-last">
+				<label class="form-label">Confirm new password</label>
+				<input type="password" id="change-pw-confirm" class="form-input" placeholder="Repeat new password..." onkeydown="handleChangePwKeydown(event)"/>
+			</div>
+			<div id="change-pw-error" class="enc-modal-error hidden"></div>
+		</div>
+		<div class="modal-footer modal-footer-split">
+			<button class="btn btn-outline" onclick="closeModal('modal-change-password')"> CANCEL </button>
+			<button class="btn btn-orange" onclick="handleDoChangePassword()"> CHANGE PASSWORD </button>
+		</div>
+	</div>
+</div>
+<div id="modal-unsupported-encryption" class="modal modal-lg">
+	<div class="modal-content">
+		<div class="modal-header">
+			<span>&#128274; Unsupported Encryption</span>
+		</div>
+		<div class="modal-body">
+			<p id="unsupported-enc-name" class="error-filename"></p>
+			<p class="error-text"> This database was encrypted with a newer encryption version (<strong id="unsupported-enc-version"></strong>) that this version of CoinMan does not support. </p>
+			<p class="error-hint"> Please update CoinMan to the latest version to open this file. </p>
+			<p class="error-hint"> The file has <strong>not</strong> been modified. </p>
+		</div>
+		<div class="modal-footer">
+			<button class="btn btn-outline" onclick="closeUnsupportedEncryptionModal()"> OK </button>
+		</div>
+	</div>
+</div>
+<div id="modal-db-unreadable" class="modal modal-lg">
+	<div class="modal-content">
+		<div class="modal-header">
+			<span>&#9888; Cannot Read Database File</span>
+		</div>
+		<div class="modal-body">
+			<p id="db-unreadable-name" class="error-filename"></p>
+			<p class="error-text"> The file format is not recognized. This may not be a CoinMan
+          database file, or the file may be corrupted. </p>
+			<p class="error-hint"> The file has <strong>not</strong> been modified. </p>
+		</div>
+		<div class="modal-footer">
+			<button class="btn btn-outline" onclick="closeModal('modal-db-unreadable')"> OK </button>
+		</div>
+	</div>
+</div>
+<script src="coinman-tpl.js"></script>
+<script src="index.js"></script>
+</body>
 </html>

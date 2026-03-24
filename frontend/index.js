@@ -16,6 +16,16 @@ var ENC_V1 = 1;
 
 var CONFIG = {
     APP_VERSION: "0.5.0-alpha",
+    AUTO_ALIGN_RIGHT_MARGIN: 20, // Distance between Change column and right edge
+    AUTO_ALIGN_MIN_COIN_WIDTH: 80, // Minimum width for Coin/Date column
+    AUTO_ALIGN_COL_PADDING: {
+        "th-logo": 0,
+        "th-coin": 0,
+        "th-holdings": 1,
+        "col-header-price": 1,
+        "th-cur-price": 1,
+        "th-profit": 1,
+    },
     IMAGE_DIR: "images/logo/",
     MAX_COIN_NAME_LEN: 64,
     MAX_SYMBOL_LEN: 16,
@@ -45,7 +55,7 @@ var CONFIG = {
         BCH: "BCH",
         LINK: "LINK",
     },
-    CURRENCY_DECIMALS_FIAT: 2,
+    CURRENCY_DECIMALS_FIAT: 5,
     CURRENCY_DECIMALS_CRYPTO: 8,
     SORT_DEFAULT_DIR: {
         coinDate: "asc",
@@ -68,6 +78,7 @@ var CONFIG = {
 };
 
 var state = {
+    needsAutoAlign: true,
     marketData: [],
     marketDataByCatalogId: {},
     activePortfolioId: 1,
@@ -163,10 +174,7 @@ var DebugLog = {
                 return result;
             })
             .catch(function (err) {
-                DebugLog.log(
-                    "INVOKE ✗",
-                    command + " FAILED: " + String(err),
-                );
+                DebugLog.log("INVOKE ✗", command + " FAILED: " + String(err));
                 throw err;
             });
     };
@@ -188,10 +196,7 @@ document.addEventListener(
             tag === "BUTTON" ||
             cls.indexOf("btn") !== -1
         ) {
-            DebugLog.log(
-                "CLICK",
-                '"' + text + '" ' + tag + id + " ." + cls,
-            );
+            DebugLog.log("CLICK", '"' + text + '" ' + tag + id + " ." + cls);
         }
     },
     true,
@@ -203,15 +208,7 @@ window.onerror = function (message, source, lineno, colno, error) {
     var stack = error && error.stack ? error.stack : "";
     DebugLog.log(
         "JS_ERROR",
-        message +
-            " at " +
-            source +
-            ":" +
-            lineno +
-            ":" +
-            colno +
-            "\n" +
-            stack,
+        message + " at " + source + ":" + lineno + ":" + colno + "\n" + stack,
     );
     return false;
 };
@@ -265,7 +262,7 @@ var AppSettings = {
         } else {
             document.body.classList.remove("show-cur-price");
         }
-        var td = document.getElementById("empty-row-colspan-td");
+        var td = document.querySelector("#transactions-table-body .empty-state-cell");
         if (td) {
             td.colSpan = enabled ? 7 : 6;
         }
@@ -282,18 +279,26 @@ var AppSettings = {
         var thCoin = document.getElementById("th-coin");
         var thCur = document.getElementById("th-cur-price");
         if (thCoin && thCur) {
-            var savedObj = this.get("columnWidths", {});
-            var saved = savedObj.widths || savedObj;
-            var wCoinBase = parseInt(saved["th-coin"]) || 444;
-            var wCurBase = parseInt(saved["th-cur-price"]) || 121;
+            if (!this.get("autoAlignColumns", false)) {
+                var savedObj = this.get("columnWidths", {});
+                var saved = savedObj.widths || savedObj;
+                var wCoinBase = parseInt(saved["th-coin"]) || 444;
+                var wCurBase = parseInt(saved["th-cur-price"]) || 121;
 
-            if (enabled) {
-                thCoin.style.width = wCoinBase + "px";
-                thCur.style.width = wCurBase + "px";
+                if (enabled) {
+                    thCoin.style.width = wCoinBase + "px";
+                    thCur.style.width = wCurBase + "px";
+                } else {
+                    // When hidden, th-coin expands to cover both its base width and cur-price width
+                    thCoin.style.width = wCoinBase + wCurBase + "px";
+                    thCur.style.width = "0px";
+                }
             } else {
-                // When hidden, th-coin expands to cover both its base width and cur-price width
-                thCoin.style.width = (wCoinBase + wCurBase) + "px";
-                thCur.style.width = "0px";
+                if (enabled) {
+                    thCur.style.width = "";
+                } else {
+                    thCur.style.width = "0px";
+                }
             }
         }
     },
@@ -303,13 +308,88 @@ var AppSettings = {
         var newVal = !current;
         this.set("showCurPrice", newVal);
         if (AppBridge.isTauri()) {
-            AppBridge.invoke("save_show_cur_price", { show: newVal }).catch(function () {});
+            AppBridge.invoke("save_show_cur_price", { show: newVal }).catch(
+                function () {},
+            );
         }
         this.applyCurPrice();
+        if (this.get("autoAlignColumns", false)) {
+            setTimeout(function () {
+                if (
+                    window.UI &&
+                    typeof UI.autoAlignTableColumns === "function"
+                ) {
+                    UI.autoAlignTableColumns();
+                }
+            }, 10);
+        }
+    },
+
+    applyAutoAlign: function () {
+        var enabled = this.get("autoAlignColumns", false);
+        var menuItem = document.getElementById("menu-toggle-auto-align");
+        if (menuItem) {
+            if (enabled) {
+                menuItem.classList.add("checked");
+            } else {
+                menuItem.classList.remove("checked");
+            }
+        }
+    },
+
+    handleToggleAutoAlign: function () {
+        var current = this.get("autoAlignColumns", false);
+        var newVal = !current;
+        this.set("autoAlignColumns", newVal);
+        if (AppBridge.isTauri()) {
+            AppBridge.invoke("save_auto_align_columns", {
+                align: newVal,
+            }).catch(function () {});
+        }
+        this.applyAutoAlign();
+        if (newVal) {
+            // Reset snapshot so it captures fresh Change width
+            UI._changeWidthSnapshot = null;
+            state.needsAutoAlign = true;
+            renderApp();
+        }
+    },
+
+    applyTableFooter: function () {
+        var enabled = this.get("showTableFooter", false);
+        var table = document.getElementById("portfolio-transactions-table");
+        if (table) {
+            var tfoot = table.querySelector("tfoot");
+            if (tfoot) {
+                tfoot.style.display = enabled ? "" : "none";
+            }
+        }
+        var menuItem = document.getElementById("menu-toggle-table-footer");
+        if (menuItem) {
+            if (enabled) {
+                menuItem.classList.add("checked");
+            } else {
+                menuItem.classList.remove("checked");
+            }
+        }
+    },
+
+    handleToggleTableFooter: function () {
+        var current = this.get("showTableFooter", false);
+        var newVal = !current;
+        this.set("showTableFooter", newVal);
+        if (AppBridge.isTauri()) {
+            AppBridge.invoke("save_show_table_footer", {
+                show: newVal,
+            }).catch(function () {});
+        }
+        this.applyTableFooter();
     },
 
     init: function () {
         this.applyCurPrice();
+        this.applyAutoAlign();
+        this.applyTableFooter();
     },
 };
 // ─────────────────────────────────────────────────────────────────────────────
@@ -317,31 +397,7 @@ var AppSettings = {
 // Основные данные портфелей теперь приходят с сервера (default.json).
 var portfolios = [];
 
-var Templates = {
-    portfolioTab: null,
-    coinRow: null,
-    summaryRow: null,
-    emptyRow: null,
-    bulkSellRow: null,
-
-    init: function () {
-        var ids = {
-            portfolioTab: "template-portfolio-tab",
-            coinRow: "template-coin-row",
-            summaryRow: "template-summary-row",
-            emptyRow: "template-empty-row",
-            bulkSellRow: "template-bulk-sell-row",
-        };
-        Object.keys(ids).forEach(function (key) {
-            var el = document.getElementById(ids[key]);
-            if (el) {
-                el.removeAttribute("id");
-                if (el.parentNode) el.parentNode.removeChild(el);
-                Templates[key] = el;
-            }
-        });
-    },
-};
+// Templates object replaced by CoinmanTpl — see coinman-tpl.js
 
 var Utils = {
     parseNumber: function (value, fallback) {
@@ -502,19 +558,7 @@ var Utils = {
         return CONFIG.SORT_DEFAULT_DIR[key] || "asc";
     },
 
-    fillTokens: function (element, data) {
-        if (!element || !data) return;
-        var html = element.innerHTML;
-        var keys = Object.keys(data);
-        for (var i = 0; i < keys.length; i++) {
-            var key = keys[i];
-            var val = data[key];
-            html = html
-                .split(key)
-                .join(val !== undefined && val !== null ? val : "");
-        }
-        element.innerHTML = html;
-    },
+    // fillTokens removed — replaced by CoinmanTpl.render()
 };
 
 var ServerSync = {
@@ -550,16 +594,18 @@ var ServerSync = {
         if (AppBridge.isTauri()) {
             var args = { user: ServerSync.user };
             if (password) args.password = password;
-            return AppBridge.invoke("load_portfolios", args).then(function (payload) {
-                if (!payload || payload.ok !== true || !payload.data) {
-                    throw new Error("Invalid DB payload");
-                }
+            return AppBridge.invoke("load_portfolios", args).then(
+                function (payload) {
+                    if (!payload || payload.ok !== true || !payload.data) {
+                        throw new Error("Invalid DB payload");
+                    }
 
-                var list = Array.isArray(payload.data.portfolios)
-                    ? payload.data.portfolios
-                    : [];
-                portfolios = list;
-            });
+                    var list = Array.isArray(payload.data.portfolios)
+                        ? payload.data.portfolios
+                        : [];
+                    portfolios = list;
+                },
+            );
         }
 
         return window
@@ -976,35 +1022,46 @@ var Market = {
         Market.detailsCache = {};
     },
 
+    _sb: { DB_STATUS: "", ENC_ICON: "\uD83D\uDD13", ENC_LABEL: "Not encrypted", MARKET_STATUS: "" },
+    _encEncrypted: false,
+    _marketColor: "",
+
+    _renderStatusbar: function () {
+        var el = document.getElementById("statusbar-dynamic");
+        if (el) el.innerHTML = CoinmanTpl.render("STATUSBAR", this._sb);
+        var marketEl = document.getElementById("market-status");
+        if (marketEl) marketEl.style.color = this._marketColor || "";
+        var labelEl = document.getElementById("enc-label");
+        if (labelEl) labelEl.style.color = this._encEncrypted ? "#e67e22" : "";
+    },
+
     setStatus: function (text, color) {
-        var el = document.getElementById("market-status");
-        if (!el) return;
-        el.textContent = text;
-        el.style.color = color ? color : "";
+        this._sb.MARKET_STATUS = text;
+        this._marketColor = color || "";
+        this._renderStatusbar();
     },
 
     setDbStatus: function (name) {
-        var el = document.getElementById("db-status");
-        if (!el) return;
-        el.textContent = "Database file: " + name + ".json";
+        this._sb.DB_STATUS = "Database file: " + name + ".json";
+        this._renderStatusbar();
     },
 
     setEncStatus: function (encrypted) {
-        var iconEl = document.getElementById("enc-lock-icon");
-        var labelEl = document.getElementById("enc-label");
-        if (iconEl) iconEl.innerHTML = encrypted ? "&#128274;" : "&#128275;";
-        if (labelEl) {
-            labelEl.textContent = encrypted ? "Encrypted" : "Not encrypted";
-            labelEl.style.color = encrypted ? "#e67e22" : "";
-        }
+        this._encEncrypted = !!encrypted;
+        this._sb.ENC_ICON = encrypted ? "\uD83D\uDD12" : "\uD83D\uDD13";
+        this._sb.ENC_LABEL = encrypted ? "Encrypted" : "Not encrypted";
+        this._renderStatusbar();
         // Encrypt — active only when NOT encrypted
         var encItem = document.getElementById("menu-encrypt-database");
-        if (encItem) encItem.classList.toggle("dropdown-item-disabled", !!encrypted);
+        if (encItem)
+            encItem.classList.toggle("dropdown-item-disabled", !!encrypted);
         // Decrypt and Change password — active only when encrypted
         var decItem = document.getElementById("menu-decrypt-database");
-        if (decItem) decItem.classList.toggle("dropdown-item-disabled", !encrypted);
+        if (decItem)
+            decItem.classList.toggle("dropdown-item-disabled", !encrypted);
         var chpwItem = document.getElementById("menu-change-password");
-        if (chpwItem) chpwItem.classList.toggle("dropdown-item-disabled", !encrypted);
+        if (chpwItem)
+            chpwItem.classList.toggle("dropdown-item-disabled", !encrypted);
     },
 
     getActiveCurrency: function () {
@@ -1176,8 +1233,7 @@ var Market = {
         state.marketDataByCatalogId[cid] = next;
         var idx = state.marketData.findIndex(function (item) {
             return (
-                item &&
-                Utils.sanitizeCatalogId(item.catalogId || "") === cid
+                item && Utils.sanitizeCatalogId(item.catalogId || "") === cid
             );
         });
 
@@ -1330,7 +1386,8 @@ var Market = {
             coinRef && typeof coinRef === "object"
                 ? coinRef.coin || coinRef.name || ""
                 : "";
-        var resolvedCatalogId = Utils.sanitizeCatalogId(catalogId) ||
+        var resolvedCatalogId =
+            Utils.sanitizeCatalogId(catalogId) ||
             Market.resolveCatalogId(catalogId, symbol, coinName);
         var coin = Market.getMarketCoin(resolvedCatalogId);
         var catalog = Market.getCatalogCoin(catalogId, symbol, coinName);
@@ -1381,7 +1438,8 @@ var Market = {
         var curr = String(currency || "USD").toUpperCase();
         if (!sym) return window.Promise.resolve(false);
         var catalog = Market.getCatalogCoin(catalogId, sym, coinName || "");
-        var cid = Utils.sanitizeCatalogId(catalogId || "") ||
+        var cid =
+            Utils.sanitizeCatalogId(catalogId || "") ||
             (catalog && catalog.id ? String(catalog.id) : "");
 
         var inState = cid ? Market.getMarketCoin(cid) : null;
@@ -1458,7 +1516,10 @@ var Market = {
             if (item.symbol) {
                 if (!symbolToCatalogIds[item.symbol])
                     symbolToCatalogIds[item.symbol] = [];
-                if (symbolToCatalogIds[item.symbol].indexOf(item.catalogId) === -1)
+                if (
+                    symbolToCatalogIds[item.symbol].indexOf(item.catalogId) ===
+                    -1
+                )
                     symbolToCatalogIds[item.symbol].push(item.catalogId);
             }
         });
@@ -1475,7 +1536,8 @@ var Market = {
         if (cached) {
             Market.setStateMarketData(cached.marketData);
             Market.setStatus(
-                "Market data: loaded " + cached.marketData.length +
+                "Market data: loaded " +
+                    cached.marketData.length +
                     " symbols from session cache (" +
                     new Date(cached.savedAt || Date.now()).toLocaleString() +
                     ")",
@@ -1521,8 +1583,11 @@ var Market = {
                         ? new Date(Market.fileCacheSavedAt).toLocaleString()
                         : "date unknown";
                     Market.setStatus(
-                        "Market data: loaded " + state.marketData.length +
-                        " symbols from file (" + ts + ")",
+                        "Market data: loaded " +
+                            state.marketData.length +
+                            " symbols from file (" +
+                            ts +
+                            ")",
                         "#aaa",
                     );
                     renderApp();
@@ -1530,7 +1595,10 @@ var Market = {
                 }
 
                 if (totalApiRows === 0) {
-                    Market.setStatus("Market data: API unavailable, no cached data.", "#D32F2F");
+                    Market.setStatus(
+                        "Market data: API unavailable, no cached data.",
+                        "#D32F2F",
+                    );
                     return;
                 }
 
@@ -1547,8 +1615,13 @@ var Market = {
                         tracked.coin,
                     );
                     map[cid] = {
-                        name: catalog && catalog.name ? catalog.name : tracked.symbol || cid,
-                        symbol: tracked.symbol || (catalog && catalog.symbol ? catalog.symbol : ""),
+                        name:
+                            catalog && catalog.name
+                                ? catalog.name
+                                : tracked.symbol || cid,
+                        symbol:
+                            tracked.symbol ||
+                            (catalog && catalog.symbol ? catalog.symbol : ""),
                         catalogId: cid,
                         price: 0,
                         prices: {},
@@ -1568,15 +1641,23 @@ var Market = {
                         if (!cids) return;
                         cids.forEach(function (cid) {
                             if (!map[cid]) return;
-                            if (row && row.name) map[cid].name = String(row.name);
-                            if (Number.isFinite(Number(row && row.current_price))) {
-                                map[cid].prices[curr] = Number(row.current_price);
+                            if (row && row.name)
+                                map[cid].name = String(row.name);
+                            if (
+                                Number.isFinite(
+                                    Number(row && row.current_price),
+                                )
+                            ) {
+                                map[cid].prices[curr] = Number(
+                                    row.current_price,
+                                );
                             } else if (map[cid].prices[curr] === undefined) {
                                 map[cid].prices[curr] = 0;
                             }
 
                             var ch24 = Number(
-                                row && row.price_change_percentage_24h_in_currency,
+                                row &&
+                                    row.price_change_percentage_24h_in_currency,
                             );
                             if (!Number.isFinite(ch24)) {
                                 ch24 = Number(
@@ -1585,7 +1666,9 @@ var Market = {
                             }
                             if (Number.isFinite(ch24)) {
                                 map[cid].changes24h[curr] = ch24;
-                            } else if (map[cid].changes24h[curr] === undefined) {
+                            } else if (
+                                map[cid].changes24h[curr] === undefined
+                            ) {
                                 map[cid].changes24h[curr] = 0;
                             }
                         });
@@ -1637,8 +1720,11 @@ var Market = {
                         ? new Date(Market.fileCacheSavedAt).toLocaleString()
                         : "date unknown";
                     Market.setStatus(
-                        "Market data: loaded " + state.marketData.length +
-                        " symbols from file (" + ts + ")",
+                        "Market data: loaded " +
+                            state.marketData.length +
+                            " symbols from file (" +
+                            ts +
+                            ")",
                         "#aaa",
                     );
                     renderApp();
@@ -1689,7 +1775,10 @@ var Portfolio = {
         portfolios.push(p);
         state.activePortfolioId = p.id;
         if (AppBridge.isTauri()) {
-            AppBridge.invoke("save_active_portfolio", { user: ServerSync.user, id: p.id }).catch(function () {});
+            AppBridge.invoke("save_active_portfolio", {
+                user: ServerSync.user,
+                id: p.id,
+            }).catch(function () {});
         }
         Storage.save({ refreshMarket: false });
         return p;
@@ -1722,7 +1811,10 @@ var Portfolio = {
         });
         state.activePortfolioId = portfolios[0].id;
         if (AppBridge.isTauri()) {
-            AppBridge.invoke("save_active_portfolio", { user: ServerSync.user, id: portfolios[0].id }).catch(function () {});
+            AppBridge.invoke("save_active_portfolio", {
+                user: ServerSync.user,
+                id: portfolios[0].id,
+            }).catch(function () {});
         }
         Storage.save();
         return true;
@@ -1730,8 +1822,12 @@ var Portfolio = {
 
     switch: function (id) {
         state.activePortfolioId = id;
+        state.needsAutoAlign = true;
         if (AppBridge.isTauri()) {
-            AppBridge.invoke("save_active_portfolio", { user: ServerSync.user, id: id }).catch(function () {});
+            AppBridge.invoke("save_active_portfolio", {
+                user: ServerSync.user,
+                id: id,
+            }).catch(function () {});
         }
         renderApp();
     },
@@ -2338,31 +2434,147 @@ var UI = {
         });
     },
 
+    // Snapshot of Change column width, captured once per session
+    _changeWidthSnapshot: null,
+
+    autoAlignTableColumns: function () {
+        var table = document.getElementById("portfolio-transactions-table");
+        if (!table) return;
+
+        var availableWidth = table.parentElement
+            ? table.parentElement.clientWidth - CONFIG.AUTO_ALIGN_RIGHT_MARGIN
+            : table.offsetWidth;
+        if (availableWidth < 100) availableWidth = 1000;
+
+        var thChange = document.getElementById("th-change");
+
+        // Capture Change column width once and reuse it forever
+        if (this._changeWidthSnapshot === null) {
+            this._changeWidthSnapshot = thChange ? thChange.offsetWidth : 120;
+        }
+        var fixedChangeWidth = this._changeWidthSnapshot;
+
+        // Collect all th from thead and tfoot
+        var headThs = table.querySelectorAll("thead th");
+        var footThs = table.querySelectorAll("tfoot th");
+
+        // Reset all column widths to auto (except Change — hidden via CSS)
+        headThs.forEach(function (th) {
+            th.style.width = "auto";
+        });
+        footThs.forEach(function (th) {
+            th.style.width = "auto";
+        });
+
+        // auto-aligning class hides entire Change column (last-child)
+        // and sets white-space: nowrap on all td
+        table.style.tableLayout = "auto";
+        table.style.width = "auto";
+        table.classList.add("auto-aligning");
+
+        var dummy = table.offsetHeight; // force reflow
+
+        // Measure true minimum widths from thead (Change column is hidden by CSS)
+        var newWidths = {};
+        var totalNeededWidth = fixedChangeWidth;
+        headThs.forEach(function (th) {
+            if (th.id === "th-change") return;
+            if (window.getComputedStyle(th).display !== "none") {
+                var pad = CONFIG.AUTO_ALIGN_COL_PADDING[th.id] || 0;
+                var w = th.offsetWidth + pad;
+                if (th.id) {
+                    newWidths[th.id] = w;
+                }
+                totalNeededWidth += w;
+            }
+        });
+
+        // Restore table to fixed layout
+        table.style.tableLayout = "fixed";
+        table.style.width = "100%";
+        table.classList.remove("auto-aligning");
+
+        newWidths["th-change"] = fixedChangeWidth;
+
+        // Adjust Coin/Date column to fit within available width
+        if (newWidths["th-coin"]) {
+            if (totalNeededWidth > availableWidth) {
+                var excess = totalNeededWidth - availableWidth;
+                newWidths["th-coin"] = Math.max(
+                    CONFIG.AUTO_ALIGN_MIN_COIN_WIDTH,
+                    newWidths["th-coin"] - excess,
+                );
+            } else if (totalNeededWidth < availableWidth) {
+                var extra = availableWidth - totalNeededWidth;
+                newWidths["th-coin"] += extra;
+            }
+        }
+
+        // Apply widths to thead
+        headThs.forEach(function (th) {
+            if (th.id && newWidths[th.id] !== undefined) {
+                th.style.width = newWidths[th.id] + "px";
+            }
+        });
+
+        var savedObj = AppSettings.get("columnWidths", {});
+        var saved = savedObj.widths || savedObj;
+        Object.keys(newWidths).forEach(function (k) {
+            if (k !== "th-change") {
+                saved[k] = newWidths[k];
+            }
+        });
+
+        AppSettings.set("columnWidths", saved);
+        if (AppBridge.isTauri()) {
+            AppBridge.invoke("save_column_widths", { widths: saved }).catch(
+                function () {},
+            );
+        }
+    },
+
     initColumnResizing: function () {
-        var resizers = document.querySelectorAll("#portfolio-transactions-table .resizer");
+        var resizers = document.querySelectorAll(
+            "#portfolio-transactions-table .resizer",
+        );
         resizers.forEach(function (resizer) {
             resizer.addEventListener("mousedown", function (e) {
                 e.preventDefault();
                 var th = resizer.parentElement;
-                
+
+                if (th.parentElement.parentElement.tagName === "TFOOT") {
+                    var index = Array.prototype.indexOf.call(
+                        th.parentElement.children,
+                        th,
+                    );
+                    th = document.querySelector(
+                        "#portfolio-transactions-table thead tr",
+                    ).children[index];
+                }
+
                 // Find the previous visible th
                 var prevTh = th.previousElementSibling;
-                while (prevTh && window.getComputedStyle(prevTh).display === "none") {
+                while (
+                    prevTh &&
+                    window.getComputedStyle(prevTh).display === "none"
+                ) {
                     prevTh = prevTh.previousElementSibling;
                 }
-                
+
                 if (!prevTh) return;
 
                 var startX = e.pageX;
                 var startWidth = prevTh.getBoundingClientRect().width;
-                
+
                 // Calculate how much we can expand to the right before the last column hits its minimum width (80px)
                 var thChange = document.getElementById("th-change");
-                var availableSlack = thChange ? (thChange.offsetWidth - 80) : 10000;
+                var availableSlack = thChange
+                    ? thChange.offsetWidth - 80
+                    : 10000;
 
                 function onMouseMove(eMove) {
                     var delta = eMove.pageX - startX;
-                    
+
                     // Limit movement to the right to prevent table overflow and scrollbars
                     if (delta > availableSlack) {
                         delta = availableSlack;
@@ -2384,7 +2596,9 @@ var UI = {
                     var thCur = document.getElementById("th-cur-price");
 
                     var widths = {};
-                    var allThs = document.querySelectorAll("#portfolio-transactions-table th");
+                    var allThs = document.querySelectorAll(
+                        "#portfolio-transactions-table th",
+                    );
                     allThs.forEach(function (t) {
                         if (t.id && t.id !== "th-change" && t.offsetWidth > 0) {
                             widths[t.id] = t.offsetWidth;
@@ -2402,13 +2616,18 @@ var UI = {
                     // To get the correct base width of th-coin, we subtract current base of cur-price.
                     if (!showCur && thCoin && thCur) {
                         var wCurBase = parseInt(saved["th-cur-price"]) || 121;
-                        saved["th-coin"] = Math.max(30, (thCoin.offsetWidth || 444) - wCurBase);
+                        saved["th-coin"] = Math.max(
+                            30,
+                            (thCoin.offsetWidth || 444) - wCurBase,
+                        );
                     }
 
                     AppSettings.set("columnWidths", saved);
 
                     if (AppBridge.isTauri()) {
-                        AppBridge.invoke("save_column_widths", { widths: saved }).catch(function () {});
+                        AppBridge.invoke("save_column_widths", {
+                            widths: saved,
+                        }).catch(function () {});
                     }
                 }
 
@@ -2632,11 +2851,21 @@ var Autocomplete = {
                 var li = document.createElement("li");
                 li.className = "suggestion-item";
                 var imgHtml = coin.image
-                    ? '<img src="' + Utils.escapeAttr(coin.image) + '" class="s-img">'
-                    : '<span class="s-img">' + Utils.escapeHtml(coin.symbol && coin.symbol[0] ? coin.symbol[0] : "?") + "</span>";
+                    ? '<img src="' +
+                      Utils.escapeAttr(coin.image) +
+                      '" class="s-img">'
+                    : '<span class="s-img">' +
+                      Utils.escapeHtml(
+                          coin.symbol && coin.symbol[0] ? coin.symbol[0] : "?",
+                      ) +
+                      "</span>";
                 li.innerHTML =
                     imgHtml +
-                    '<span class="s-name">' + Utils.escapeHtml(coin.name) + '</span><span class="s-symbol">' + Utils.escapeHtml(coin.symbol) + "</span>";
+                    '<span class="s-name">' +
+                    Utils.escapeHtml(coin.name) +
+                    '</span><span class="s-symbol">' +
+                    Utils.escapeHtml(coin.symbol) +
+                    "</span>";
                 li.onclick = function () {
                     Autocomplete.select(coin, inputId, listId);
                 };
@@ -2759,10 +2988,7 @@ function renderBulkSellTable() {
     var curr = p ? p.currency : "USD";
 
     var tbody = document.getElementById("bulk-sell-tbody");
-    var tpl = Templates.bulkSellRow;
-    if (!tbody || !tpl) return;
-
-    tbody.innerHTML = "";
+    if (!tbody) return;
 
     var list = state.bulkSellTxs.slice(0);
     list.sort(function (a, b) {
@@ -2774,14 +3000,9 @@ function renderBulkSellTable() {
         list.reverse();
     }
 
-    var fragment = document.createDocumentFragment();
-    list.forEach(function (t) {
+    var rowsData = list.map(function (t) {
         var det = Market.getDetails(t, curr);
         var live = det.price > 0 ? det.price : t.buyPrice;
-
-        var row = tpl.cloneNode(true);
-        row.style.display = "";
-        row.id = "";
 
         var firstChar = t.coin && t.coin.length > 0 ? t.coin[0] : "?";
         var iconHtml = det.image
@@ -2797,48 +3018,44 @@ function renderBulkSellTable() {
                 ? new Date(t.date).toLocaleString()
                 : t.date || "";
 
-        var tokens = {
-            "[[ICON]]": iconHtml,
-            "[[COINNAME]]": Utils.escapeHtml(t.coin + " (" + t.symbol + ")"),
-            "[[DATE]]": Utils.escapeHtml(dtStr),
-            "[[BUY_PRICE]]": Utils.formatMoney(t.buyPrice, curr),
-            "[[TOTAL_BUY_PRICE]]":
+        return {
+            ICON: iconHtml,
+            COINNAME: t.coin + " (" + t.symbol + ")",
+            DATE: dtStr,
+            BUY_PRICE: Utils.formatMoney(t.buyPrice, curr),
+            TOTAL_BUY_PRICE:
                 "Total: " + Utils.formatMoney(t.amount * t.buyPrice, curr),
-            "[[AMOUNT]]": Utils.escapeHtml(
-                Utils.formatAmount(t.amount) + " " + t.symbol,
-            ),
-            "[[LAST_PRICE]]":
+            AMOUNT: Utils.formatAmount(t.amount) + " " + t.symbol,
+            LAST_PRICE:
                 "Last Price: " + Utils.formatMoney(t.amount * live, curr),
+            TX_ID: String(t.id),
+            RAW_AMOUNT: String(Utils.normalizeAmount(t.amount)),
         };
-
-        Utils.fillTokens(row, tokens);
-
-        var ch = row.querySelector(".bs-check");
-        if (ch) {
-            ch.checked = false;
-            ch.disabled = false;
-            ch.addEventListener("change", function () {
-                updateBulkSellByCheckbox(row, ch.checked);
-            });
-        }
-
-        row.setAttribute("data-txid", String(t.id));
-        row.setAttribute(
-            "data-amount",
-            String(Utils.normalizeAmount(t.amount)),
-        );
-
-        fragment.appendChild(row);
     });
-    tbody.appendChild(fragment);
+
+    tbody.innerHTML = CoinmanTpl.render("BULK_SELL_ROWS", rowsData);
+
+    // Post-render: checkbox handlers
+    var checks = tbody.querySelectorAll(".bs-check");
+    for (var i = 0; i < checks.length; i++) {
+        var tr = checks[i].closest("tr");
+        checks[i].checked = false;
+        checks[i].disabled = false;
+        checks[i].addEventListener(
+            "change",
+            (function (row, ch) {
+                return function () {
+                    updateBulkSellByCheckbox(row, ch.checked);
+                };
+            })(tr, checks[i]),
+        );
+    }
 }
 
 function getBulkSellRows() {
     var tbody = document.getElementById("bulk-sell-tbody");
     if (!tbody) return [];
-    return Array.from(tbody.querySelectorAll("tr")).filter(function (tr) {
-        return tr.id !== "template-bulk-sell-row";
-    });
+    return Array.from(tbody.querySelectorAll("tr"));
 }
 
 function updateBulkSellCounter() {
@@ -3078,8 +3295,12 @@ function handleAddCoin() {
     var catalogId = Market.resolveCatalogId(state.addCatalogId, symbol, name);
     if (!catalogId)
         return window.alert(
-            "Coin \"" + name + " (" + symbol + ")\" was not found in the database.\n" +
-            "Please select a coin from the suggestions list."
+            'Coin "' +
+                name +
+                " (" +
+                symbol +
+                ')" was not found in the database.\n' +
+                "Please select a coin from the suggestions list.",
         );
     Tx.add(state.activePortfolioId, {
         coin: name,
@@ -3201,8 +3422,12 @@ function handleUpdateTransaction() {
     var catalogId = Market.resolveCatalogId(state.editCatalogId, symbol, coin);
     if (!catalogId)
         return window.alert(
-            "Coin \"" + coin + " (" + symbol + ")\" was not found in the database.\n" +
-            "Please select a coin from the suggestions list."
+            'Coin "' +
+                coin +
+                " (" +
+                symbol +
+                ')" was not found in the database.\n' +
+                "Please select a coin from the suggestions list.",
         );
 
     Tx.update(state.activePortfolioId, state.currentEditingId, {
@@ -3302,6 +3527,7 @@ function handleClearDatabase() {
 
 function switchView(view) {
     state.currentView = view;
+    state.needsAutoAlign = true;
     document.getElementById("tab-current").className =
         "view-tab " + (view === "current" ? "active" : "");
     document.getElementById("tab-sold").className =
@@ -3312,11 +3538,14 @@ function switchView(view) {
 function toggleCollapse() {
     state.isCollapsed = !state.isCollapsed;
     var collapseLabel = state.isCollapsed ? "EXPAND" : "COLLAPSE";
-    document.getElementById("btn-collapse").textContent = collapseLabel;
-    var footerBtn = document.getElementById("btn-collapse-footer");
-    if (footerBtn) footerBtn.textContent = collapseLabel;
+    var collapseBtn = document.getElementById("btn-collapse");
+    if (collapseBtn) collapseBtn.innerHTML = CoinmanTpl.render("COLLAPSE", { COLLAPSE_LABEL: collapseLabel });
+    var collapseFooterBtn = document.getElementById("btn-collapse-footer");
+    if (collapseFooterBtn) collapseFooterBtn.innerHTML = CoinmanTpl.render("COLLAPSE_FOOTER", { COLLAPSE_LABEL_FOOTER: collapseLabel });
     if (AppBridge.isTauri()) {
-        AppBridge.invoke("save_is_collapsed", { collapsed: state.isCollapsed }).catch(function () {});
+        AppBridge.invoke("save_is_collapsed", {
+            collapsed: state.isCollapsed,
+        }).catch(function () {});
     }
     renderApp();
 }
@@ -3330,7 +3559,9 @@ function switchPortfolio(id) {
 function applyPortfolioOrder(order) {
     if (!Array.isArray(order) || !order.length) return;
     var indexMap = {};
-    order.forEach(function (id, i) { indexMap[String(id)] = i; });
+    order.forEach(function (id, i) {
+        indexMap[String(id)] = i;
+    });
     portfolios.sort(function (a, b) {
         var ia = indexMap[String(a.id)];
         var ib = indexMap[String(b.id)];
@@ -3453,7 +3684,9 @@ var PortfolioTabsDnD = {
             if (AppBridge.isTauri()) {
                 AppBridge.invoke("save_portfolio_order", {
                     user: ServerSync.user,
-                    order: portfolios.map(function (p) { return p.id; }),
+                    order: portfolios.map(function (p) {
+                        return p.id;
+                    }),
                 }).catch(function () {});
             }
             renderApp();
@@ -3484,47 +3717,51 @@ function renderApp() {
     UI.updateSortArrows();
 
     var collapseLabel = state.isCollapsed ? "EXPAND" : "COLLAPSE";
-    var btnC = document.getElementById("btn-collapse");
-    if (btnC) btnC.textContent = collapseLabel;
-    var btnCF = document.getElementById("btn-collapse-footer");
-    if (btnCF) btnCF.textContent = collapseLabel;
+    var collapseBtn2 = document.getElementById("btn-collapse");
+    if (collapseBtn2) collapseBtn2.innerHTML = CoinmanTpl.render("COLLAPSE", { COLLAPSE_LABEL: collapseLabel });
+    var collapseFooterBtn2 = document.getElementById("btn-collapse-footer");
+    if (collapseFooterBtn2) collapseFooterBtn2.innerHTML = CoinmanTpl.render("COLLAPSE_FOOTER", { COLLAPSE_LABEL_FOOTER: collapseLabel });
+
+    if (state.needsAutoAlign && AppSettings.get("autoAlignColumns", false)) {
+        setTimeout(function () {
+            UI.autoAlignTableColumns();
+        }, 10);
+        state.needsAutoAlign = false;
+    }
 }
 
 function renderTabs() {
     var row = document.getElementById("portfolioTabsRow");
-    var tpl = Templates.portfolioTab;
-    if (!row || !tpl) return;
+    if (!row) return;
 
-    row.innerHTML = "";
-
-    var fragment = document.createDocumentFragment();
-    portfolios.forEach(function (p) {
-        var clone = tpl.cloneNode(true);
-        clone.style.display = "";
-        clone.id = "";
-        var dateStr = p.createdAt
-            ? new Date(p.createdAt).toLocaleString()
-            : "Unknown";
-
-        Utils.fillTokens(clone, {
-            "[[PORTFOLIO_NAME]]": Utils.escapeHtml(p.name),
-        });
-
-        clone.title = "Created: " + dateStr;
-        clone.setAttribute("data-portfolio-id", String(p.id));
-        clone.className =
-            "p-tab" + (p.id === state.activePortfolioId ? " active" : "");
-        clone.onmousedown = function (e) {
-            PortfolioTabsDnD.onTabMouseDown(e, p.id, row);
+    var tabsData = portfolios.map(function (p) {
+        return {
+            ID: String(p.id),
+            PORTFOLIO_NAME: p.name,
         };
-        fragment.appendChild(clone);
     });
-    row.appendChild(fragment);
+
+    row.innerHTML = CoinmanTpl.render("PORTFOLIO_TABS", tabsData);
+
+    // Post-render: active class, title, event handlers
+    var tabs = row.querySelectorAll(".p-tab");
+    for (var i = 0; i < tabs.length; i++) {
+        var pid = parseInt(tabs[i].getAttribute("data-portfolio-id"), 10);
+        var pObj = portfolios[i];
+        var dateStr = pObj && pObj.createdAt
+            ? new Date(pObj.createdAt).toLocaleString()
+            : "Unknown";
+        tabs[i].title = "Created: " + dateStr;
+        if (pid === state.activePortfolioId) tabs[i].classList.add("active");
+        tabs[i].onmousedown = (function (id) {
+            return function (e) {
+                PortfolioTabsDnD.onTabMouseDown(e, id, row);
+            };
+        })(pid);
+    }
 }
 
 function renderMeta(p) {
-    var created = document.getElementById("portfolio-created-text");
-    var desc = document.getElementById("portfolio-description-text");
     var isFallback = !p || p.__isFallback === true;
     var dateStr =
         p && p.createdAt ? new Date(p.createdAt).toLocaleString() : "";
@@ -3533,62 +3770,49 @@ function renderMeta(p) {
     if (!dateStr && !isFallback) dateStr = "Unknown";
     if (!descStr && !isFallback) descStr = "Not specified.";
 
-    if (created) {
-        created.textContent = dateStr
-            ? "Portfolio created: " + dateStr
-            : "Portfolio created:";
-    }
-    if (desc) {
-        desc.textContent = descStr ? "Description: " + descStr : "Description:";
-    }
+    var container = document.querySelector(".portfolio-meta");
+    if (!container) return;
+    container.innerHTML = CoinmanTpl.render("META", {
+        PORTFOLIO_CREATED: dateStr || "",
+        PORTFOLIO_DESCRIPTION: descStr || "",
+    });
 }
 
 function renderMetrics(p) {
     var m = Tx.calcMetrics(p);
     var c = p.currency;
+    var mt = document.getElementById("portfolio-metrics-table");
+    if (!mt) return;
 
-    var elAcq = document.getElementById("m-acq-cost");
-    if (elAcq) elAcq.textContent = Utils.formatMoney(m.acqCost, c);
+    mt.innerHTML = CoinmanTpl.render("METRICS", {
+        ACQUISITION_COST: Utils.formatMoney(m.acqCost, c),
+        REALIZED_PL: Utils.formatMoney(m.realized, c),
+        REALIZED_PCT: Utils.formatPercent(m.realizedPct),
+        UNREALIZED_PL: Utils.formatMoney(m.unrealized, c),
+        UNREALIZED_PCT: Utils.formatPercent(m.unrealizedPct),
+        HOLDINGS: Utils.formatMoney(m.holdings, c),
+        PL_24H: Utils.formatMoney(m.day24h, c),
+        PCT_24H: Utils.formatPercent(m.day24hPct),
+    });
 
-    var elHoldings = document.getElementById("m-holdings");
-    if (elHoldings) elHoldings.textContent = Utils.formatMoney(m.holdings, c);
+    // CSS color classes — direct DOM, as before
+    var realEl = mt.querySelector(".m-realized-pl");
+    if (realEl) realEl.className = "metric-value " + Utils.getColorClass(m.realized);
 
-    var realEl = document.getElementById("m-realized-pl");
-    if (realEl) {
-        realEl.textContent = Utils.formatMoney(m.realized, c);
-        realEl.className = "metric-value " + Utils.getColorClass(m.realized);
-    }
+    var realPctEl = mt.querySelector(".m-realized-pct");
+    if (realPctEl) realPctEl.className = Utils.getColorClass(m.realizedPct);
 
-    var realPctEl = document.getElementById("m-realized-pct");
-    if (realPctEl) {
-        realPctEl.textContent = Utils.formatPercent(m.realizedPct);
-        realPctEl.className = Utils.getColorClass(m.realizedPct);
-    }
+    var unrealEl = mt.querySelector(".m-unrealized-pl");
+    if (unrealEl) unrealEl.className = "metric-value " + Utils.getColorClass(m.unrealized);
 
-    var unrealEl = document.getElementById("m-unrealized-pl");
-    if (unrealEl) {
-        unrealEl.textContent = Utils.formatMoney(m.unrealized, c);
-        unrealEl.className =
-            "metric-value " + Utils.getColorClass(m.unrealized);
-    }
+    var pctEl = mt.querySelector(".m-unrealized-pct");
+    if (pctEl) pctEl.className = "metric-sub " + Utils.getColorClass(m.unrealizedPct);
 
-    var pctEl = document.getElementById("m-unrealized-pct");
-    if (pctEl) {
-        pctEl.textContent = Utils.formatPercent(m.unrealizedPct);
-        pctEl.className = "metric-sub " + Utils.getColorClass(m.unrealizedPct);
-    }
+    var dayEl = mt.querySelector(".m-24h-pl");
+    if (dayEl) dayEl.className = "metric-value " + Utils.getColorClass(m.day24h);
 
-    var dayEl = document.getElementById("m-24h");
-    if (dayEl) {
-        dayEl.textContent = Utils.formatMoney(m.day24h, c);
-        dayEl.className = "metric-value " + Utils.getColorClass(m.day24h);
-    }
-
-    var dayPctEl = document.getElementById("m-24h-pct");
-    if (dayPctEl) {
-        dayPctEl.textContent = Utils.formatPercent(m.day24hPct);
-        dayPctEl.className = "metric-sub " + Utils.getColorClass(m.day24hPct);
-    }
+    var dayPctEl = mt.querySelector(".m-24h-pct");
+    if (dayPctEl) dayPctEl.className = "metric-sub " + Utils.getColorClass(m.day24hPct);
 }
 
 function buildSummaryRowData(txs, curr, view) {
@@ -3667,207 +3891,201 @@ function buildTotalPriceSubText(view, spentValue, receivedValue, curr) {
 function renderTable(p) {
     var curr = p.currency;
     var tbody = document.getElementById("transactions-table-body");
-    var tpl = Templates.coinRow;
-    var summaryTpl = Templates.summaryRow;
-    var empty = Templates.emptyRow;
-    if (!tbody || !tpl || !empty) return;
-
-    tbody.innerHTML = "";
+    if (!tbody) return;
 
     var txsRaw = Tx.getFiltered(p, state.currentView);
 
-    var headerPriceLabel = document.getElementById("col-header-price-label");
+    // Update price column labels
     var priceText = state.isCollapsed
         ? "Avg Price"
         : state.currentView === "sold"
           ? "Sell Price"
           : "Buy Price";
-    if (headerPriceLabel) headerPriceLabel.textContent = priceText;
+    var priceHeader = document.getElementById("col-header-price-label");
+    if (priceHeader) priceHeader.innerHTML = CoinmanTpl.render("PRICE_HEADER", { PRICE_LABEL: priceText });
+    var priceFooter = document.getElementById("col-footer-price-label");
+    if (priceFooter) priceFooter.innerHTML = CoinmanTpl.render("PRICE_FOOTER", { PRICE_LABEL_FOOTER: priceText });
 
-    var fragment = document.createDocumentFragment();
-    if (!txsRaw.length) {
-        var er = empty.cloneNode(true);
-        er.id = "";
-        er.style.display = "";
-        fragment.appendChild(er);
-        tbody.appendChild(fragment);
-        return;
+    // Build coin row data array
+    var rows = [];
+    if (txsRaw.length) {
+        if (state.isCollapsed) {
+            var groupsRaw = Tx.groupBySymbol(txsRaw, state.currentView);
+            var groups = Sorting.sortGroups(
+                groupsRaw,
+                state.sortKey,
+                state.sortDir,
+            );
+
+            groups.forEach(function (g) {
+                var det = Market.getDetails(g, curr);
+                var live =
+                    det.price > 0
+                        ? det.price
+                        : g.totalAmount > 0
+                          ? g.totalCost / g.totalAmount
+                          : 0;
+                var profit = g.totalValue - g.totalCost;
+                var pct = g.totalCost > 0 ? (profit / g.totalCost) * 100 : 0;
+
+                rows.push(
+                    buildCoinRowData({
+                        icon: det.image,
+                        coin: g.coin,
+                        symbol: g.symbol,
+                        catalogId: g.catalogId || "",
+                        dateText: "Transactions: " + g.txCount,
+                        price:
+                            g.totalAmount > 0
+                                ? state.currentView === "current"
+                                    ? g.totalCost / g.totalAmount
+                                    : g.totalValue / g.totalAmount
+                                : 0,
+                        priceSub: buildTotalPriceSubText(
+                            state.currentView,
+                            g.totalCost,
+                            g.totalValue,
+                            curr,
+                        ),
+                        currentPrice: live,
+                        amount: g.totalAmount,
+                        totalValue: g.marketValue,
+                        totalSpent: g.totalCost,
+                        profit: profit,
+                        pct: pct,
+                        curr: curr,
+                        view: state.currentView,
+                        isCollapsed: true,
+                    }),
+                );
+            });
+        } else {
+            var txs = Sorting.sortTxs(txsRaw, state.sortKey, state.sortDir);
+
+            txs.forEach(function (t) {
+                var det = Market.getDetails(t, curr);
+                var live = det.price > 0 ? det.price : t.buyPrice;
+                var isCurrent = state.currentView === "current";
+                var dispPrice = isCurrent ? t.buyPrice : t.sellPrice;
+                var dispTotal = t.amount * (isCurrent ? live : t.sellPrice);
+                var marketTotal = t.amount * live;
+                var cost = t.amount * t.buyPrice;
+                var profit = dispTotal - cost;
+                var pct = cost > 0 ? (profit / cost) * 100 : 0;
+                var dateStr = "";
+                if (t.date && t.date.indexOf("T") !== -1) {
+                    var _d = new Date(t.date);
+                    dateStr = _d.toLocaleString([], {
+                        year: "numeric",
+                        month: "2-digit",
+                        day: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                    });
+                } else {
+                    dateStr = t.date || "";
+                }
+                var _note = t.note ? String(t.note).trim() : "";
+                var _dateWithNote = dateStr + (_note ? " \u2022 " + _note : "");
+
+                rows.push(
+                    buildCoinRowData({
+                        icon: det.image,
+                        coin: t.coin,
+                        symbol: t.symbol,
+                        catalogId: t.catalogId || "",
+                        wallet: t.wallet || "",
+                        dateText: _dateWithNote,
+                        price: dispPrice,
+                        priceSub: buildTotalPriceSubText(
+                            state.currentView,
+                            cost,
+                            dispTotal,
+                            curr,
+                        ),
+                        currentPrice: live,
+                        amount: t.amount,
+                        totalValue: marketTotal,
+                        totalSpent: cost,
+                        profit: profit,
+                        pct: pct,
+                        curr: curr,
+                        view: state.currentView,
+                        isCollapsed: false,
+                        txId: t.id,
+                    }),
+                );
+            });
+        }
     }
 
-    if (state.isCollapsed) {
-        var groupsRaw = Tx.groupBySymbol(txsRaw, state.currentView);
-        var groups = Sorting.sortGroups(
-            groupsRaw,
-            state.sortKey,
-            state.sortDir,
-        );
+    // Build summary data
+    var summaryArr = [];
+    if (txsRaw.length) {
+        summaryArr.push(buildSummaryTplData(
+            buildSummaryRowData(txsRaw, curr, state.currentView),
+        ));
+    }
 
-        groups.forEach(function (g) {
-            var det = Market.getDetails(g, curr);
-            var live =
-                det.price > 0
-                    ? det.price
-                    : g.totalAmount > 0
-                      ? g.totalCost / g.totalAmount
-                      : 0;
-            var profit = g.totalValue - g.totalCost;
-            var pct = g.totalCost > 0 ? (profit / g.totalCost) * 100 : 0;
+    var colCount = AppSettings.get("showCurPrice", false) ? "7" : "6";
+    tbody.innerHTML = CoinmanTpl.render("TRANSACTIONS", {
+        HAS_TRANSACTIONS: rows.length > 0,
+        COIN_ROWS: rows,
+        SUMMARY: summaryArr,
+        COLSPAN: colCount,
+    });
 
-            fragment.appendChild(
-                createRow(tpl, {
-                    icon: det.image,
-                    coin: g.coin,
-                    symbol: g.symbol,
-                    catalogId: g.catalogId || "",
-                    dateText: "Transactions: " + g.txCount,
-                    price:
-                        g.totalAmount > 0
-                            ? state.currentView === "current"
-                                ? g.totalCost / g.totalAmount
-                                : g.totalValue / g.totalAmount
-                            : 0,
-                    priceSub: buildTotalPriceSubText(
-                        state.currentView,
-                        g.totalCost,
-                        g.totalValue,
-                        curr,
-                    ),
-                    currentPrice: live,
-                    amount: g.totalAmount,
-                    totalValue: g.marketValue,
-                    totalSpent: g.totalCost,
-                    profit: profit,
-                    pct: pct,
-                    curr: curr,
-                    view: state.currentView,
-                    isCollapsed: true,
-                }),
-            );
-        });
-    } else {
-        var txs = Sorting.sortTxs(txsRaw, state.sortKey, state.sortDir);
+    // Post-render: CSS color classes (as before — direct DOM)
+    var profitEls = tbody.querySelectorAll("[data-profit]");
+    for (var i = 0; i < profitEls.length; i++) {
+        var val = parseFloat(profitEls[i].getAttribute("data-profit"));
+        var isS = profitEls[i].classList.contains("s-profit");
+        profitEls[i].className =
+            "text-bold " + (isS ? "s-profit " : "t-profit ") +
+            Utils.getColorClass(val);
+    }
+    var pctEls = tbody.querySelectorAll("[data-pct]");
+    for (var j = 0; j < pctEls.length; j++) {
+        var pval = parseFloat(pctEls[j].getAttribute("data-pct"));
+        var isSc = pctEls[j].classList.contains("s-change");
+        pctEls[j].className =
+            "text-bold " + (isSc ? "s-change " : "t-change ") +
+            Utils.getColorClass(pval);
+    }
 
-        txs.forEach(function (t) {
-            var det = Market.getDetails(t, curr);
-            var live = det.price > 0 ? det.price : t.buyPrice;
-            var isCurrent = state.currentView === "current";
-            var dispPrice = isCurrent ? t.buyPrice : t.sellPrice;
-            var dispTotal = t.amount * (isCurrent ? live : t.sellPrice);
-            var marketTotal = t.amount * live;
-            var cost = t.amount * t.buyPrice;
-            var profit = dispTotal - cost;
-            var pct = cost > 0 ? (profit / cost) * 100 : 0;
-            var dateStr = "";
-            if (t.date && t.date.indexOf("T") !== -1) {
-                var _d = new Date(t.date);
-                dateStr = _d.toLocaleString([], {
-                    year: "numeric",
-                    month: "2-digit",
-                    day: "2-digit",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                });
+    // Post-render: button handlers
+    var btns = tbody.querySelectorAll(".t-btn-edit");
+    for (var bi = 0; bi < btns.length; bi++) {
+        var tr = btns[bi].closest("tr");
+        if (!tr) continue;
+        var isCollapsed = tr.getAttribute("data-collapsed") === "true";
+        if (isCollapsed) {
+            if (state.currentView === "current") {
+                btns[bi].onclick = (function (sym, catId) {
+                    return function () {
+                        openBulkSellModal(sym, catId);
+                    };
+                })(
+                    tr.getAttribute("data-symbol"),
+                    tr.getAttribute("data-catalog-id") || "",
+                );
             } else {
-                dateStr = t.date || "";
+                btns[bi].onclick = toggleCollapse;
             }
-            var _note = t.note ? String(t.note).trim() : "";
-            var _dateWithNote = dateStr + (_note ? " • " + _note : "");
-
-            fragment.appendChild(
-                createRow(tpl, {
-                    icon: det.image,
-                    coin: t.coin,
-                    symbol: t.symbol,
-                    catalogId: t.catalogId || "",
-                    wallet: t.wallet || "",
-                    dateText: _dateWithNote,
-                    price: dispPrice,
-                    priceSub: buildTotalPriceSubText(
-                        state.currentView,
-                        cost,
-                        dispTotal,
-                        curr,
-                    ),
-                    currentPrice: live,
-                    amount: t.amount,
-                    totalValue: marketTotal,
-                    totalSpent: cost,
-                    profit: profit,
-                    pct: pct,
-                    curr: curr,
-                    view: state.currentView,
-                    isCollapsed: false,
-                    txId: t.id,
-                }),
-            );
-        });
+        } else {
+            btns[bi].onclick = (function (id) {
+                return function () {
+                    openEditCoinModal(id);
+                };
+            })(parseInt(tr.getAttribute("data-tx-id"), 10));
+        }
     }
-
-    if (summaryTpl) {
-        fragment.appendChild(
-            createSummaryRow(
-                summaryTpl,
-                buildSummaryRowData(txsRaw, curr, state.currentView),
-            ),
-        );
-    }
-    tbody.appendChild(fragment);
 }
 
-function createSummaryRow(summaryTpl, d) {
-    var row = summaryTpl.cloneNode(true);
-    row.style.display = "";
-    row.id = "";
-
-    var tokens = {
-        "[[TOTAL_COINS]]": String(d.totalCoinNames),
-        "[[TOTAL_TRN]]": String(d.totalTransactions),
-        "[[TOTAL_AMOUNT]]": (function (val) {
-            var s = (Number.isFinite(val) ? Number(val) : 0).toLocaleString(
-                "en-US",
-                {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                },
-            );
-            if (CONFIG.DECIMAL_SEPARATOR === ",") s = s.replace(".", ",");
-            return s;
-        })(d.amount),
-        "[[A_MARKET_PRICE]]":
-            d.view === "sold"
-                ? "Total Spent: " + Utils.formatMoney(d.totalBuyCost, d.curr)
-                : "Market Price: " + Utils.formatMoney(d.marketValue, d.curr),
-        "[[AVG_PRICE]]": Utils.formatMoney(d.price, d.curr),
-        "[[A_TOTAL_PRICE]]": buildTotalPriceSubText(
-            d.view,
-            d.totalBuyCost,
-            d.totalValue,
-            d.curr,
-        ),
-        "[[A_CUR_PRICE]]": Utils.formatMoney(d.currentPrice, d.curr),
-        "[[A_PROFIT]]": Utils.formatMoney(d.profit, d.curr),
-        "[[A_CHANGE_%]]": Utils.formatPercent(d.pct),
-    };
-
-    Utils.fillTokens(row, tokens);
-
-    var elProfit = row.querySelector(".s-profit");
-    if (elProfit)
-        elProfit.className =
-            "text-bold s-profit " + Utils.getColorClass(d.profit);
-
-    var elChange = row.querySelector(".s-change");
-    if (elChange)
-        elChange.className = "text-bold s-change " + Utils.getColorClass(d.pct);
-
-    return row;
-}
-
-function createRow(tpl, d) {
-    var row = tpl.cloneNode(true);
-    row.style.display = "";
-    row.id = "";
-
+/**
+ * Build a template-ready data object for a single coin row.
+ */
+function buildCoinRowData(d) {
     var firstChar = d.coin && d.coin.length > 0 ? d.coin[0] : "?";
     var iconHtml = d.icon
         ? '<img src="' +
@@ -3877,84 +4095,116 @@ function createRow(tpl, d) {
           '" style="width:100%;height:100%;object-fit:cover;">'
         : Utils.escapeHtml(firstChar);
 
-    var tokens = {
-        "[[ICON]]": iconHtml,
-        "[[COINNAME]]": Utils.escapeHtml(d.coin),
-        "[[DATE]]": Utils.escapeHtml(d.dateText),
-        "[[NOTE]]": Utils.escapeHtml(d.note || ""),
-        "[[AMOUNT]]": Utils.escapeHtml(Utils.formatAmount(d.amount)),
-        "[[SYMBOL]]": Utils.escapeHtml(d.symbol || ""),
-        "[[MARKET_PRICE]]":
-            d.view === "sold"
-                ? "Total Spent: " + Utils.formatMoney(d.totalSpent, d.curr)
-                : "Market Price: " + Utils.formatMoney(d.totalValue, d.curr),
-        "[[PRICE]]": Utils.formatMoney(d.price, d.curr),
-        "[[TOTAL_PRICE]]": d.priceSub,
-        "[[CUR_PRICE]]": Utils.formatMoney(d.currentPrice, d.curr),
-        "[[PROFIT]]": Utils.formatMoney(d.profit, d.curr),
-        "[[CHANGE_%]]": Utils.formatPercent(d.pct),
-        "[[WWW_URL]]": "",
-        "[[GITHUB_URL]]": "",
-        "[[EXPLORER_URL]]": "",
-    };
+    var wwwUrl = "";
+    var githubUrl = "";
+    var explorerUrl = "";
 
-    // Build www / GitHub links for collapsed rows, Explorer for expand rows
     var cat = d.catalogId ? CoinCatalog.getById(d.catalogId) : null;
     if (cat) {
         if (d.isCollapsed) {
             if (cat.website) {
-                tokens["[[WWW_URL]]"] = '<a href="#" class="coin-ext-link" title="https://' +
-                    Utils.escapeAttr(cat.website) + '" onclick="AppBridge.invoke(\'open_url\',{url:\'https://' +
-                    Utils.escapeAttr(cat.website) + '\'});return false;">site</a>';
+                wwwUrl =
+                    '<a href="#" class="coin-ext-link" title="https://' +
+                    Utils.escapeAttr(cat.website) +
+                    "\" onclick=\"AppBridge.invoke('open_url',{url:'https://" +
+                    Utils.escapeAttr(cat.website) +
+                    "'});return false;\">site</a>";
             }
             if (cat.sourceCode) {
-                tokens["[[GITHUB_URL]]"] = '<a href="#" class="coin-ext-link" title="https://' +
-                    Utils.escapeAttr(cat.sourceCode) + '" onclick="AppBridge.invoke(\'open_url\',{url:\'https://' +
-                    Utils.escapeAttr(cat.sourceCode) + '\'});return false;">github</a>';
+                githubUrl =
+                    '<a href="#" class="coin-ext-link" title="https://' +
+                    Utils.escapeAttr(cat.sourceCode) +
+                    "\" onclick=\"AppBridge.invoke('open_url',{url:'https://" +
+                    Utils.escapeAttr(cat.sourceCode) +
+                    "'});return false;\">github</a>";
             }
         }
         if (cat.explorer && d.wallet) {
-            var explorerFullUrl = 'https://' + Utils.escapeAttr(cat.explorer) + '?' + Utils.escapeAttr(d.wallet);
-            tokens["[[EXPLORER_URL]]"] = '<a href="#" class="coin-ext-link" title="' + explorerFullUrl +
-                '" onclick="AppBridge.invoke(\'open_url\',{url:\'' + explorerFullUrl + '\'});return false;">explorer</a>';
+            var explorerFullUrl =
+                "https://" +
+                Utils.escapeAttr(cat.explorer) +
+                "?" +
+                Utils.escapeAttr(d.wallet);
+            explorerUrl =
+                '<a href="#" class="coin-ext-link" title="' +
+                explorerFullUrl +
+                "\" onclick=\"AppBridge.invoke('open_url',{url:'" +
+                explorerFullUrl +
+                "'});return false;\">explorer</a>";
         }
     }
 
-    Utils.fillTokens(row, tokens);
-
-    var btn = row.querySelector(".t-btn-edit");
-    if (btn) {
-        if (d.isCollapsed) {
-            if (state.currentView === "current") {
-                btn.textContent = "SELL";
-                btn.className = "btn-table-edit t-btn-edit";
-                btn.onclick = function () {
-                    openBulkSellModal(d.symbol, d.catalogId || "");
-                };
-            } else {
-                btn.textContent = "EXPAND";
-                btn.className = "btn-table-edit t-btn-edit";
-                btn.onclick = toggleCollapse;
-            }
-        } else {
-            btn.textContent = "EDIT";
-            btn.className = "btn-table-edit t-btn-edit";
-            btn.onclick = function () {
-                openEditCoinModal(d.txId);
-            };
-        }
+    var editLabel;
+    if (d.isCollapsed) {
+        editLabel = state.currentView === "current" ? "SELL" : "EXPAND";
+    } else {
+        editLabel = "EDIT";
     }
 
-    var profitEl = row.querySelector(".t-profit");
-    if (profitEl)
-        profitEl.className =
-            "text-bold t-profit " + Utils.getColorClass(d.profit);
+    return {
+        ICON: iconHtml,
+        COINNAME: d.coin,
+        DATE: d.dateText,
+        AMOUNT: Utils.formatAmount(d.amount),
+        SYMBOL: d.symbol || "",
+        MARKET_PRICE:
+            d.view === "sold"
+                ? "Total Spent: " + Utils.formatMoney(d.totalSpent, d.curr)
+                : "Market Price: " + Utils.formatMoney(d.totalValue, d.curr),
+        PRICE: Utils.formatMoney(d.price, d.curr),
+        TOTAL_PRICE: d.priceSub,
+        CUR_PRICE: Utils.formatMoney(d.currentPrice, d.curr),
+        PROFIT: Utils.formatMoney(d.profit, d.curr),
+        PROFIT_RAW: String(d.profit),
+        CHANGE_PCT: Utils.formatPercent(d.pct),
+        PCT_RAW: String(d.pct),
+        WWW_URL: wwwUrl,
+        GITHUB_URL: githubUrl,
+        EXPLORER_URL: explorerUrl,
+        EDIT_LABEL: editLabel,
+        TX_ID: d.txId != null ? String(d.txId) : "",
+        CATALOG_ID: d.catalogId || "",
+        IS_COLLAPSED: d.isCollapsed ? "true" : "false",
+    };
+}
 
-    var changeEl = row.querySelector(".t-change");
-    if (changeEl)
-        changeEl.className = "text-bold t-change " + Utils.getColorClass(d.pct);
+/**
+ * Build a template-ready data object for the summary row.
+ */
+function buildSummaryTplData(d) {
+    var totalAmountStr = (function (val) {
+        var s = (Number.isFinite(val) ? Number(val) : 0).toLocaleString(
+            "en-US",
+            {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            },
+        );
+        if (CONFIG.DECIMAL_SEPARATOR === ",") s = s.replace(".", ",");
+        return s;
+    })(d.amount);
 
-    return row;
+    return {
+        TOTAL_COINS: String(d.totalCoinNames),
+        TOTAL_TRN: String(d.totalTransactions),
+        TOTAL_AMOUNT: totalAmountStr,
+        A_MARKET_PRICE:
+            d.view === "sold"
+                ? "Total Spent: " + Utils.formatMoney(d.totalBuyCost, d.curr)
+                : "Market Price: " + Utils.formatMoney(d.marketValue, d.curr),
+        AVG_PRICE: Utils.formatMoney(d.price, d.curr),
+        A_TOTAL_PRICE: buildTotalPriceSubText(
+            d.view,
+            d.totalBuyCost,
+            d.totalValue,
+            d.curr,
+        ),
+        A_CUR_PRICE: Utils.formatMoney(d.currentPrice, d.curr),
+        A_PROFIT: Utils.formatMoney(d.profit, d.curr),
+        A_CHANGE_PCT: Utils.formatPercent(d.pct),
+        S_PROFIT_RAW: String(d.profit),
+        S_PCT_RAW: String(d.pct),
+    };
 }
 
 document.addEventListener("click", function (e) {
@@ -4037,7 +4287,9 @@ document.addEventListener("keydown", function (e) {
     if (!openMenu) return;
 
     var items = Array.prototype.slice.call(
-        openMenu.querySelectorAll(".dropdown-item:not(.dropdown-item-disabled)")
+        openMenu.querySelectorAll(
+            ".dropdown-item:not(.dropdown-item-disabled)",
+        ),
     );
     if (!items.length) return;
 
@@ -4052,12 +4304,14 @@ document.addEventListener("keydown", function (e) {
     if (e.key === "ArrowDown") {
         e.preventDefault();
         var next = focusedIdx < items.length - 1 ? focusedIdx + 1 : 0;
-        if (focusedIdx >= 0) items[focusedIdx].classList.remove("dropdown-item-focused");
+        if (focusedIdx >= 0)
+            items[focusedIdx].classList.remove("dropdown-item-focused");
         items[next].classList.add("dropdown-item-focused");
     } else if (e.key === "ArrowUp") {
         e.preventDefault();
         var prev = focusedIdx > 0 ? focusedIdx - 1 : items.length - 1;
-        if (focusedIdx >= 0) items[focusedIdx].classList.remove("dropdown-item-focused");
+        if (focusedIdx >= 0)
+            items[focusedIdx].classList.remove("dropdown-item-focused");
         items[prev].classList.add("dropdown-item-focused");
     } else if (e.key === "Enter") {
         if (focusedIdx >= 0) {
@@ -4080,9 +4334,11 @@ window.onclick = function (event) {
 (function () {
     var menus = document.getElementsByClassName("dropdown-menu");
     for (var i = 0; i < menus.length; i++) {
-        menus[i].addEventListener("click", function (e) { e.stopPropagation(); });
+        menus[i].addEventListener("click", function (e) {
+            e.stopPropagation();
+        });
     }
-}());
+})();
 
 window.openAboutModal = function () {
     window.closeAllDropdowns();
@@ -4156,7 +4412,9 @@ var DbSelector = {
                 (item.encrypted
                     ? "Encrypted database" +
                       (item.encryptedVersion > ENC_V1
-                          ? '<br><span style="color:#D32F2F;">version ' + item.encryptedVersion + ' not supported</span>'
+                          ? '<br><span style="color:#D32F2F;">version ' +
+                            item.encryptedVersion +
+                            " not supported</span>"
                           : "")
                     : "Total coins in database: " + item.coinCount) +
                 '</span><span class="db-item-date">' +
@@ -4220,9 +4478,13 @@ var DbSelector = {
         if (!item) return;
         UI.closeModal("modal-open-database");
         if (item.encrypted && item.encryptedVersion > ENC_V1) {
-            showUnsupportedEncryptionError(item.name, item.encryptedVersion, function () {
-                DbSelector.open(DbSelector.items, DbSelector.dbDir);
-            });
+            showUnsupportedEncryptionError(
+                item.name,
+                item.encryptedVersion,
+                function () {
+                    DbSelector.open(DbSelector.items, DbSelector.dbDir);
+                },
+            );
             return;
         }
         if (item.encrypted) {
@@ -4251,26 +4513,66 @@ var DbSelector = {
             .then(function () {
                 if (AppBridge.isTauri()) {
                     AppBridge.invoke("check_db_encrypted", { user: name })
-                        .then(function (enc) { Market.setEncStatus(!!enc); })
+                        .then(function (enc) {
+                            Market.setEncStatus(!!enc);
+                        })
                         .catch(function () {});
                 }
                 renderApp();
                 MarketCache.clear();
                 // Restore market cache from settings-cache.json, then schedule refresh
                 if (AppBridge.isTauri()) {
-                    AppBridge.invoke("load_app_settings", { user: ServerSync.user })
+                    AppBridge.invoke("load_app_settings", {
+                        user: ServerSync.user,
+                    })
                         .then(function (appSettings) {
-                            if (appSettings && appSettings.activePortfolioId !== undefined) {
-                                state.activePortfolioId = appSettings.activePortfolioId;
+                            if (
+                                appSettings &&
+                                appSettings.activePortfolioId !== undefined
+                            ) {
+                                state.activePortfolioId =
+                                    appSettings.activePortfolioId;
                             }
-                            if (appSettings && Array.isArray(appSettings.portfolioOrder)) {
+                            if (
+                                appSettings &&
+                                Array.isArray(appSettings.portfolioOrder)
+                            ) {
                                 applyPortfolioOrder(appSettings.portfolioOrder);
                             }
-                            if (appSettings && appSettings.showCurPrice !== undefined) {
-                                AppSettings.set("showCurPrice", !!appSettings.showCurPrice);
+                            if (
+                                appSettings &&
+                                appSettings.showCurPrice !== undefined
+                            ) {
+                                AppSettings.set(
+                                    "showCurPrice",
+                                    !!appSettings.showCurPrice,
+                                );
                                 AppSettings.applyCurPrice();
                             }
-                            if (appSettings && appSettings.isCollapsed !== undefined) {
+                            if (
+                                appSettings &&
+                                appSettings.autoAlignColumns !== undefined
+                            ) {
+                                AppSettings.set(
+                                    "autoAlignColumns",
+                                    !!appSettings.autoAlignColumns,
+                                );
+                                AppSettings.applyAutoAlign();
+                            }
+                            if (
+                                appSettings &&
+                                appSettings.showTableFooter !== undefined
+                            ) {
+                                AppSettings.set(
+                                    "showTableFooter",
+                                    !!appSettings.showTableFooter,
+                                );
+                                AppSettings.applyTableFooter();
+                            }
+                            if (
+                                appSettings &&
+                                appSettings.isCollapsed !== undefined
+                            ) {
                                 state.isCollapsed = !!appSettings.isCollapsed;
                             }
                             if (appSettings && appSettings.columnWidths) {
@@ -4280,27 +4582,46 @@ var DbSelector = {
                                 AppSettings.applyCurPrice(); // Still call here to apply widths correctly
                                 Object.keys(widths).forEach(function (id) {
                                     var th = document.getElementById(id);
-                                    if (th && id !== "th-change" && id !== "th-coin" && id !== "th-cur-price") {
+                                    if (
+                                        th &&
+                                        id !== "th-change" &&
+                                        id !== "th-coin" &&
+                                        id !== "th-cur-price"
+                                    ) {
                                         th.style.width = widths[id] + "px";
                                     }
                                 });
                             }
-                            if (appSettings && Array.isArray(appSettings.marketCache) && appSettings.marketCache.length) {
-                                Market.setStateMarketData(appSettings.marketCache);
-                                Market.fileCacheSavedAt = appSettings.marketCacheSavedAt || 0;
+                            if (
+                                appSettings &&
+                                Array.isArray(appSettings.marketCache) &&
+                                appSettings.marketCache.length
+                            ) {
+                                Market.setStateMarketData(
+                                    appSettings.marketCache,
+                                );
+                                Market.fileCacheSavedAt =
+                                    appSettings.marketCacheSavedAt || 0;
                                 var ts = Market.fileCacheSavedAt
-                                    ? new Date(Market.fileCacheSavedAt).toLocaleString()
+                                    ? new Date(
+                                          Market.fileCacheSavedAt,
+                                      ).toLocaleString()
                                     : "date unknown";
                                 Market.setStatus(
-                                    "Market data: loaded " + appSettings.marketCache.length +
-                                    " symbols from file (" + ts + ")",
+                                    "Market data: loaded " +
+                                        appSettings.marketCache.length +
+                                        " symbols from file (" +
+                                        ts +
+                                        ")",
                                     "#aaa",
                                 );
                                 renderApp();
                             }
                         })
                         .catch(function () {})
-                        .finally(function () { Market.scheduleRefresh(100); });
+                        .finally(function () {
+                            Market.scheduleRefresh(100);
+                        });
                 } else {
                     Market.scheduleRefresh(100);
                 }
@@ -4372,7 +4693,11 @@ window.handleMenuOpenDatabase = function () {
     AppBridge.invoke("open_file_dialog")
         .then(function (filePath) {
             if (!filePath) return;
-            var name = filePath.replace(/\\/g, "/").split("/").pop().replace(/\.json$/i, "");
+            var name = filePath
+                .replace(/\\/g, "/")
+                .split("/")
+                .pop()
+                .replace(/\.json$/i, "");
             if (!name) return;
             DebugLog.log("OPEN_DB_FILE", "path=" + filePath + " name=" + name);
             DbSelector._loadByName(name);
@@ -4394,7 +4719,10 @@ window.handleMenuSaveDbAs = function () {
     if (nameEl) nameEl.value = "";
     if (errEl) errEl.classList.add("hidden");
     UI.openModal("modal-save-db-as");
-    if (nameEl) setTimeout(function () { nameEl.focus(); }, 80);
+    if (nameEl)
+        setTimeout(function () {
+            nameEl.focus();
+        }, 80);
 };
 
 window.handleSaveDbAsKeydown = function (e) {
@@ -4407,12 +4735,21 @@ window.handleDoSaveDbAs = function () {
     var name = nameEl ? nameEl.value.trim() : "";
 
     function showErr(msg) {
-        if (errEl) { errEl.textContent = msg; errEl.classList.remove("hidden"); }
+        if (errEl) {
+            errEl.textContent = msg;
+            errEl.classList.remove("hidden");
+        }
     }
 
-    if (!name) { showErr("Please enter a name."); return; }
+    if (!name) {
+        showErr("Please enter a name.");
+        return;
+    }
 
-    AppBridge.invoke("copy_database", { sourceUser: ServerSync.user, targetUser: name })
+    AppBridge.invoke("copy_database", {
+        sourceUser: ServerSync.user,
+        targetUser: name,
+    })
         .then(function () {
             UI.closeModal("modal-save-db-as");
             DbSelector._loadByName(name);
@@ -4422,11 +4759,16 @@ window.handleDoSaveDbAs = function () {
             if (msg.indexOf("DATABASE_EXISTS") !== -1) {
                 showErr("A database with that name already exists.");
             } else if (msg.indexOf("INVALID_NAME") !== -1) {
-                showErr("Invalid name. Avoid special characters like / \\ and leading dots.");
+                showErr(
+                    "Invalid name. Avoid special characters like / \\ and leading dots.",
+                );
             } else {
                 showErr("Error: " + msg);
             }
-            if (nameEl) { nameEl.select(); nameEl.focus(); }
+            if (nameEl) {
+                nameEl.select();
+                nameEl.focus();
+            }
         });
 };
 
@@ -4446,7 +4788,10 @@ var DbEncryption = {
         if (pwEl) pwEl.value = "";
         if (errEl) errEl.classList.add("hidden");
         UI.openModal("modal-unlock-database");
-        if (pwEl) setTimeout(function () { pwEl.focus(); }, 80);
+        if (pwEl)
+            setTimeout(function () {
+                pwEl.focus();
+            }, 80);
     },
 
     doUnlock: function () {
@@ -4454,7 +4799,10 @@ var DbEncryption = {
         var errEl = document.getElementById("unlock-db-error");
         var pw = pwEl ? pwEl.value : "";
         if (!pw) {
-            if (errEl) { errEl.textContent = "Please enter a password."; errEl.classList.remove("hidden"); }
+            if (errEl) {
+                errEl.textContent = "Please enter a password.";
+                errEl.classList.remove("hidden");
+            }
             return;
         }
         // Try loading with provided password
@@ -4464,7 +4812,9 @@ var DbEncryption = {
                 if (!payload || payload.ok !== true || !payload.data) {
                     throw new Error("Invalid DB payload");
                 }
-                portfolios = Array.isArray(payload.data.portfolios) ? payload.data.portfolios : [];
+                portfolios = Array.isArray(payload.data.portfolios)
+                    ? payload.data.portfolios
+                    : [];
                 UI.closeModal("modal-unlock-database");
                 Market.setEncStatus(true);
                 var cb = DbEncryption._unlockCallback;
@@ -4479,11 +4829,18 @@ var DbEncryption = {
                     showUnsupportedEncryptionError(ServerSync.user, encVer);
                     return;
                 }
-                var text = msg.indexOf("WRONG_PASSWORD") !== -1
-                    ? "Wrong password. Please try again."
-                    : "Error: " + msg;
-                if (errEl) { errEl.textContent = text; errEl.classList.remove("hidden"); }
-                if (pwEl) { pwEl.select(); pwEl.focus(); }
+                var text =
+                    msg.indexOf("WRONG_PASSWORD") !== -1
+                        ? "Wrong password. Please try again."
+                        : "Error: " + msg;
+                if (errEl) {
+                    errEl.textContent = text;
+                    errEl.classList.remove("hidden");
+                }
+                if (pwEl) {
+                    pwEl.select();
+                    pwEl.focus();
+                }
             });
     },
 };
@@ -4511,7 +4868,8 @@ window.handleDoUnlockDatabase = function () {
 window.handleMenuEncryptDatabase = function () {
     window.closeAllDropdowns();
     var menuItem = document.getElementById("menu-encrypt-database");
-    if (menuItem && menuItem.classList.contains("dropdown-item-disabled")) return;
+    if (menuItem && menuItem.classList.contains("dropdown-item-disabled"))
+        return;
     var pwEl = document.getElementById("encrypt-db-password");
     var cfEl = document.getElementById("encrypt-db-confirm");
     var errEl = document.getElementById("encrypt-db-error");
@@ -4519,75 +4877,116 @@ window.handleMenuEncryptDatabase = function () {
     if (cfEl) cfEl.value = "";
     if (errEl) errEl.classList.add("hidden");
     UI.openModal("modal-encrypt-database");
-    if (pwEl) setTimeout(function () { pwEl.focus(); }, 80);
+    if (pwEl)
+        setTimeout(function () {
+            pwEl.focus();
+        }, 80);
 };
 
 window.handleMenuDecryptDatabase = function () {
     window.closeAllDropdowns();
     var decItem = document.getElementById("menu-decrypt-database");
     if (decItem && decItem.classList.contains("dropdown-item-disabled")) return;
-    var pwEl  = document.getElementById("decrypt-db-password");
+    var pwEl = document.getElementById("decrypt-db-password");
     var errEl = document.getElementById("decrypt-db-error");
-    if (pwEl)  pwEl.value = "";
+    if (pwEl) pwEl.value = "";
     if (errEl) errEl.classList.add("hidden");
     UI.openModal("modal-decrypt-database");
-    if (pwEl) setTimeout(function () { pwEl.focus(); }, 80);
+    if (pwEl)
+        setTimeout(function () {
+            pwEl.focus();
+        }, 80);
 };
 
 window.handleDoDecryptDatabase = function () {
-    var pwEl  = document.getElementById("decrypt-db-password");
+    var pwEl = document.getElementById("decrypt-db-password");
     var errEl = document.getElementById("decrypt-db-error");
     var pw = pwEl ? pwEl.value : "";
 
     function showErr(msg) {
-        if (errEl) { errEl.textContent = msg; errEl.classList.remove("hidden"); }
+        if (errEl) {
+            errEl.textContent = msg;
+            errEl.classList.remove("hidden");
+        }
     }
-    if (!pw) { showErr("Please enter your current password."); return; }
+    if (!pw) {
+        showErr("Please enter your current password.");
+        return;
+    }
 
-    AppBridge.invoke("decrypt_database", { user: ServerSync.user, password: pw })
+    AppBridge.invoke("decrypt_database", {
+        user: ServerSync.user,
+        password: pw,
+    })
         .then(function () {
             UI.closeModal("modal-decrypt-database");
             Market.setEncStatus(false);
         })
         .catch(function (e) {
             var msg = String(e);
-            showErr(msg.indexOf("WRONG_PASSWORD") !== -1 ? "Wrong password. Please try again." : "Error: " + msg);
-            if (pwEl) { pwEl.select(); pwEl.focus(); }
+            showErr(
+                msg.indexOf("WRONG_PASSWORD") !== -1
+                    ? "Wrong password. Please try again."
+                    : "Error: " + msg,
+            );
+            if (pwEl) {
+                pwEl.select();
+                pwEl.focus();
+            }
         });
 };
 
 window.handleMenuChangePassword = function () {
     window.closeAllDropdowns();
     var chpwItem = document.getElementById("menu-change-password");
-    if (chpwItem && chpwItem.classList.contains("dropdown-item-disabled")) return;
+    if (chpwItem && chpwItem.classList.contains("dropdown-item-disabled"))
+        return;
     var curEl = document.getElementById("change-pw-current");
     var newEl = document.getElementById("change-pw-new");
-    var cfEl  = document.getElementById("change-pw-confirm");
+    var cfEl = document.getElementById("change-pw-confirm");
     var errEl = document.getElementById("change-pw-error");
     if (curEl) curEl.value = "";
     if (newEl) newEl.value = "";
-    if (cfEl)  cfEl.value  = "";
+    if (cfEl) cfEl.value = "";
     if (errEl) errEl.classList.add("hidden");
     UI.openModal("modal-change-password");
-    if (curEl) setTimeout(function () { curEl.focus(); }, 80);
+    if (curEl)
+        setTimeout(function () {
+            curEl.focus();
+        }, 80);
 };
 
 window.handleDoChangePassword = function () {
     var curEl = document.getElementById("change-pw-current");
     var newEl = document.getElementById("change-pw-new");
-    var cfEl  = document.getElementById("change-pw-confirm");
+    var cfEl = document.getElementById("change-pw-confirm");
     var errEl = document.getElementById("change-pw-error");
     var cur = curEl ? curEl.value : "";
-    var nw  = newEl ? newEl.value : "";
-    var cf  = cfEl  ? cfEl.value  : "";
+    var nw = newEl ? newEl.value : "";
+    var cf = cfEl ? cfEl.value : "";
 
     function showErr(msg) {
-        if (errEl) { errEl.textContent = msg; errEl.classList.remove("hidden"); }
+        if (errEl) {
+            errEl.textContent = msg;
+            errEl.classList.remove("hidden");
+        }
     }
-    if (!cur) { showErr("Please enter your current password."); return; }
-    if (!nw)  { showErr("Please enter a new password."); return; }
-    if (nw.length < 4) { showErr("New password must be at least 4 characters."); return; }
-    if (nw !== cf) { showErr("New passwords do not match."); return; }
+    if (!cur) {
+        showErr("Please enter your current password.");
+        return;
+    }
+    if (!nw) {
+        showErr("Please enter a new password.");
+        return;
+    }
+    if (nw.length < 4) {
+        showErr("New password must be at least 4 characters.");
+        return;
+    }
+    if (nw !== cf) {
+        showErr("New passwords do not match.");
+        return;
+    }
 
     AppBridge.invoke("change_database_password", {
         user: ServerSync.user,
@@ -4599,8 +4998,15 @@ window.handleDoChangePassword = function () {
         })
         .catch(function (e) {
             var msg = String(e);
-            showErr(msg.indexOf("WRONG_PASSWORD") !== -1 ? "Wrong current password." : "Error: " + msg);
-            if (curEl) { curEl.select(); curEl.focus(); }
+            showErr(
+                msg.indexOf("WRONG_PASSWORD") !== -1
+                    ? "Wrong current password."
+                    : "Error: " + msg,
+            );
+            if (curEl) {
+                curEl.select();
+                curEl.focus();
+            }
         });
 };
 
@@ -4612,26 +5018,41 @@ window.handleDoEncryptDatabase = function () {
     var cf = cfEl ? cfEl.value : "";
 
     if (!pw) {
-        if (errEl) { errEl.textContent = "Please enter a password."; errEl.classList.remove("hidden"); }
+        if (errEl) {
+            errEl.textContent = "Please enter a password.";
+            errEl.classList.remove("hidden");
+        }
         return;
     }
     if (pw.length < 4) {
-        if (errEl) { errEl.textContent = "Password must be at least 4 characters."; errEl.classList.remove("hidden"); }
+        if (errEl) {
+            errEl.textContent = "Password must be at least 4 characters.";
+            errEl.classList.remove("hidden");
+        }
         return;
     }
     if (pw !== cf) {
-        if (errEl) { errEl.textContent = "Passwords do not match."; errEl.classList.remove("hidden"); }
+        if (errEl) {
+            errEl.textContent = "Passwords do not match.";
+            errEl.classList.remove("hidden");
+        }
         return;
     }
 
-    AppBridge.invoke("encrypt_database", { user: ServerSync.user, password: pw })
+    AppBridge.invoke("encrypt_database", {
+        user: ServerSync.user,
+        password: pw,
+    })
         .then(function () {
             UI.closeModal("modal-encrypt-database");
             Market.setEncStatus(true);
         })
         .catch(function (e) {
             var msg = String(e);
-            if (errEl) { errEl.textContent = "Encryption failed: " + msg; errEl.classList.remove("hidden"); }
+            if (errEl) {
+                errEl.textContent = "Encryption failed: " + msg;
+                errEl.classList.remove("hidden");
+            }
         });
 };
 // ─── Update Checker ──────────────────────────────────────────────────────────
@@ -4646,16 +5067,22 @@ var UpdateChecker = {
 
     init: function (lastCheckTimestamp) {
         var now = Date.now();
-        var needsCheck = !lastCheckTimestamp ||
-            (now - lastCheckTimestamp) >= UpdateChecker.CHECK_INTERVAL_MS;
+        var needsCheck =
+            !lastCheckTimestamp ||
+            now - lastCheckTimestamp >= UpdateChecker.CHECK_INTERVAL_MS;
         if (needsCheck) {
-            setTimeout(function () { UpdateChecker.check(); }, UpdateChecker.STARTUP_DELAY_MS);
+            setTimeout(function () {
+                UpdateChecker.check();
+            }, UpdateChecker.STARTUP_DELAY_MS);
         }
     },
 
     check: function () {
-        var url = "https://api.github.com/repos/" + UpdateChecker.GITHUB_REPO + "/releases?per_page=20";
-        fetch(url, { headers: { "Accept": "application/vnd.github.v3+json" } })
+        var url =
+            "https://api.github.com/repos/" +
+            UpdateChecker.GITHUB_REPO +
+            "/releases?per_page=20";
+        fetch(url, { headers: { Accept: "application/vnd.github.v3+json" } })
             .then(function (res) {
                 if (!res.ok) throw new Error("HTTP " + res.status);
                 return res.json();
@@ -4664,7 +5091,9 @@ var UpdateChecker = {
                 // Save check timestamp on any successful response
                 var now = Date.now();
                 if (AppBridge.isTauri()) {
-                    AppBridge.invoke("save_last_update_check", { timestamp: now }).catch(function () {});
+                    AppBridge.invoke("save_last_update_check", {
+                        timestamp: now,
+                    }).catch(function () {});
                 }
 
                 if (!Array.isArray(releases) || !releases.length) return;
@@ -4677,15 +5106,30 @@ var UpdateChecker = {
                     var tag = (r.tag_name || "").replace(/^v/, "");
                     if (!tag) continue;
                     if (r.prerelease) {
-                        if (!latestPre) latestPre = { version: tag, url: r.html_url || "" };
+                        if (!latestPre)
+                            latestPre = { version: tag, url: r.html_url || "" };
                     } else {
-                        if (!latestStable) latestStable = { version: tag, url: r.html_url || "" };
+                        if (!latestStable)
+                            latestStable = {
+                                version: tag,
+                                url: r.html_url || "",
+                            };
                     }
                     if (latestStable && latestPre) break;
                 }
 
-                var hasStable = latestStable && UpdateChecker.isNewer(latestStable.version, CONFIG.APP_VERSION);
-                var hasPre = latestPre && UpdateChecker.isNewer(latestPre.version, CONFIG.APP_VERSION);
+                var hasStable =
+                    latestStable &&
+                    UpdateChecker.isNewer(
+                        latestStable.version,
+                        CONFIG.APP_VERSION,
+                    );
+                var hasPre =
+                    latestPre &&
+                    UpdateChecker.isNewer(
+                        latestPre.version,
+                        CONFIG.APP_VERSION,
+                    );
 
                 if (hasStable) UpdateChecker.stable = latestStable;
                 if (hasPre) UpdateChecker.prerelease = latestPre;
@@ -4718,14 +5162,18 @@ var UpdateChecker = {
         if (!info) return;
         var html = "";
         if (UpdateChecker.stable) {
-            html += '<p class="update-version update-stable">' +
-                'Release: v' + Utils.escapeHtml(UpdateChecker.stable.version) +
-                '</p>';
+            html +=
+                '<p class="update-version update-stable">' +
+                "Release: v" +
+                Utils.escapeHtml(UpdateChecker.stable.version) +
+                "</p>";
         }
         if (UpdateChecker.prerelease) {
-            html += '<p class="update-version update-prerelease">' +
-                'Pre-release: v' + Utils.escapeHtml(UpdateChecker.prerelease.version) +
-                '</p>';
+            html +=
+                '<p class="update-version update-prerelease">' +
+                "Pre-release: v" +
+                Utils.escapeHtml(UpdateChecker.prerelease.version) +
+                "</p>";
         }
         info.innerHTML = html;
         UI.applyModalSize("modal-update-available", "DEFAULT");
@@ -4752,9 +5200,11 @@ var UpdateChecker = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 window.onload = function () {
+    CoinmanTpl.init();
     AppSettings.init();
-    var aboutVerEl = document.getElementById("about-version");
-    if (aboutVerEl) aboutVerEl.textContent = "Version " + CONFIG.APP_VERSION;
+    var aboutModal = document.getElementById("modal-about");
+    var aboutVersion = document.getElementById("about-version");
+    if (aboutVersion) aboutVersion.innerHTML = CoinmanTpl.render("APP_VERSION", { VERSION_APP: "Version " + CONFIG.APP_VERSION });
     AppBridge.bootstrap()
         .catch(function (e) {
             console.error("Bootstrap failed:", e);
@@ -4773,7 +5223,6 @@ window.onload = function () {
                 if (uiSetupDone) return;
                 uiSetupDone = true;
 
-                Templates.init();
                 Storage.load();
                 TimePicker.initAll();
                 UI.initRestrictions();
@@ -4808,25 +5257,67 @@ window.onload = function () {
 
             function afterLoad() {
                 if (AppBridge.isTauri()) {
-                    AppBridge.invoke("check_db_encrypted", { user: ServerSync.user })
-                        .then(function (enc) { Market.setEncStatus(!!enc); })
+                    AppBridge.invoke("check_db_encrypted", {
+                        user: ServerSync.user,
+                    })
+                        .then(function (enc) {
+                            Market.setEncStatus(!!enc);
+                        })
                         .catch(function () {});
                 }
 
                 if (AppBridge.isTauri()) {
-                    AppBridge.invoke("load_app_settings", { user: ServerSync.user })
+                    AppBridge.invoke("load_app_settings", {
+                        user: ServerSync.user,
+                    })
                         .then(function (appSettings) {
-                            if (appSettings && appSettings.activePortfolioId !== undefined) {
-                                state.activePortfolioId = appSettings.activePortfolioId;
+                            if (
+                                appSettings &&
+                                appSettings.activePortfolioId !== undefined
+                            ) {
+                                state.activePortfolioId =
+                                    appSettings.activePortfolioId;
                             }
-                            if (appSettings && Array.isArray(appSettings.portfolioOrder)) {
+                            if (
+                                appSettings &&
+                                Array.isArray(appSettings.portfolioOrder)
+                            ) {
                                 applyPortfolioOrder(appSettings.portfolioOrder);
                             }
-                            if (appSettings && appSettings.showCurPrice !== undefined) {
-                                AppSettings.set("showCurPrice", !!appSettings.showCurPrice);
+                            if (
+                                appSettings &&
+                                appSettings.showCurPrice !== undefined
+                            ) {
+                                AppSettings.set(
+                                    "showCurPrice",
+                                    !!appSettings.showCurPrice,
+                                );
                                 AppSettings.applyCurPrice();
                             }
-                            if (appSettings && appSettings.isCollapsed !== undefined) {
+                            if (
+                                appSettings &&
+                                appSettings.autoAlignColumns !== undefined
+                            ) {
+                                AppSettings.set(
+                                    "autoAlignColumns",
+                                    !!appSettings.autoAlignColumns,
+                                );
+                                AppSettings.applyAutoAlign();
+                            }
+                            if (
+                                appSettings &&
+                                appSettings.showTableFooter !== undefined
+                            ) {
+                                AppSettings.set(
+                                    "showTableFooter",
+                                    !!appSettings.showTableFooter,
+                                );
+                                AppSettings.applyTableFooter();
+                            }
+                            if (
+                                appSettings &&
+                                appSettings.isCollapsed !== undefined
+                            ) {
                                 state.isCollapsed = !!appSettings.isCollapsed;
                             }
                             if (appSettings && appSettings.columnWidths) {
@@ -4836,27 +5327,44 @@ window.onload = function () {
                                 AppSettings.applyCurPrice(); // Still call here to apply widths correctly
                                 Object.keys(widths).forEach(function (id) {
                                     var th = document.getElementById(id);
-                                    if (th && id !== "th-change" && id !== "th-coin" && id !== "th-cur-price") {
+                                    if (
+                                        th &&
+                                        id !== "th-change" &&
+                                        id !== "th-coin" &&
+                                        id !== "th-cur-price"
+                                    ) {
                                         th.style.width = widths[id] + "px";
                                     }
                                 });
                             }
                             UpdateChecker.init(
                                 appSettings && appSettings.lastUpdateCheck
-                                    ? appSettings.lastUpdateCheck : 0
+                                    ? appSettings.lastUpdateCheck
+                                    : 0,
                             );
-                            if (appSettings && Array.isArray(appSettings.marketCache) && appSettings.marketCache.length) {
-                                Market.setStateMarketData(appSettings.marketCache);
-                                Market.fileCacheSavedAt = appSettings.marketCacheSavedAt || 0;
+                            if (
+                                appSettings &&
+                                Array.isArray(appSettings.marketCache) &&
+                                appSettings.marketCache.length
+                            ) {
+                                Market.setStateMarketData(
+                                    appSettings.marketCache,
+                                );
+                                Market.fileCacheSavedAt =
+                                    appSettings.marketCacheSavedAt || 0;
                                 var ts = Market.fileCacheSavedAt
-                                    ? new Date(Market.fileCacheSavedAt).toLocaleString()
+                                    ? new Date(
+                                          Market.fileCacheSavedAt,
+                                      ).toLocaleString()
                                     : "date unknown";
                                 Market.setStatus(
-                                    "Market data: loaded " + appSettings.marketCache.length +
-                                    " symbols from file (" + ts + ")",
+                                    "Market data: loaded " +
+                                        appSettings.marketCache.length +
+                                        " symbols from file (" +
+                                        ts +
+                                        ")",
                                     "#aaa",
                                 );
-                                renderApp();
                             }
                         })
                         .catch(function () {})
@@ -4894,7 +5402,10 @@ window.onload = function () {
                         var encVer = parseUnsupportedEncVersion(msg);
                         if (encVer) {
                             initUiAndRender({ locked: true });
-                            showUnsupportedEncryptionError(ServerSync.user, encVer);
+                            showUnsupportedEncryptionError(
+                                ServerSync.user,
+                                encVer,
+                            );
                             return;
                         }
                         console.error("Load failed:", e);

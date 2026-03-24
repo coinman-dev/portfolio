@@ -1,15 +1,15 @@
 /* --- CSS STYLES (DARK THEME) --- */
 
 :root {
-    --color-accent: #f57c00;       /* Оранжевый: кнопки (btn-orange), заголовки модалей, акцент summary-row, hover меню */
-    --color-accent-link: #e67e22;  /* Оранжевый (светлее): ссылки в About, галочка в меню Settings */
-    --color-text: #ffffff;         /* Белый: основной текст, заголовки, метки форм */
-    --color-text-muted: #888888;   /* Серый: подписи (дата, хинты), btn-outline, неактивные вкладки */
-    --color-text-dim: #cccccc;     /* Светло-серый: описания в модалях, menu bar, dropdown items */
-    --color-bg-dark: #1a1a1a;     /* Тёмный фон: шапка таблиц (th), menu bar, status bar, modal footer */
-    --color-bg-card: #1e1e1e;     /* Карточный фон: таблицы, форм-инпуты, sell-таблица */
-    --color-bg-modal: #121212;    /* Фон модалей и body страницы, select элементы */
-    --color-border: #333333;      /* Границы: разделители таблиц, рамки карточек, dropdown, status bar */
+    --color-accent: #f57c00; /* Оранжевый: кнопки (btn-orange), заголовки модалей, акцент summary-row, hover меню */
+    --color-accent-link: #e67e22; /* Оранжевый (светлее): ссылки в About, галочка в меню Settings */
+    --color-text: #ffffff; /* Белый: основной текст, заголовки, метки форм */
+    --color-text-muted: #888888; /* Серый: подписи (дата, хинты), btn-outline, неактивные вкладки */
+    --color-text-dim: #cccccc; /* Светло-серый: описания в модалях, menu bar, dropdown items */
+    --color-bg-dark: #1a1a1a; /* Тёмный фон: шапка таблиц (th), menu bar, status bar, modal footer */
+    --color-bg-card: #1e1e1e; /* Карточный фон: таблицы, форм-инпуты, sell-таблица */
+    --color-bg-modal: #121212; /* Фон модалей и body страницы, select элементы */
+    --color-border: #333333; /* Границы: разделители таблиц, рамки карточек, dropdown, status bar */
 }
 
 body {
@@ -24,6 +24,7 @@ body {
     max-width: 1200px;
     margin: 0 auto;
     padding: 10px;
+    overflow-x: hidden;
 }
 
 /* --- COMMON / UTILITIES --- */
@@ -73,7 +74,6 @@ body {
 .sell-table-counter {
     font-variant-numeric: tabular-nums;
 }
-
 
 /* --- TABLES GENERAL --- */
 table {
@@ -362,6 +362,15 @@ select option {
     margin-top: 10px;
     table-layout: fixed;
     width: 100%;
+}
+#portfolio-transactions-table.auto-aligning td,
+#portfolio-transactions-table.auto-aligning .coin-name,
+#portfolio-transactions-table.auto-aligning .coin-date {
+    white-space: nowrap;
+}
+#portfolio-transactions-table.auto-aligning th:last-child,
+#portfolio-transactions-table.auto-aligning td:last-child {
+    display: none !important;
 }
 #portfolio-transactions-table th {
     position: relative;
@@ -968,6 +977,9 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     box-sizing: border-box;
 }
 
+#statusbar-dynamic {
+    display: contents;
+}
 .ie-statusbar-panel {
     padding: 0 10px;
     height: 100%;
@@ -993,13 +1005,13 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 /* --- UPDATE STATUS (status bar, right side) --- */
 .ie-statusbar-panel-update {
     flex: 0 0 auto;
-    color: #4FC3F7;
+    color: #4fc3f7;
     cursor: pointer;
     margin-left: auto;
     padding: 0 10px;
 }
 .ie-statusbar-panel-update:hover {
-    color: #81D4FA;
+    color: #81d4fa;
     text-decoration: underline;
 }
 
@@ -1011,10 +1023,10 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     margin: 6px 0;
 }
 .update-stable {
-    color: #66BB6A;
+    color: #66bb6a;
 }
 .update-prerelease {
-    color: #FFA726;
+    color: #ffa726;
 }
 
 /* --- CURRENT PRICE COLUMN TOGGLE --- */
@@ -1077,39 +1089,106 @@ body.show-cur-price .col-cur-price {
     width: 12px;
     text-align: center;
     font-size: 12px;
-    color: var(--color-accent-link);
+    color: #ffffff;
 }
 .dropdown-item-check.checked::before {
     content: "✓";
 }
 
 /* --- MODAL SIZE VARIANTS --- */
-.modal-sm .modal-content { width: 400px; }
-.modal-md .modal-content { width: 420px; }
-.modal-lg .modal-content { width: 440px; }
-.modal-wide .modal-content { width: 520px; }
-.modal-body-flush { padding: 0; }
+.modal-sm .modal-content {
+    width: 400px;
+}
+.modal-md .modal-content {
+    width: 420px;
+}
+.modal-lg .modal-content {
+    width: 440px;
+}
+.modal-wide .modal-content {
+    width: 520px;
+}
+.modal-body-flush {
+    padding: 0;
+}
 
 /* --- ABOUT MODAL --- */
-.about-body { text-align: center; }
-.about-logo { width: 64px; height: 64px; margin-bottom: 15px; }
-.about-title { margin: 0 0 10px 0; color: var(--color-text); }
-.about-subtitle { color: var(--color-text-muted); font-size: 14px; margin-bottom: 20px; }
-.about-text { color: var(--color-text-dim); font-size: 14px; line-height: 1.5; margin-bottom: 16px; }
-.about-link { color: var(--color-accent-link); font-size: 13px; text-decoration: none; }
-.about-link:hover { text-decoration: underline; }
-.about-credits { color: var(--color-text-muted); font-size: 11px; line-height: 1.5; margin-top: 16px; margin-bottom: 0; }
-.about-credits a { color: var(--color-accent-link); text-decoration: none; }
-.about-credits a:hover { text-decoration: underline; }
+.about-body {
+    text-align: center;
+}
+.about-logo {
+    width: 64px;
+    height: 64px;
+    margin-bottom: 15px;
+}
+.about-title {
+    margin: 0 0 10px 0;
+    color: var(--color-text);
+}
+.about-subtitle {
+    color: var(--color-text-muted);
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+.about-text {
+    color: var(--color-text-dim);
+    font-size: 14px;
+    line-height: 1.5;
+    margin-bottom: 16px;
+}
+.about-link {
+    color: var(--color-accent-link);
+    font-size: 13px;
+    text-decoration: none;
+}
+.about-link:hover {
+    text-decoration: underline;
+}
+.about-credits {
+    color: var(--color-text-muted);
+    font-size: 11px;
+    line-height: 1.5;
+    margin-top: 16px;
+    margin-bottom: 0;
+}
+.about-credits a {
+    color: var(--color-accent-link);
+    text-decoration: none;
+}
+.about-credits a:hover {
+    text-decoration: underline;
+}
 
 /* --- MODAL REUSABLE CLASSES --- */
-.modal-description { color: var(--color-text-dim); font-size: 14px; margin: 0 0 18px 0; }
-.text-accent { color: var(--color-accent-link); }
-.form-group-last { margin-bottom: 8px; }
+.modal-description {
+    color: var(--color-text-dim);
+    font-size: 14px;
+    margin: 0 0 18px 0;
+}
+.text-accent {
+    color: var(--color-accent-link);
+}
+.form-group-last {
+    margin-bottom: 8px;
+}
 
 /* --- ERROR MODAL --- */
-.error-filename { color: var(--color-text); font-weight: bold; word-break: break-all; margin-bottom: 12px; }
-.error-text { color: var(--color-text-dim); line-height: 1.5; }
-.error-hint { color: var(--color-text-dim); line-height: 1.5; margin-top: 10px; }
+.error-filename {
+    color: var(--color-text);
+    font-weight: bold;
+    word-break: break-all;
+    margin-bottom: 12px;
+}
+.error-text {
+    color: var(--color-text-dim);
+    line-height: 1.5;
+}
+.error-hint {
+    color: var(--color-text-dim);
+    line-height: 1.5;
+    margin-top: 10px;
+}
 .error-text strong,
-.error-hint strong { color: var(--color-text); }
+.error-hint strong {
+    color: var(--color-text);
+}
