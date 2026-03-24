@@ -2689,13 +2689,8 @@ var UI = {
             UI.updateBulkSellSortArrows();
             renderBulkSellTable();
             var amountInput = document.getElementById("bulk-sell-amount");
-            var need = Utils.parseNumber(
-                amountInput ? amountInput.value : "",
-                0,
-            );
-            var clamped = updateBulkSellChecksByAmount(need);
-            if (amountInput && clamped !== need)
-                amountInput.value = clamped > 0 ? String(clamped) : "";
+            if (amountInput) amountInput.value = "";
+            updateBulkSellChecksByAmount(0);
         });
     },
 };
