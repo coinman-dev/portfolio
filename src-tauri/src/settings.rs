@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
 use std::fs;
+use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Runtime};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -40,6 +40,11 @@ pub struct AppSettings {
     pub show_cur_price: Option<bool>,
     #[serde(default)]
     pub is_collapsed: Option<bool>,
+    /// Global: whether to automatically align column widths
+    #[serde(default)]
+    pub auto_align_columns: Option<bool>,
+    #[serde(default)]
+    pub show_table_footer: Option<bool>,
     /// Global: column widths, shared across all databases.
     #[serde(default)]
     pub column_widths: Option<Value>,
@@ -59,6 +64,8 @@ pub struct AppSettingsForUser {
     pub window_state: Option<WinState>,
     pub show_cur_price: Option<bool>,
     pub is_collapsed: Option<bool>,
+    pub auto_align_columns: Option<bool>,
+    pub show_table_footer: Option<bool>,
     pub column_widths: Option<Value>,
     pub active_portfolio_id: Option<Value>,
     pub portfolio_order: Option<Vec<Value>>,
@@ -82,6 +89,8 @@ pub fn load_for_user<R: Runtime>(app: &AppHandle<R>, user: &str) -> AppSettingsF
         window_state: settings.window_state,
         show_cur_price: settings.show_cur_price,
         is_collapsed: settings.is_collapsed,
+        auto_align_columns: settings.auto_align_columns,
+        show_table_footer: settings.show_table_footer,
         column_widths: settings.column_widths,
         active_portfolio_id: u.active_portfolio_id,
         portfolio_order: u.portfolio_order,
@@ -97,7 +106,12 @@ pub fn update_window_state<R: Runtime>(app: &AppHandle<R>, state: WinState) {
     save(app, &settings);
 }
 
-pub fn update_market_cache<R: Runtime>(app: &AppHandle<R>, user: &str, cache: Value, saved_at: u64) {
+pub fn update_market_cache<R: Runtime>(
+    app: &AppHandle<R>,
+    user: &str,
+    cache: Value,
+    saved_at: u64,
+) {
     let mut settings = load(app);
     let entry = settings.users.entry(user.to_string()).or_default();
     entry.market_cache = Some(cache);
@@ -107,7 +121,11 @@ pub fn update_market_cache<R: Runtime>(app: &AppHandle<R>, user: &str, cache: Va
 
 pub fn update_active_portfolio_id<R: Runtime>(app: &AppHandle<R>, user: &str, id: Value) {
     let mut settings = load(app);
-    settings.users.entry(user.to_string()).or_default().active_portfolio_id = Some(id);
+    settings
+        .users
+        .entry(user.to_string())
+        .or_default()
+        .active_portfolio_id = Some(id);
     save(app, &settings);
 }
 
@@ -120,6 +138,18 @@ pub fn update_column_widths<R: Runtime>(app: &AppHandle<R>, widths: Value) {
 pub fn update_show_cur_price<R: Runtime>(app: &AppHandle<R>, show: bool) {
     let mut settings = load(app);
     settings.show_cur_price = Some(show);
+    save(app, &settings);
+}
+
+pub fn update_auto_align_columns<R: Runtime>(app: &AppHandle<R>, align: bool) {
+    let mut settings = load(app);
+    settings.auto_align_columns = Some(align);
+    save(app, &settings);
+}
+
+pub fn update_show_table_footer<R: Runtime>(app: &AppHandle<R>, show: bool) {
+    let mut settings = load(app);
+    settings.show_table_footer = Some(show);
     save(app, &settings);
 }
 
@@ -137,7 +167,11 @@ pub fn update_last_update_check<R: Runtime>(app: &AppHandle<R>, timestamp: u64) 
 
 pub fn update_portfolio_order<R: Runtime>(app: &AppHandle<R>, user: &str, order: Vec<Value>) {
     let mut settings = load(app);
-    settings.users.entry(user.to_string()).or_default().portfolio_order = Some(order);
+    settings
+        .users
+        .entry(user.to_string())
+        .or_default()
+        .portfolio_order = Some(order);
     save(app, &settings);
 }
 

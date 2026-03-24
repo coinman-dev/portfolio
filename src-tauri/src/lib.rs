@@ -285,6 +285,16 @@ fn save_show_cur_price(app: tauri::AppHandle, show: bool) {
 }
 
 #[tauri::command]
+fn save_auto_align_columns(app: tauri::AppHandle, align: bool) {
+    settings::update_auto_align_columns(&app, align);
+}
+
+#[tauri::command]
+fn save_show_table_footer(app: tauri::AppHandle, show: bool) {
+    settings::update_show_table_footer(&app, show);
+}
+
+#[tauri::command]
 fn save_is_collapsed(app: tauri::AppHandle, collapsed: bool) {
     settings::update_is_collapsed(&app, collapsed);
 }
@@ -369,16 +379,16 @@ fn copy_database(
 async fn open_file_dialog(app: tauri::AppHandle) -> Result<Option<String>, String> {
     use tauri_plugin_dialog::DialogExt;
     let (tx, rx) = mpsc::channel();
-    
+
     let mut builder = app.dialog().file().add_filter("JSON", &["json"]);
     if let Some(db_dir) = storage::get_db_dir_path(&app) {
         builder = builder.set_directory(db_dir);
     }
-    
+
     builder.pick_file(move |file| {
         let _ = tx.send(file);
     });
-    
+
     let file = rx.recv().map_err(|e| e.to_string())?;
     Ok(file.map(|f| f.to_string()))
 }
@@ -427,6 +437,8 @@ pub fn run() {
             save_active_portfolio,
             save_column_widths,
             save_show_cur_price,
+            save_auto_align_columns,
+            save_show_table_footer,
             save_is_collapsed,
             debug_log,
             exit_app,
