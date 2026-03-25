@@ -652,6 +652,32 @@ select option {
     outline: none;
     border-bottom: 1px solid var(--color-accent);
 }
+.wallet-label-row {
+    display: flex;
+    gap: 20px;
+    align-items: baseline;
+}
+.wallet-label-row > label {
+    flex: 1;
+}
+.blockchain-selector {
+    flex: 1;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+.blockchain-label-inline {
+    margin-bottom: 0;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.blockchain-selector select {
+    flex: 1;
+    min-width: 0;
+}
+.blockchain-selector select:disabled {
+    opacity: 0.5;
+}
 .input-readonly {
     color: #666;
     pointer-events: none;

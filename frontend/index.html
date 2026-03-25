@@ -401,11 +401,7 @@
 				</div>
 				<div class="flex-1">
 					<label class="form-label">Currency</label>
-					<select name="edit-p-currency" class="form-input select-transparent" id="edit-p-currency">
-						<option value="USD">USD</option>
-						<option value="EUR">EUR</option>
-						<option value="BTC">BTC</option>
-					</select>
+					<select name="edit-p-currency" class="form-input select-transparent" id="edit-p-currency"></select>
 				</div>
 			</div>
 			<div class="form-group">
@@ -477,7 +473,13 @@
 				</div>
 			</div>
 			<div class="form-group">
-				<label class="form-label">Wallet Address</label>
+				<div class="wallet-label-row">
+					<label class="form-label">Wallet Address</label>
+					<div class="blockchain-selector">
+						<label class="form-label blockchain-label-inline">Blockchain:</label>
+						<select id="add-coin-blockchain" class="form-input select-transparent" disabled></select>
+					</div>
+				</div>
 				<input type="text" id="add-coin-wallet" class="form-input" maxlength="220" placeholder="Optional wallet address where coins are stored..."/>
 			</div>
 			<div class="form-group">
@@ -619,9 +621,10 @@
 					<input type="text" id="edit-coin-name" class="form-input" maxlength="32" oninput="handleSearch('edit-coin-name', 'suggestions-edit')"/>
 					<ul id="suggestions-edit" class="suggestions-list"></ul>
 				</div>
-				<div class="flex-1">
+				<div class="flex-1 suggestions-wide-right">
 					<label class="form-label">Symbol</label>
-					<input type="text" id="edit-coin-symbol" class="form-input" maxlength="8"/>
+					<input type="text" id="edit-coin-symbol" class="form-input" maxlength="8" oninput="handleSearchBySymbol('edit-coin-symbol', 'suggestions-edit-symbol')"/>
+					<ul id="suggestions-edit-symbol" class="suggestions-list"></ul>
 				</div>
 				<div class="flex-1">
 					<label class="form-label">Currency</label>
@@ -652,7 +655,13 @@
 					</div>
 				</div>
 				<div class="form-group">
-					<label class="form-label">Wallet Address</label>
+					<div class="wallet-label-row">
+						<label class="form-label">Wallet Address</label>
+						<div class="blockchain-selector">
+							<label class="form-label blockchain-label-inline">Blockchain:</label>
+							<select id="edit-coin-blockchain" class="form-input select-transparent" disabled></select>
+						</div>
+					</div>
 					<input type="text" id="edit-coin-wallet" class="form-input" maxlength="220" placeholder="Optional wallet address where coins are stored..."/>
 				</div>
 				<div class="form-group">

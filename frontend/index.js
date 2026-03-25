@@ -789,6 +789,9 @@ var CoinCatalog = {
                     website: (raw && raw.website) || "",
                     sourceCode: (raw && raw.source_code) || "",
                     explorer: (raw && raw.explorer) || "",
+                    category: (raw && raw.category) || "",
+                    platform: (raw && Array.isArray(raw.platform)) ? raw.platform : [],
+                    geckoId: (raw && raw.gecko_id) ? String(raw.gecko_id) : "",
                 };
                 items.push(item);
                 if (item.id && !mapById[item.id]) mapById[item.id] = item;
@@ -847,6 +850,34 @@ var CoinCatalog = {
         }
 
         return list.length === 1 ? list[0] : null;
+    },
+
+    populateBlockchainSelect: function (selectId, catalogId) {
+        var sel = document.getElementById(selectId);
+        if (!sel) return;
+        sel.innerHTML = '<option value="" disabled>Select blockchain</option>';
+        sel.disabled = true;
+        if (!catalogId) return;
+        var coin = CoinCatalog.getById(catalogId);
+        if (!coin) return;
+        var platforms = coin.platform || [];
+        if (!platforms.length && coin.category !== "coin") return;
+        if (coin.category === "coin") {
+            var opt = document.createElement("option");
+            opt.value = "Native";
+            opt.textContent = "Native";
+            sel.appendChild(opt);
+        }
+        platforms.forEach(function (p) {
+            var opt = document.createElement("option");
+            opt.value = p.name || "";
+            opt.textContent = p.name || "";
+            sel.appendChild(opt);
+        });
+        if (sel.options.length > 1) {
+            sel.disabled = false;
+            sel.selectedIndex = 1;
+        }
     },
 };
 
@@ -1413,20 +1444,15 @@ var Market = {
         return out;
     },
 
-    fetchMarketsChunk: function (symbols, currency) {
-        if (!symbols.length) return window.Promise.resolve([]);
-        var symbolsParam = symbols
-            .map(function (s) {
-                return String(s || "").toLowerCase();
-            })
-            .join(",");
+    // Queries /coins/markets using CoinGecko ids= (precise, no symbol ambiguity)
+    fetchMarketsChunkByIds: function (geckoIds, currency) {
+        if (!geckoIds.length) return window.Promise.resolve([]);
         var url =
             CONFIG.API_MARKETS_URL +
             "?vs_currency=" +
             encodeURIComponent(String(currency || "USD").toLowerCase()) +
-            "&order=market_cap_desc&per_page=250&page=1&sparkline=false&price_change_percentage=24h&symbols=" +
-            encodeURIComponent(symbolsParam);
-
+            "&order=market_cap_desc&per_page=250&sparkline=false&price_change_percentage=24h&ids=" +
+            encodeURIComponent(geckoIds.join(","));
         return window.fetch(url).then(function (response) {
             if (!response.ok) throw new Error("API Error: " + response.status);
             return response.json();
@@ -1441,6 +1467,10 @@ var Market = {
         var cid =
             Utils.sanitizeCatalogId(catalogId || "") ||
             (catalog && catalog.id ? String(catalog.id) : "");
+
+        // No gecko_id → no price data available
+        var geckoId = catalog && catalog.geckoId ? catalog.geckoId : "";
+        if (!geckoId) return window.Promise.resolve(false);
 
         var inState = cid ? Market.getMarketCoin(cid) : null;
         if (Market.hasCoinCurrencyData(inState, curr)) {
@@ -1460,21 +1490,14 @@ var Market = {
         }
 
         Market.setStatus("Market data: loading " + sym + "...", "#888");
-        return Market.fetchMarketsChunk([sym], curr)
+        return Market.fetchMarketsChunkByIds([geckoId], curr)
             .then(function (rows) {
-                var matched = (rows || []).find(function (row) {
-                    return (
-                        Utils.sanitizeSymbol(
-                            row && row.symbol ? row.symbol : "",
-                        ) === sym
-                    );
-                });
-
+                var matched = (rows && rows[0]) || null;
                 var base = inState || inCache || null;
                 var coin = Market.buildCoinFromRow(
                     sym,
                     curr,
-                    matched || null,
+                    matched,
                     base,
                     catalog,
                 );
@@ -1507,21 +1530,11 @@ var Market = {
         var catalogIds = Market.getTrackedCatalogIds(trackedCoins);
         var vsCurrencies = Market.getNeededVsCurrencies();
         var trackedByCatalogId = {};
-        var symbolToCatalogIds = {};
 
         trackedCoins.forEach(function (item) {
             if (!item || !item.catalogId) return;
             if (!trackedByCatalogId[item.catalogId])
                 trackedByCatalogId[item.catalogId] = item;
-            if (item.symbol) {
-                if (!symbolToCatalogIds[item.symbol])
-                    symbolToCatalogIds[item.symbol] = [];
-                if (
-                    symbolToCatalogIds[item.symbol].indexOf(item.catalogId) ===
-                    -1
-                )
-                    symbolToCatalogIds[item.symbol].push(item.catalogId);
-            }
         });
 
         if (!symbols.length) {
@@ -1551,12 +1564,79 @@ var Market = {
         Market.refreshInProgress = true;
         Market.setStatus("Market data: loading...", "#888");
 
-        var chunks = Market.splitToChunks(symbols, 200);
+        // Resolve gecko IDs from catalog (no API call needed)
+        var geckoIds = [];
+        var geckoIdSeen = {};
+        var catalogIdByGeckoId = {};
+
+        catalogIds.forEach(function (cid) {
+            var tracked = trackedByCatalogId[cid];
+            if (!tracked) return;
+            var catalog = Market.getCatalogCoin(
+                tracked.catalogId,
+                tracked.symbol,
+                tracked.coin,
+            );
+            var gid = catalog && catalog.geckoId ? catalog.geckoId : "";
+            if (gid && !geckoIdSeen[gid]) {
+                geckoIdSeen[gid] = true;
+                geckoIds.push(gid);
+                catalogIdByGeckoId[gid] = cid;
+            }
+        });
+
+        // Build base map for all tracked coins (price=0 for coins without gecko_id)
+        var map = {};
+        catalogIds.forEach(function (cid) {
+            var tracked = trackedByCatalogId[cid] || {
+                symbol: "",
+                catalogId: cid,
+                coin: "",
+            };
+            var catalog = Market.getCatalogCoin(
+                tracked.catalogId,
+                tracked.symbol,
+                tracked.coin,
+            );
+            map[cid] = {
+                name:
+                    catalog && catalog.name
+                        ? catalog.name
+                        : tracked.symbol || cid,
+                symbol:
+                    tracked.symbol ||
+                    (catalog && catalog.symbol ? catalog.symbol : ""),
+                catalogId: cid,
+                price: 0,
+                prices: {},
+                change24h: 0,
+                changes24h: {},
+                image: catalog && catalog.image ? catalog.image : null,
+            };
+        });
+
+        if (!geckoIds.length) {
+            Market.setStateMarketData(
+                catalogIds.map(function (cid) {
+                    return map[cid];
+                }),
+            );
+            Market.setStatus(
+                "Market data: no gecko IDs in catalog.",
+                "#888",
+            );
+            renderApp();
+            Market.refreshInProgress = false;
+            return window.Promise.resolve();
+        }
+
+        // Fetch prices by gecko IDs (minimal API calls)
         var allRequests = [];
+        var idChunks = Market.splitToChunks(geckoIds, 200);
         vsCurrencies.forEach(function (currency) {
-            chunks.forEach(function (chunk) {
+            idChunks.forEach(function (chunk) {
                 allRequests.push(
-                    Market.fetchMarketsChunk(chunk, currency)
+                    Market.fetchMarketsChunkByIds(chunk, currency)
                         .then(function (rows) {
                             return {
                                 currency: currency,
@@ -1564,7 +1644,11 @@ var Market = {
                             };
                         })
                         .catch(function (e) {
-                            console.error("Market chunk failed:", currency, e);
+                            console.error(
+                                "Market chunk failed:",
+                                currency,
+                                e,
+                            );
                             return { currency: currency, rows: [] };
                         }),
                 );
@@ -1602,76 +1686,31 @@ var Market = {
                     return;
                 }
 
-                var map = {};
-                catalogIds.forEach(function (cid) {
-                    var tracked = trackedByCatalogId[cid] || {
-                        symbol: "",
-                        catalogId: cid,
-                        coin: "",
-                    };
-                    var catalog = Market.getCatalogCoin(
-                        tracked.catalogId,
-                        tracked.symbol,
-                        tracked.coin,
-                    );
-                    map[cid] = {
-                        name:
-                            catalog && catalog.name
-                                ? catalog.name
-                                : tracked.symbol || cid,
-                        symbol:
-                            tracked.symbol ||
-                            (catalog && catalog.symbol ? catalog.symbol : ""),
-                        catalogId: cid,
-                        price: 0,
-                        prices: {},
-                        change24h: 0,
-                        changes24h: {},
-                        image: catalog && catalog.image ? catalog.image : null,
-                    };
-                });
-
                 responses.forEach(function (res) {
                     var curr = String(res.currency || "USD").toUpperCase();
                     (res.rows || []).forEach(function (row) {
-                        var sym = Utils.sanitizeSymbol(
-                            row && row.symbol ? row.symbol : "",
-                        );
-                        var cids = sym ? symbolToCatalogIds[sym] : null;
-                        if (!cids) return;
-                        cids.forEach(function (cid) {
-                            if (!map[cid]) return;
-                            if (row && row.name)
-                                map[cid].name = String(row.name);
-                            if (
-                                Number.isFinite(
-                                    Number(row && row.current_price),
-                                )
-                            ) {
-                                map[cid].prices[curr] = Number(
-                                    row.current_price,
-                                );
-                            } else if (map[cid].prices[curr] === undefined) {
-                                map[cid].prices[curr] = 0;
-                            }
-
-                            var ch24 = Number(
-                                row &&
-                                    row.price_change_percentage_24h_in_currency,
+                        if (!row || !row.id) return;
+                        var cid = catalogIdByGeckoId[row.id];
+                        if (!cid || !map[cid]) return;
+                        if (Number.isFinite(Number(row.current_price))) {
+                            map[cid].prices[curr] = Number(
+                                row.current_price,
                             );
-                            if (!Number.isFinite(ch24)) {
-                                ch24 = Number(
-                                    row && row.price_change_percentage_24h,
-                                );
-                            }
-                            if (Number.isFinite(ch24)) {
-                                map[cid].changes24h[curr] = ch24;
-                            } else if (
-                                map[cid].changes24h[curr] === undefined
-                            ) {
-                                map[cid].changes24h[curr] = 0;
-                            }
-                        });
+                        } else if (map[cid].prices[curr] === undefined) {
+                            map[cid].prices[curr] = 0;
+                        }
+                        var ch24 = Number(
+                            row.price_change_percentage_24h_in_currency,
+                        );
+                        if (!Number.isFinite(ch24))
+                            ch24 = Number(row.price_change_percentage_24h);
+                        if (Number.isFinite(ch24)) {
+                            map[cid].changes24h[curr] = ch24;
+                        } else if (
+                            map[cid].changes24h[curr] === undefined
+                        ) {
+                            map[cid].changes24h[curr] = 0;
+                        }
                     });
                 });
 
@@ -2757,7 +2796,19 @@ var TimePicker = {
 };
 
 var Autocomplete = {
+    closeOtherSuggestions: function (keepListId) {
+        document
+            .querySelectorAll(".suggestions-list")
+            .forEach(function (el) {
+                if (el.id !== keepListId) {
+                    el.classList.remove("active");
+                    el.innerHTML = "";
+                }
+            });
+    },
+
     handleSearch: function (inputId, listId) {
+        Autocomplete.closeOtherSuggestions(listId);
         var input = document.getElementById(inputId);
         var list = document.getElementById(listId);
         var query = (input && input.value ? input.value : "").toLowerCase();
@@ -2817,6 +2868,7 @@ var Autocomplete = {
     },
 
     handleSearchBySymbol: function (inputId, listId) {
+        Autocomplete.closeOtherSuggestions(listId);
         var input = document.getElementById(inputId);
         var list = document.getElementById(listId);
         var query = (input && input.value ? input.value : "").toLowerCase();
@@ -2873,7 +2925,7 @@ var Autocomplete = {
     },
 
     select: function (coin, inputId, listId) {
-        var isEdit = inputId === "edit-coin-name";
+        var isEdit = inputId === "edit-coin-name" || inputId === "edit-coin-symbol";
         var prefix = isEdit ? "edit" : "add";
         var selectedCatalogId = Utils.sanitizeCatalogId(
             coin && coin.id ? coin.id : "",
@@ -2895,6 +2947,7 @@ var Autocomplete = {
             priceInput.value = Utils.normalizePrice(
                 Market.getEntryPrice(marketCoin || coin, curr),
             );
+        CoinCatalog.populateBlockchainSelect(prefix + "-coin-blockchain", selectedCatalogId);
         var lst = document.getElementById(listId);
         if (lst) lst.classList.remove("active");
     },
@@ -3255,6 +3308,7 @@ function openAddCoinModal() {
     ].forEach(function (id) {
         document.getElementById(id).value = "";
     });
+    CoinCatalog.populateBlockchainSelect("add-coin-blockchain", "");
 
     UI.applyModalSize("modal-add-coin", "DEFAULT");
     UI.openModal("modal-add-coin");
@@ -3309,6 +3363,7 @@ function handleAddCoin() {
         ),
         note: document.getElementById("add-coin-note").value,
         wallet: document.getElementById("add-coin-wallet").value,
+        blockchain: document.getElementById("add-coin-blockchain").value,
     });
 
     if (Market.refreshTimer) {
@@ -3369,6 +3424,9 @@ function openEditCoinModal(id) {
     document.getElementById("edit-coin-time").value = dt.time;
     document.getElementById("edit-coin-note").value = tx.note || "";
     document.getElementById("edit-coin-wallet").value = tx.wallet || "";
+    CoinCatalog.populateBlockchainSelect("edit-coin-blockchain", state.editCatalogId);
+    var editBlockchainSel = document.getElementById("edit-coin-blockchain");
+    if (editBlockchainSel && tx.blockchain) editBlockchainSel.value = tx.blockchain;
 
     if (tx.status === "sold") {
         document.getElementById("sell-coin-price").value = Utils.normalizePrice(
@@ -3443,6 +3501,7 @@ function handleUpdateTransaction() {
         ),
         note: document.getElementById("edit-coin-note").value,
         wallet: document.getElementById("edit-coin-wallet").value,
+        blockchain: document.getElementById("edit-coin-blockchain").value,
     });
 
     renderApp();
@@ -3990,6 +4049,7 @@ function renderTable(p) {
                         symbol: t.symbol,
                         catalogId: t.catalogId || "",
                         wallet: t.wallet || "",
+                        blockchain: t.blockchain || "",
                         dateText: _dateWithNote,
                         price: dispPrice,
                         priceSub: buildTotalPriceSubText(
@@ -4114,12 +4174,35 @@ function buildCoinRowData(d) {
                     "'});return false;\">github</a>";
             }
         }
-        if (cat.explorer && d.wallet) {
+        var _explorerHost = "";
+        var _explorerAddr = "";
+        if (cat.category === "token" && d.blockchain && d.wallet) {
+            // Find matching platform entry by blockchain name to get the blockchain's explorer
+            var _platforms = cat.platform || [];
+            var _platform = null;
+            for (var _pi = 0; _pi < _platforms.length; _pi++) {
+                if (_platforms[_pi].name === d.blockchain) {
+                    _platform = _platforms[_pi];
+                    break;
+                }
+            }
+            if (_platform && _platform.id) {
+                var _chainCat = CoinCatalog.getById(String(_platform.id));
+                if (_chainCat && _chainCat.explorer) {
+                    _explorerHost = _chainCat.explorer;
+                    _explorerAddr = d.wallet;
+                }
+            }
+        } else if (cat.explorer && d.wallet) {
+            _explorerHost = cat.explorer;
+            _explorerAddr = d.wallet;
+        }
+        if (_explorerHost && _explorerAddr) {
             var explorerFullUrl =
                 "https://" +
-                Utils.escapeAttr(cat.explorer) +
-                "?" +
-                Utils.escapeAttr(d.wallet);
+                Utils.escapeAttr(_explorerHost) +
+                "/?" +
+                Utils.escapeAttr(_explorerAddr);
             explorerUrl =
                 '<a href="#" class="coin-ext-link" title="' +
                 explorerFullUrl +
