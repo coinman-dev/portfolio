@@ -34,6 +34,7 @@ var CONFIG = {
     PRICE_DECIMALS: 8,
     DECIMAL_SEPARATOR: ".",
     API_MARKETS_URL: "https://api.coingecko.com/api/v3/coins/markets",
+    CMC_CHUNK_SIZE: 100,
     MARKET_CACHE_STORAGE_KEY: "coinman_market_cache_v1",
     MARKET_SESSION_COOKIE_NAME: "coinman_market_session_v1",
     TIME_STEP_MINUTES: 5,
@@ -386,10 +387,83 @@ var AppSettings = {
         this.applyTableFooter();
     },
 
+    applyCmc: function () {
+        var enabled = this.get("useCmc", false);
+        var menuItem = document.getElementById("menu-toggle-cmc");
+        if (menuItem) {
+            if (enabled) { menuItem.classList.add("checked"); }
+            else { menuItem.classList.remove("checked"); }
+        }
+    },
+
+    handleToggleCmc: function () {
+        var current = this.get("useCmc", false);
+        if (current) {
+            this.set("useCmc", false);
+            if (AppBridge.isTauri()) {
+                AppBridge.invoke("save_use_cmc", { useCmc: false }).catch(function () {});
+            }
+            this.applyCmc();
+            Market.fetchData();
+        } else {
+            window.closeAllDropdowns();
+            var input = document.getElementById("cmc-apikey-input");
+            if (input) input.value = this.get("cmcApiKey", "");
+            var errEl = document.getElementById("cmc-apikey-error");
+            if (errEl) { errEl.textContent = ""; errEl.classList.add("hidden"); }
+            var okEl = document.getElementById("cmc-apikey-success");
+            if (okEl) { okEl.textContent = ""; okEl.classList.add("hidden"); }
+            openModal("modal-cmc-apikey");
+        }
+    },
+
+    handleSaveCmcKey: function () {
+        var input = document.getElementById("cmc-apikey-input");
+        var key = input ? input.value.trim() : "";
+        var errEl = document.getElementById("cmc-apikey-error");
+        var okEl = document.getElementById("cmc-apikey-success");
+        var btn = document.getElementById("cmc-apikey-save-btn");
+
+        if (!key) {
+            if (errEl) { errEl.textContent = "Please enter an API key."; errEl.classList.remove("hidden"); }
+            return;
+        }
+        if (errEl) errEl.classList.add("hidden");
+        if (okEl) okEl.classList.add("hidden");
+        if (btn) btn.disabled = true;
+
+        AppBridge.invoke("cmc_fetch_quotes", { apiKey: key, ids: "1", convert: "USD" })
+        .then(function (data) {
+            if (data && data.data) {
+                AppSettings.set("cmcApiKey", key);
+                AppSettings.set("useCmc", true);
+                if (AppBridge.isTauri()) {
+                    AppBridge.invoke("save_cmc_api_key", { key: key }).catch(function () {});
+                    AppBridge.invoke("save_use_cmc", { useCmc: true }).catch(function () {});
+                }
+                AppSettings.applyCmc();
+                if (okEl) { okEl.textContent = "API key validated. CMC prices enabled."; okEl.classList.remove("hidden"); }
+                setTimeout(function () { closeModal("modal-cmc-apikey"); Market.fetchData(); }, 1200);
+            } else {
+                var msg = (data && data.status && data.status.error_message) || "Invalid API key.";
+                if (errEl) { errEl.textContent = msg; errEl.classList.remove("hidden"); }
+            }
+        })
+        .catch(function (e) {
+            var msg = typeof e === "string" ? e : (e && e.message ? e.message : String(e));
+            if (msg.indexOf("CMC_AUTH_FAILED") !== -1) msg = "Invalid API key.";
+            if (errEl) { errEl.textContent = "Validation failed: " + msg; errEl.classList.remove("hidden"); }
+        })
+        .finally(function () {
+            if (btn) btn.disabled = false;
+        });
+    },
+
     init: function () {
         this.applyCurPrice();
         this.applyAutoAlign();
         this.applyTableFooter();
+        this.applyCmc();
     },
 };
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1459,6 +1533,23 @@ var Market = {
         });
     },
 
+    fetchCmcChunkByIds: function (cmcIds, currency) {
+        if (!cmcIds.length) return window.Promise.resolve({});
+        var key = AppSettings.get("cmcApiKey", "");
+        if (!key) return window.Promise.reject(new Error("No CMC API key"));
+        return AppBridge.invoke("cmc_fetch_quotes", {
+            apiKey: key,
+            ids: cmcIds.join(","),
+            convert: String(currency || "USD").toUpperCase(),
+        }).then(function (json) {
+            return (json && json.data) ? json.data : {};
+        }).catch(function (e) {
+            var msg = typeof e === "string" ? e : (e && e.message ? e.message : "");
+            if (msg.indexOf("CMC_AUTH_FAILED") !== -1) throw new Error("CMC_AUTH_FAILED");
+            throw new Error(msg || "CMC request failed");
+        });
+    },
+
     fetchSingleIfMissing: function (symbol, currency, catalogId, coinName) {
         var sym = Utils.sanitizeSymbol(symbol || "");
         var curr = String(currency || "USD").toUpperCase();
@@ -1467,10 +1558,6 @@ var Market = {
         var cid =
             Utils.sanitizeCatalogId(catalogId || "") ||
             (catalog && catalog.id ? String(catalog.id) : "");
-
-        // No gecko_id → no price data available
-        var geckoId = catalog && catalog.geckoId ? catalog.geckoId : "";
-        if (!geckoId) return window.Promise.resolve(false);
 
         var inState = cid ? Market.getMarketCoin(cid) : null;
         if (Market.hasCoinCurrencyData(inState, curr)) {
@@ -1490,6 +1577,62 @@ var Market = {
         }
 
         Market.setStatus("Market data: loading " + sym + "...", "#888");
+
+        // CMC path: use catalogId directly as CMC id
+        if (AppSettings.get("useCmc", false) && cid) {
+            return Market.fetchCmcChunkByIds([cid], curr)
+                .then(function (data) {
+                    var entry = data && data[cid];
+                    if (Array.isArray(entry)) entry = entry[0];
+                    var base = inState || inCache || null;
+                    var coin = base ? Object.assign({}, base) : {
+                        name: catalog && catalog.name ? catalog.name : sym,
+                        symbol: sym,
+                        catalogId: cid,
+                        price: 0,
+                        prices: {},
+                        change24h: 0,
+                        changes24h: {},
+                        image: catalog && catalog.image ? catalog.image : null,
+                    };
+                    if (!coin.prices) coin.prices = {};
+                    if (!coin.changes24h) coin.changes24h = {};
+                    if (entry && entry.quote && entry.quote[curr]) {
+                        var q = entry.quote[curr];
+                        if (Number.isFinite(Number(q.price))) coin.prices[curr] = Number(q.price);
+                        if (Number.isFinite(Number(q.percent_change_24h))) coin.changes24h[curr] = Number(q.percent_change_24h);
+                    }
+                    coin.price = Market.getEntryPrice(coin, "USD");
+                    coin.change24h = Market.getEntryChange24h(coin, "USD");
+                    Market.upsertCoinInState(coin);
+                    Market.persistStateToCache();
+                    renderApp();
+                    Market.setStatus(
+                        "Market data: loaded " + sym + " from CMC (" + new Date().toLocaleString() + ")",
+                        "#aaa",
+                    );
+                    return true;
+                })
+                .catch(function (e) {
+                    if (e.message === "CMC_AUTH_FAILED") {
+                        AppSettings.set("useCmc", false);
+                        if (AppBridge.isTauri()) {
+                            AppBridge.invoke("save_use_cmc", { useCmc: false }).catch(function () {});
+                        }
+                        AppSettings.applyCmc();
+                        Market.setStatus("CMC API key failed \u2014 switching to CoinGecko.", "#D32F2F");
+                        return Market.fetchSingleIfMissing(symbol, currency, catalogId, coinName);
+                    }
+                    console.error("CMC single fetch failed:", sym, e);
+                    Market.setStatus("Market data: CMC API error for " + sym + ".", "#D32F2F");
+                    return false;
+                });
+        }
+
+        // CoinGecko path
+        var geckoId = catalog && catalog.geckoId ? catalog.geckoId : "";
+        if (!geckoId) return window.Promise.resolve(false);
+
         return Market.fetchMarketsChunkByIds([geckoId], curr)
             .then(function (rows) {
                 var matched = (rows && rows[0]) || null;
@@ -1564,28 +1707,7 @@ var Market = {
         Market.refreshInProgress = true;
         Market.setStatus("Market data: loading...", "#888");
 
-        // Resolve gecko IDs from catalog (no API call needed)
-        var geckoIds = [];
-        var geckoIdSeen = {};
-        var catalogIdByGeckoId = {};
-
-        catalogIds.forEach(function (cid) {
-            var tracked = trackedByCatalogId[cid];
-            if (!tracked) return;
-            var catalog = Market.getCatalogCoin(
-                tracked.catalogId,
-                tracked.symbol,
-                tracked.coin,
-            );
-            var gid = catalog && catalog.geckoId ? catalog.geckoId : "";
-            if (gid && !geckoIdSeen[gid]) {
-                geckoIdSeen[gid] = true;
-                geckoIds.push(gid);
-                catalogIdByGeckoId[gid] = cid;
-            }
-        });
-
-        // Build base map for all tracked coins (price=0 for coins without gecko_id)
+        // Build base map for all tracked coins
         var map = {};
         catalogIds.forEach(function (cid) {
             var tracked = trackedByCatalogId[cid] || {
@@ -1613,6 +1735,149 @@ var Market = {
                 changes24h: {},
                 image: catalog && catalog.image ? catalog.image : null,
             };
+        });
+
+        // ── CMC path: catalogId IS the CMC id ──────────────────────────────
+        if (AppSettings.get("useCmc", false)) {
+            var cmcChunks = Market.splitToChunks(catalogIds, CONFIG.CMC_CHUNK_SIZE || 100);
+            var cmcRequests = [];
+            vsCurrencies.forEach(function (currency) {
+                cmcChunks.forEach(function (chunk) {
+                    cmcRequests.push(
+                        Market.fetchCmcChunkByIds(chunk, currency)
+                            .then(function (data) { return { currency: currency, data: data }; })
+                            .catch(function (e) {
+                                if (e.message === "CMC_AUTH_FAILED") throw e;
+                                console.error("CMC chunk failed:", currency, e);
+                                return { currency: currency, data: {} };
+                            })
+                    );
+                });
+            });
+
+            return window.Promise.all(cmcRequests)
+                .then(function (responses) {
+                    var totalEntries = 0;
+                    responses.forEach(function (res) {
+                        var curr = String(res.currency || "USD").toUpperCase();
+                        var data = res.data || {};
+                        Object.keys(data).forEach(function (cmcId) {
+                            var arr = data[cmcId];
+                            var entry = Array.isArray(arr) ? arr[0] : arr;
+                            if (!entry || !entry.quote) return;
+                            var q = entry.quote[curr];
+                            if (!q) return;
+                            if (!map[cmcId]) return;
+                            totalEntries++;
+                            if (Number.isFinite(Number(q.price))) {
+                                map[cmcId].prices[curr] = Number(q.price);
+                            }
+                            if (Number.isFinite(Number(q.percent_change_24h))) {
+                                map[cmcId].changes24h[curr] = Number(q.percent_change_24h);
+                            }
+                        });
+                    });
+
+                    if (totalEntries === 0 && state.marketData.length > 0) {
+                        var ts = Market.fileCacheSavedAt
+                            ? new Date(Market.fileCacheSavedAt).toLocaleString()
+                            : "date unknown";
+                        Market.setStatus(
+                            "Market data: loaded " + state.marketData.length +
+                                " symbols from file (" + ts + ")",
+                            "#aaa",
+                        );
+                        renderApp();
+                        return;
+                    }
+
+                    if (totalEntries === 0) {
+                        Market.setStatus("Market data: CMC API returned no data.", "#D32F2F");
+                        return;
+                    }
+
+                    Market.setStateMarketData(
+                        catalogIds.map(function (cid) {
+                            var item = map[cid];
+                            item.price = Market.getEntryPrice(item, "USD");
+                            item.change24h = Market.getEntryChange24h(item, "USD");
+                            return item;
+                        }),
+                    );
+                    MarketCache.set(catalogIds, vsCurrencies, state.marketData);
+                    Market.fileCacheSavedAt = Date.now();
+                    if (AppBridge.isTauri()) {
+                        var slimCache = state.marketData.reduce(function (acc, c) {
+                            if (c.catalogId) {
+                                acc.push({ catalogId: c.catalogId, prices: c.prices, changes24h: c.changes24h });
+                            }
+                            return acc;
+                        }, []);
+                        AppBridge.invoke("save_market_cache", {
+                            user: ServerSync.user,
+                            cache: slimCache,
+                            savedAt: Market.fileCacheSavedAt,
+                        }).catch(function () {});
+                    }
+
+                    Market.setStatus(
+                        "Market data: loaded " + state.marketData.length +
+                            " symbols from CMC (" + new Date().toLocaleString() + ")",
+                        "#aaa",
+                    );
+                    renderApp();
+                })
+                .catch(function (e) {
+                    if (e.message === "CMC_AUTH_FAILED") {
+                        console.error("CMC API key invalid, falling back to CoinGecko");
+                        AppSettings.set("useCmc", false);
+                        if (AppBridge.isTauri()) {
+                            AppBridge.invoke("save_use_cmc", { useCmc: false }).catch(function () {});
+                        }
+                        AppSettings.applyCmc();
+                        Market.setStatus("CMC API key failed \u2014 switching to CoinGecko.", "#D32F2F");
+                        Market.refreshInProgress = false;
+                        return Market.fetchData();
+                    }
+                    console.error(e);
+                    if (state.marketData.length > 0) {
+                        var ts = Market.fileCacheSavedAt
+                            ? new Date(Market.fileCacheSavedAt).toLocaleString()
+                            : "date unknown";
+                        Market.setStatus(
+                            "Market data: loaded " + state.marketData.length +
+                                " symbols from file (" + ts + ")",
+                            "#aaa",
+                        );
+                        renderApp();
+                    } else {
+                        Market.setStatus("Market data: CMC API error.", "#D32F2F");
+                    }
+                })
+                .finally(function () {
+                    Market.refreshInProgress = false;
+                });
+        }
+
+        // ── CoinGecko path: resolve gecko IDs from catalog ─────────────────
+        var geckoIds = [];
+        var geckoIdSeen = {};
+        var catalogIdByGeckoId = {};
+
+        catalogIds.forEach(function (cid) {
+            var tracked = trackedByCatalogId[cid];
+            if (!tracked) return;
+            var catalog = Market.getCatalogCoin(
+                tracked.catalogId,
+                tracked.symbol,
+                tracked.coin,
+            );
+            var gid = catalog && catalog.geckoId ? catalog.geckoId : "";
+            if (gid && !geckoIdSeen[gid]) {
+                geckoIdSeen[gid] = true;
+                geckoIds.push(gid);
+                catalogIdByGeckoId[gid] = cid;
+            }
         });
 
         if (!geckoIds.length) {
@@ -4598,12 +4863,19 @@ var DbSelector = {
                 }
                 renderApp();
                 MarketCache.clear();
-                // Restore market cache from settings-cache.json, then schedule refresh
+                // Restore settings from settings-cache.json, then schedule refresh
                 if (AppBridge.isTauri()) {
                     AppBridge.invoke("load_app_settings", {
                         user: ServerSync.user,
                     })
                         .then(function (appSettings) {
+                            if (appSettings && appSettings.cmcApiKey !== undefined) {
+                                AppSettings.set("cmcApiKey", appSettings.cmcApiKey || "");
+                            }
+                            if (appSettings && appSettings.useCmc !== undefined) {
+                                AppSettings.set("useCmc", !!appSettings.useCmc);
+                                AppSettings.applyCmc();
+                            }
                             if (
                                 appSettings &&
                                 appSettings.activePortfolioId !== undefined
@@ -5349,6 +5621,13 @@ window.onload = function () {
                         user: ServerSync.user,
                     })
                         .then(function (appSettings) {
+                            if (appSettings && appSettings.cmcApiKey !== undefined) {
+                                AppSettings.set("cmcApiKey", appSettings.cmcApiKey || "");
+                            }
+                            if (appSettings && appSettings.useCmc !== undefined) {
+                                AppSettings.set("useCmc", !!appSettings.useCmc);
+                                AppSettings.applyCmc();
+                            }
                             if (
                                 appSettings &&
                                 appSettings.activePortfolioId !== undefined

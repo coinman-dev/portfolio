@@ -27,6 +27,8 @@
 					<div class="dropdown-item dropdown-item-check" id="menu-toggle-cur-price" onclick="AppSettings.handleToggleCurPrice()"> Show Current Price column </div>
 					<div class="dropdown-item dropdown-item-check" id="menu-toggle-auto-align" onclick="AppSettings.handleToggleAutoAlign()"> Auto-align columns </div>
 					<div class="dropdown-item dropdown-item-check" id="menu-toggle-table-footer" onclick="AppSettings.handleToggleTableFooter()"> Show table footer </div>
+					<div class="dropdown-separator"></div>
+					<div class="dropdown-item dropdown-item-check" id="menu-toggle-cmc" onclick="AppSettings.handleToggleCmc()"> Fetch prices from CoinMarketCap </div>
 				</div>
 			</div>
 			<div class="menu-item menu-item-right" onclick="toggleDropdown('about-dropdown', event)"> About
@@ -943,6 +945,31 @@
 		</div>
 		<div class="modal-footer">
 			<button class="btn btn-outline" onclick="closeModal('modal-db-unreadable')"> OK </button>
+		</div>
+	</div>
+</div>
+<!-- MODAL: CMC API key -->
+<div id="modal-cmc-apikey" class="modal modal-md">
+	<div class="modal-content">
+		<div class="modal-header">
+			<span>CoinMarketCap API Key</span>
+			<span class="close-btn" onclick="closeModal('modal-cmc-apikey')">&times;</span>
+		</div>
+		<div class="modal-body">
+			<p class="modal-description">
+				Enter your CoinMarketCap API key to fetch prices directly from CMC.
+				Get a free key at <a href="#" onclick="AppBridge.invoke('open_url', { url: 'https://coinmarketcap.com/api/' }); return false;">coinmarketcap.com/api</a>
+			</p>
+			<div class="form-group form-group-last">
+				<label class="form-label">API Key</label>
+				<input type="text" id="cmc-apikey-input" class="form-input" placeholder="Enter CMC API key..." onkeydown="if(event.key==='Enter')AppSettings.handleSaveCmcKey()"/>
+			</div>
+			<div id="cmc-apikey-error" class="enc-modal-error hidden"></div>
+			<div id="cmc-apikey-success" class="enc-modal-error hidden" style="color:#4caf50; background:rgba(76,175,80,0.1)"></div>
+		</div>
+		<div class="modal-footer modal-footer-split">
+			<button class="btn btn-outline" onclick="closeModal('modal-cmc-apikey')"> CANCEL </button>
+			<button class="btn btn-orange" id="cmc-apikey-save-btn" onclick="AppSettings.handleSaveCmcKey()"> VALIDATE & SAVE </button>
 		</div>
 	</div>
 </div>

@@ -23,6 +23,7 @@ Usage:
 import argparse
 import json
 import os
+import re
 import shutil
 import sys
 import time
@@ -531,18 +532,18 @@ def merge_catalog():
 
 
 def _name_words(name):
-    """Extract significant lowercase words (len >= 3) from a coin name."""
-    return set(w for w in name.lower().split() if len(w) >= 3)
+    """Split name into lowercase tokens by space, dash, or underscore (len >= 3)."""
+    return set(w for w in re.split(r'[ \-_]', name.lower()) if len(w) >= 3)
 
 
 def _soft_name_match(cmc_name, cg_name):
-    """Check if names are similar: substring or shared significant words."""
+    """Check if names are similar: substring or shared tokens (split by space/dash/underscore)."""
     cmc_low = cmc_name.lower().strip()
     cg_low = cg_name.lower().strip()
     # Substring match (either direction)
     if cmc_low in cg_low or cg_low in cmc_low:
         return True
-    # Shared significant words
+    # Shared tokens
     cmc_words = _name_words(cmc_name)
     cg_words = _name_words(cg_name)
     return bool(cmc_words and cmc_words & cg_words)
@@ -552,10 +553,10 @@ def _fetch_market_caps(gecko_ids, pause):
     """Batch-fetch market caps from CoinGecko /coins/markets. Returns {geckoId: cap}."""
     caps = {}
     id_list = list(gecko_ids)
-    total_batches = (len(id_list) + 199) // 200
-    for i in range(0, len(id_list), 200):
-        chunk = id_list[i:i + 200]
-        batch_num = i // 200 + 1
+    total_batches = (len(id_list) + 249) // 250
+    for i in range(0, len(id_list), 250):
+        chunk = id_list[i:i + 250]
+        batch_num = i // 250 + 1
         print(f"  market cap batch {batch_num}/{total_batches} "
               f"({len(chunk)} ids) ...", flush=True)
         try:
@@ -565,31 +566,44 @@ def _fetch_market_caps(gecko_ids, pause):
                 "per_page": 250,
                 "sparkline": "false",
             }, timeout=60)
-            if r.ok:
+            if r.status_code == 429:
+                print("    error: HTTP 429 Too Many Requests — CoinGecko rate limit exceeded.")
+                print(f"    Increase the pause between requests with --pause (current: {pause}s).")
+                print("    Example: python check_new_coins.py --build gecko --pause 15")
+                sys.exit(1)
+            elif r.ok:
                 for item in r.json():
                     caps[item["id"]] = item.get("market_cap") or 0
             else:
                 print(f"    warning: HTTP {r.status_code}", flush=True)
         except Exception as e:
             print(f"    warning: {e}", flush=True)
-        if i + 200 < len(id_list):
-            time.sleep(pause)
+        if i + 250 < len(id_list):
+            for remaining in range(int(pause), 0, -1):
+                print(f"\r    waiting {remaining}s ...  ", end="", flush=True)
+                time.sleep(1)
+            print("\r" + " " * 25 + "\r", end="", flush=True)
     return caps
 
 
 def build_gecko(pause=1.0):
     """Fetch CoinGecko coins/list, match by name+symbol → cmc_geckoid.json.
 
+    Source priority: cmc_newdata.json → cmc.json (frontend) → cmc.json (local)
     Pass 1: strict name + symbol (exact, case-insensitive)
-    Pass 2: strict symbol + soft name, tie-break by market cap
+    Pass 2: strict symbol + soft name (tokens by space/dash/underscore)
+    Uniqueness: each gecko_id assigned to at most one CMC coin (by market cap priority)
     """
+    local_newdata = os.path.join(SCRIPT_DIR, "cmc_newdata.json")
     local_fallback = os.path.join(SCRIPT_DIR, "cmc.json")
-    if os.path.exists(CMC_JSON):
+    if os.path.exists(local_newdata):
+        catalog_path = local_newdata
+    elif os.path.exists(CMC_JSON):
         catalog_path = CMC_JSON
     elif os.path.exists(local_fallback):
         catalog_path = local_fallback
     else:
-        print(f"Error: cmc.json not found in:\n  {CMC_JSON}\n  {local_fallback}")
+        print(f"Error: source file not found in:\n  {local_newdata}\n  {CMC_JSON}\n  {local_fallback}")
         sys.exit(1)
 
     print(f"Using catalog: {catalog_path}")
@@ -614,6 +628,7 @@ def build_gecko(pause=1.0):
     # ── Pass 1: exact name + symbol ──────────────────────────────────────────
     print("\n=== Pass 1: strict name + symbol ===")
     result_map = {}        # cmc_id → gecko_id (final)
+    used_gecko_ids = set() # gecko_ids already assigned
     pass1_multi = {}       # cmc_id → [gecko items] (exact dupes, need market cap)
     pass1_unmatched = []   # coins for pass 2
 
@@ -625,7 +640,12 @@ def build_gecko(pause=1.0):
         exact = [c for c in candidates if (c.get("name") or "").lower() == cat_name]
 
         if len(exact) == 1:
-            result_map[coin["id"]] = exact[0]["id"]
+            gid = exact[0]["id"]
+            if gid not in used_gecko_ids:
+                result_map[coin["id"]] = gid
+                used_gecko_ids.add(gid)
+            else:
+                pass1_multi[coin["id"]] = exact  # single but already taken → resolve by cap
         elif len(exact) > 1:
             pass1_multi[coin["id"]] = exact
         else:
@@ -663,9 +683,8 @@ def build_gecko(pause=1.0):
         for c in matches:
             multi_ids.add(c["id"])
     for cmc_id, matches in soft_candidates.items():
-        if len(matches) > 1:
-            for c in matches:
-                multi_ids.add(c["id"])
+        for c in matches:
+            multi_ids.add(c["id"])
 
     market_caps = {}
     if multi_ids:
@@ -673,25 +692,33 @@ def build_gecko(pause=1.0):
         market_caps = _fetch_market_caps(multi_ids, pause)
         print(f"Got market cap data for {len(market_caps)} coins")
 
-    # ── Assign pass 1 dupes by market cap ────────────────────────────────────
+    # ── Assign pass 1 dupes: pick highest-cap not yet used ───────────────────
     pass1_dupes_log = []
     coins_by_id = {c["id"]: c for c in coins}
     for cmc_id, matches in pass1_multi.items():
-        best = max(matches, key=lambda c: market_caps.get(c["id"], 0))
-        result_map[cmc_id] = best["id"]
+        sorted_matches = sorted(matches, key=lambda c: market_caps.get(c["id"], 0), reverse=True)
+        best = next((c for c in sorted_matches if c["id"] not in used_gecko_ids), None)
+        if best:
+            result_map[cmc_id] = best["id"]
+            used_gecko_ids.add(best["id"])
+        else:
+            result_map[cmc_id] = None
         pass1_dupes_log.append((coins_by_id[cmc_id], best, len(matches)))
 
     if pass1_dupes_log:
         print(f"\n--- Pass 1 dupes resolved by market cap ({len(pass1_dupes_log)}) ---")
         for coin, hit, n in pass1_dupes_log[:20]:
-            cap = market_caps.get(hit["id"])
-            cap_str = f", cap=${cap:,.0f}" if cap else ""
-            print(f'  [{coin["id"]}] "{coin["name"]}" ({coin["symbol"]}) '
-                  f'→ "{hit["name"]}" ({hit["id"]}){cap_str} [{n} dupes]')
+            if hit:
+                cap = market_caps.get(hit["id"])
+                cap_str = f", cap=${cap:,.0f}" if cap else ""
+                print(f'  [{coin["id"]}] "{coin["name"]}" ({coin["symbol"]}) '
+                      f'→ "{hit["name"]}" ({hit["id"]}){cap_str} [{n} dupes]')
+            else:
+                print(f'  [{coin["id"]}] "{coin["name"]}" ({coin["symbol"]}) → null (all taken)')
         if len(pass1_dupes_log) > 20:
             print(f"  ... and {len(pass1_dupes_log) - 20} more")
 
-    # ── Assign pass 2 matches ────────────────────────────────────────────────
+    # ── Assign pass 2 matches: pick highest-cap not yet used ─────────────────
     pass2_matched = 0
     pass2_log = []
     for coin in pass1_unmatched:
@@ -700,14 +727,13 @@ def build_gecko(pause=1.0):
             continue
 
         matches = soft_candidates[cmc_id]
-        if len(matches) == 1:
-            best = matches[0]
-        else:
-            best = max(matches, key=lambda c: market_caps.get(c["id"], 0))
-
-        result_map[cmc_id] = best["id"]
-        pass2_matched += 1
-        pass2_log.append((coin, best, len(matches)))
+        sorted_matches = sorted(matches, key=lambda c: market_caps.get(c["id"], 0), reverse=True)
+        best = next((c for c in sorted_matches if c["id"] not in used_gecko_ids), None)
+        if best:
+            result_map[cmc_id] = best["id"]
+            used_gecko_ids.add(best["id"])
+            pass2_matched += 1
+            pass2_log.append((coin, best, len(matches)))
 
     print(f"\nPass 2 matched: {pass2_matched}")
 
@@ -726,10 +752,10 @@ def build_gecko(pause=1.0):
     result_coins = []
     for coin in coins:
         entry = dict(coin)
-        entry["gecko_id"] = result_map.get(coin["id"])
+        entry["gecko_id"] = result_map.get(coin["id"])  # None if not found
         result_coins.append(entry)
 
-    total_matched = len(result_map)
+    total_matched = sum(1 for v in result_map.values() if v is not None)
     total_unmatched = len(coins) - total_matched
     save_json(OUT_FILE_GECKO, result_coins)
 
@@ -741,7 +767,7 @@ def build_gecko(pause=1.0):
     print(f"Not matched:            {total_unmatched}")
 
     if total_unmatched:
-        still_missing = [c for c in coins if c["id"] not in result_map]
+        still_missing = [c for c in coins if not result_map.get(c["id"])]
         print("\n--- Still unmatched ---")
         for c in still_missing[:30]:
             print(f"  [{c['id']}] {c['name']} ({c['symbol']})")

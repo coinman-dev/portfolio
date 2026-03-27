@@ -1,6 +1,6 @@
 {
   "source": "pro-api.coinmarketcap.com",
-  "importedAt": "2026-03-25T20:33:46.000Z",
+  "importedAt": "2026-03-27T16:16:45.000Z",
   "totalFetched": 8577,
   "coins": [
     {
@@ -351,7 +351,7 @@
       "explorer": "omniexplorer.info",
       "source_code": "github.com/OmniLayer",
       "platform": null,
-      "gecko_id": "omni-2"
+      "gecko_id": "omni"
     },
     {
       "id": 93,
@@ -434,7 +434,7 @@
       "explorer": "explorer.maxcoinproject.net",
       "source_code": "github.com/Max-Coin",
       "platform": null,
-      "gecko_id": "max-token"
+      "gecko_id": "max-2"
     },
     {
       "id": 131,
@@ -484,7 +484,7 @@
       "explorer": "explore.marscoin.org",
       "source_code": "github.com/marscoin",
       "platform": null,
-      "gecko_id": "marscoin"
+      "gecko_id": "marscoin-2"
     },
     {
       "id": 162,
@@ -536,7 +536,7 @@
           "contract_address": "0x0cae51e1032e8461f4806e26332c030e34de3adb"
         }
       ],
-      "gecko_id": "magic-internet-money-optimism"
+      "gecko_id": "magic-internet-money-arbitrum"
     },
     {
       "id": 170,
@@ -586,7 +586,7 @@
       "explorer": "chainz.cryptoid.info/efl",
       "source_code": "github.com/Electronic-Gulden-Foundation",
       "platform": null,
-      "gecko_id": null
+      "gecko_id": "electronicgulden"
     },
     {
       "id": 258,
@@ -1653,7 +1653,7 @@
       "explorer": "cryptobe.com/chain/ARbitCoin",
       "source_code": "github.com/ARbitcoin/ARbit",
       "platform": null,
-      "gecko_id": "arbitrum"
+      "gecko_id": "arbitrage-loop"
     },
     {
       "id": 945,
@@ -5725,7 +5725,7 @@
       "explorer": "",
       "source_code": "",
       "platform": null,
-      "gecko_id": "god-coin"
+      "gecko_id": "god-the-dog"
     },
     {
       "id": 2387,
@@ -6261,7 +6261,7 @@
           "contract_address": "0x37e8789bb9996cac9156cd5f5fd32599e6b91289"
         }
       ],
-      "gecko_id": "aid"
+      "gecko_id": null
     },
     {
       "id": 2467,
@@ -7046,7 +7046,7 @@
           "contract_address": "0xa15c7ebe1f07caf6bff097d8a589fb8ac49ae5b3"
         }
       ],
-      "gecko_id": "pundi-x"
+      "gecko_id": null
     },
     {
       "id": 2606,
@@ -7886,7 +7886,7 @@
           "contract_address": "0xf3586684107ce0859c44aa2b2e0fb8cd8731a15a"
         }
       ],
-      "gecko_id": "kibho-coin"
+      "gecko_id": null
     },
     {
       "id": 2909,
@@ -8727,7 +8727,7 @@
           "contract_address": "SIX-GDMS6EECOH6MBMCP3FYRYEVRBIV3TQGLOFQIPVAITBRJUMTI6V7A2X6Z"
         }
       ],
-      "gecko_id": "six"
+      "gecko_id": "six-network"
     },
     {
       "id": 3330,
@@ -13265,7 +13265,7 @@
           "contract_address": "0x2d5c9167fdd5c068c8fcb8992e6af639b42fbf70"
         }
       ],
-      "gecko_id": "merge-token"
+      "gecko_id": null
     },
     {
       "id": 4915,
@@ -13883,7 +13883,7 @@
           "contract_address": "0xe7976c4Efc60d9f4C200Cc1bCEF1A1e3B02c73e7"
         }
       ],
-      "gecko_id": "max-token"
+      "gecko_id": null
     },
     {
       "id": 5068,
@@ -14692,7 +14692,7 @@
           "contract_address": "0x37f0c2915cecc7e977183b8543fc0864d03e064c"
         }
       ],
-      "gecko_id": "hunt"
+      "gecko_id": "hunt-token"
     },
     {
       "id": 5382,
@@ -17344,7 +17344,7 @@
           "contract_address": "0x8Ee73c484A26e0A5df2Ee2a4960B789967dd0415"
         }
       ],
-      "gecko_id": "bridged-curve-dao-token-stargate"
+      "gecko_id": "curve-dao-token"
     },
     {
       "id": 6554,
@@ -17391,7 +17391,7 @@
           "contract_address": "0xac86f3556cbd2b4d800d17adc3a266b500fcb9f5"
         }
       ],
-      "gecko_id": "buy-the-dip"
+      "gecko_id": "etherisc"
     },
     {
       "id": 6591,
@@ -17614,7 +17614,7 @@
           "contract_address": "0x9355372396e3F6daF13359B7b607a3374cc638e0"
         }
       ],
-      "gecko_id": "whale-3"
+      "gecko_id": "whale"
     },
     {
       "id": 6682,
@@ -17930,7 +17930,7 @@
       "website": "",
       "source_code": "",
       "platform": null,
-      "gecko_id": "dust-protocol"
+      "gecko_id": "pixie-dust"
     },
     {
       "id": 6773,
@@ -18150,7 +18150,7 @@
           "contract_address": "0x6a6c2ada3ce053561c2fbc3ee211f23d9b8c520a"
         }
       ],
-      "gecko_id": "tac-bridged-ton-tac"
+      "gecko_id": "tontoken"
     },
     {
       "id": 6891,
@@ -19705,7 +19705,7 @@
           "contract_address": "0x15b7c0c907e4c6b9adaaaabc300c08991d6cea05"
         }
       ],
-      "gecko_id": "gelato-2"
+      "gecko_id": "gelato"
     },
     {
       "id": 7230,
@@ -19789,7 +19789,7 @@
           "contract_address": "cusd.token.a11bd.near"
         }
       ],
-      "gecko_id": "coin98-dollar"
+      "gecko_id": null
     },
     {
       "id": 7242,
@@ -20193,7 +20193,7 @@
           "contract_address": "0x49e833337ece7afe375e44f4e3e8481029218e5c"
         }
       ],
-      "gecko_id": "the-dissolution-of-value"
+      "gecko_id": "value-liquidity"
     },
     {
       "id": 7412,
@@ -21377,7 +21377,7 @@
           "contract_address": "0x63870a18b6e42b01ef1ad8a2302ef50b7132054f"
         }
       ],
-      "gecko_id": "blinkdotfun"
+      "gecko_id": "blinkbot"
     },
     {
       "id": 7791,
@@ -22170,7 +22170,7 @@
           "contract_address": "0x5d186e28934c6b0ff5fc2fece15d1f34f78cbd87"
         }
       ],
-      "gecko_id": "lemonade-stand-duck"
+      "gecko_id": "dlp-duck-token"
     },
     {
       "id": 8075,
@@ -22594,7 +22594,7 @@
           "contract_address": "0x82dFe19164729949fD66Da1a37BC70dD6c4746ce"
         }
       ],
-      "gecko_id": "bao-finance"
+      "gecko_id": "bao-finance-v2"
     },
     {
       "id": 8200,
@@ -23333,7 +23333,7 @@
           "contract_address": "0xcaF5191fc480F43e4DF80106c7695ECA56E48B18"
         }
       ],
-      "gecko_id": "akita-inu"
+      "gecko_id": "akita-inu-5"
     },
     {
       "id": 8384,
@@ -23459,7 +23459,7 @@
           "contract_address": "BgpTantbdS8RAiUbt38gnX8FCsMZpfgxaL611nmNcLrA"
         }
       ],
-      "gecko_id": "anime-token"
+      "gecko_id": "ani-token"
     },
     {
       "id": 8398,
@@ -25542,7 +25542,7 @@
           "contract_address": "0x40ccd55b789fdee8d434915dc2aa6bd938506a92"
         }
       ],
-      "gecko_id": "rage-coin"
+      "gecko_id": "rage-protocol"
     },
     {
       "id": 8865,
@@ -28438,7 +28438,7 @@
           "contract_address": "ibc/c360ef34a86d334f625e4cbb7da3223aea97174b61f35bb3758081a8160f7d9b"
         }
       ],
-      "gecko_id": "odin-tools"
+      "gecko_id": "valhalla-index"
     },
     {
       "id": 9562,
@@ -29819,7 +29819,7 @@
           "contract_address": "0x32B407ee915432Be6D3F168bc1EfF2a6F8b2034C"
         }
       ],
-      "gecko_id": "hodl"
+      "gecko_id": "hodl-2"
     },
     {
       "id": 9903,
@@ -30344,7 +30344,7 @@
           "contract_address": "0x368ce786Ea190f32439074e8d22e12ecb718B44c"
         }
       ],
-      "gecko_id": "teh-epik-duck"
+      "gecko_id": null
     },
     {
       "id": 10049,
@@ -30702,7 +30702,7 @@
           "contract_address": "0x9452D45d33490234B8C96f42342F1Be28c0FE097"
         }
       ],
-      "gecko_id": "perry"
+      "gecko_id": null
     },
     {
       "id": 10165,
@@ -32002,7 +32002,7 @@
           "contract_address": "0xf483af09917ba63f1e274056978036d266eb56e6"
         }
       ],
-      "gecko_id": "tron-bull"
+      "gecko_id": "bull-coin"
     },
     {
       "id": 10502,
@@ -33482,7 +33482,7 @@
           "contract_address": "0x1f3Af095CDa17d63cad238358837321e95FC5915"
         }
       ],
-      "gecko_id": "public-mint"
+      "gecko_id": "mint-blockchain"
     },
     {
       "id": 10984,
@@ -33688,7 +33688,7 @@
           "contract_address": "0x78a499a998bdd5a84cf8b5abe49100d82de12f1c"
         }
       ],
-      "gecko_id": "jojo"
+      "gecko_id": "jojo-3"
     },
     {
       "id": 11078,
@@ -33752,7 +33752,7 @@
           "contract_address": "0x2a17dc11a1828725cdb318e0036acf12727d27a2"
         }
       ],
-      "gecko_id": "the-arena"
+      "gecko_id": null
     },
     {
       "id": 11085,
@@ -33842,7 +33842,7 @@
           "contract_address": "0xcA5c7a459bECAAC1f2b5eE28bB8A29875B1a37A6"
         }
       ],
-      "gecko_id": "birb-2"
+      "gecko_id": "birb-3"
     },
     {
       "id": 11109,
@@ -35032,7 +35032,7 @@
           "contract_address": "0x371c7ec6D8039ff7933a2AA28EB827Ffe1F52f07"
         }
       ],
-      "gecko_id": "joe-2"
+      "gecko_id": "joe"
     },
     {
       "id": 11397,
@@ -35687,7 +35687,7 @@
           "contract_address": "0x7fFC1243232da3Ac001994208E2002816b57c669"
         }
       ],
-      "gecko_id": "cryptozoo"
+      "gecko_id": "zoo"
     },
     {
       "id": 11557,
@@ -38181,7 +38181,7 @@
           "contract_address": "9nEqaUcb16sQ3Tn1psbkWqyhPdLmfHWjKGymREjsAgTE"
         }
       ],
-      "gecko_id": "woof-4"
+      "gecko_id": "woof-token"
     },
     {
       "id": 12256,
@@ -38663,7 +38663,7 @@
           "contract_address": "0x10Aeaf63194db8d453d4D85a06E5eFE1dd0b5417"
         }
       ],
-      "gecko_id": "polygon-bridged-wsteth-polygon"
+      "gecko_id": "arbitrum-bridged-wsteth-arbitrum"
     },
     {
       "id": 12410,
@@ -39612,7 +39612,7 @@
           "contract_address": "52a047ee205701895ee06a375492490ec9c597ce.factory.bridge.near"
         }
       ],
-      "gecko_id": "pulse-3"
+      "gecko_id": "pulse-4"
     },
     {
       "id": 12735,
@@ -40390,7 +40390,7 @@
           "contract_address": "0x17700282592D6917F6A73D0bF8AcCf4D578c131e"
         }
       ],
-      "gecko_id": "moo"
+      "gecko_id": null
     },
     {
       "id": 13037,
@@ -40513,7 +40513,7 @@
           "contract_address": "0x54e87ed5a096f09d9665fd114002bddfc2084a7f"
         }
       ],
-      "gecko_id": "floki"
+      "gecko_id": null
     },
     {
       "id": 13080,
@@ -41094,7 +41094,7 @@
           "contract_address": "0x3c70260eee0a2bfc4b375feb810325801f289fbd"
         }
       ],
-      "gecko_id": "omni-consumer-protocol"
+      "gecko_id": null
     },
     {
       "id": 13485,
@@ -41963,7 +41963,7 @@
           "contract_address": "0x10051147418c42218986cedd0adc266441f8a14f"
         }
       ],
-      "gecko_id": "dyor"
+      "gecko_id": "dyor-token-2"
     },
     {
       "id": 14020,
@@ -42207,7 +42207,7 @@
           "contract_address": "0xa55c1e67039b6d59e91eb4cda2bfc5a854989102"
         }
       ],
-      "gecko_id": "gm-2"
+      "gecko_id": null
     },
     {
       "id": 14275,
@@ -42520,7 +42520,7 @@
           "contract_address": "6JdcMdhqgCtcP4U9tieRqmKLhPLxRMLC67QfmdXAJBvZ"
         }
       ],
-      "gecko_id": "kitty-ai"
+      "gecko_id": "roaring-kitty-solana"
     },
     {
       "id": 14389,
@@ -43228,7 +43228,7 @@
           "contract_address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
         }
       ],
-      "gecko_id": "aurorasolchain"
+      "gecko_id": "aurora-near"
     },
     {
       "id": 14806,
@@ -43531,7 +43531,7 @@
           "contract_address": "CgbJxXyaHeU8VsquBpySuFXA94b6LWXxioZ28wRr8fs9"
         }
       ],
-      "gecko_id": "vita-inu"
+      "gecko_id": null
     },
     {
       "id": 14977,
@@ -43684,7 +43684,7 @@
           "contract_address": "0xe5bd6c5b1c2df8f499847a545838c09e45f4a262"
         }
       ],
-      "gecko_id": "milk"
+      "gecko_id": "milk-coin"
     },
     {
       "id": 15060,
@@ -44450,7 +44450,7 @@
           "contract_address": "0xf03e02acbc5eb22de027ea4f59235966f5810d4f"
         }
       ],
-      "gecko_id": "pulse-inu-2"
+      "gecko_id": "piccolo-inu"
     },
     {
       "id": 15518,
@@ -44540,7 +44540,7 @@
           "contract_address": "0xb4bf64b17e270b50d00658e3c0e2fbdefabdd87b"
         }
       ],
-      "gecko_id": "cheese-2"
+      "gecko_id": null
     },
     {
       "id": 15574,
@@ -45226,7 +45226,7 @@
           "contract_address": "0x0eC78ED49C2D27b315D462d43B5BAB94d2C79bf8"
         }
       ],
-      "gecko_id": "meow"
+      "gecko_id": "zero-tech"
     },
     {
       "id": 15974,
@@ -45378,7 +45378,7 @@
           "contract_address": "0x4f39c3319188A723003670c3F9B9e7EF991E52F3"
         }
       ],
-      "gecko_id": "fight-to-maga"
+      "gecko_id": null
     },
     {
       "id": 16045,
@@ -45572,7 +45572,7 @@
           "contract_address": "0xea17E5a9efEBf1477dB45082d67010E2245217f1"
         }
       ],
-      "gecko_id": "solana"
+      "gecko_id": "wrapped-solana"
     },
     {
       "id": 16121,
@@ -45588,7 +45588,7 @@
           "contract_address": "ibc/EDD6F0D66BCD49C1084FB2C35353B4ACD7B9191117CE63671B61320548F7C89D"
         }
       ],
-      "gecko_id": "blue-whale-2"
+      "gecko_id": "whale-2"
     },
     {
       "id": 16135,
@@ -46685,7 +46685,7 @@
           "contract_address": "0x02Df2D8120966A143CAaf760CC3AE1D12f9862a7"
         }
       ],
-      "gecko_id": "shapeshift-fox-token"
+      "gecko_id": "fox-bets-ai"
     },
     {
       "id": 16755,
@@ -46890,7 +46890,7 @@
           "contract_address": "SHDWyBxihqiCj6YekG2GUr7wqKLeLAMK1gHZck9pL6y"
         }
       ],
-      "gecko_id": "genesysgo-shadow"
+      "gecko_id": null
     },
     {
       "id": 16875,
@@ -47159,7 +47159,7 @@
           "contract_address": "0x76ff2AB6b34142421F44A68cC8Dd08f45F9Ee2F2"
         }
       ],
-      "gecko_id": "pip"
+      "gecko_id": "pip-3"
     },
     {
       "id": 17000,
@@ -48734,7 +48734,7 @@
           "contract_address": "0x71648f61d21d3c75b08414ffa817c4ac2157f89e"
         }
       ],
-      "gecko_id": "radr"
+      "gecko_id": null
     },
     {
       "id": 17822,
@@ -49506,7 +49506,7 @@
           "contract_address": "0xf45de5A6d02c4a6E050B90Add33ebf0A34D017e0"
         }
       ],
-      "gecko_id": "web3-ton-token"
+      "gecko_id": null
     },
     {
       "id": 18323,
@@ -49691,7 +49691,7 @@
           "contract_address": "0xf5bb30EBC95dcA53e3320eb05d3d1bcAb806B9bF"
         }
       ],
-      "gecko_id": "rize"
+      "gecko_id": "rize-2"
     },
     {
       "id": 18453,
@@ -49795,7 +49795,7 @@
       "website": "astraprotocol.com",
       "source_code": "",
       "platform": null,
-      "gecko_id": "astraai"
+      "gecko_id": "astra-protocol-2"
     },
     {
       "id": 18520,
@@ -50448,7 +50448,7 @@
           "contract_address": "0x7aB6f3ed87C42eF0aDb67Ed95090f8bF5240149e"
         }
       ],
-      "gecko_id": "usd-coin-ethereum-bridged"
+      "gecko_id": "bridged-usdc-polygon-pos-bridge"
     },
     {
       "id": 18861,
@@ -52235,7 +52235,7 @@
           "contract_address": "0xbe1dbe6741fb988fb571ab1e28cffb36e3c62629"
         }
       ],
-      "gecko_id": "maverick-protocol"
+      "gecko_id": null
     },
     {
       "id": 19650,
@@ -52324,7 +52324,7 @@
           "contract_address": "BKipkearSqAUdNKa1WDstvcMjoPsSKBuNyvKDQDDu9WE"
         }
       ],
-      "gecko_id": "hawk-2"
+      "gecko_id": null
     },
     {
       "id": 19685,
@@ -52707,7 +52707,7 @@
           "contract_address": "0x61a1ff55c5216b636a294a07d77c6f4df10d3b56"
         }
       ],
-      "gecko_id": "apex-ai"
+      "gecko_id": "apex-token-2"
     },
     {
       "id": 19847,
@@ -52744,7 +52744,7 @@
           "contract_address": "7hWcHohzwtLddDUG81H2PkWq6KEkMtSDNkYXsso18Fy3"
         }
       ],
-      "gecko_id": "catcoin"
+      "gecko_id": "catcoin-cash"
     },
     {
       "id": 19865,
@@ -52777,7 +52777,7 @@
           "contract_address": "ftv2.nekotoken.near"
         }
       ],
-      "gecko_id": "neko-3"
+      "gecko_id": "neko"
     },
     {
       "id": 19867,
@@ -53449,7 +53449,7 @@
           "contract_address": "0x99cd7207d1cbe59033a01892c06889adae47b0e5"
         }
       ],
-      "gecko_id": "bull-2"
+      "gecko_id": "bull-3"
     },
     {
       "id": 20158,
@@ -53625,7 +53625,7 @@
           "contract_address": "0xA2086F4a3955A520A1743D68CDbcf064Ee1746Cd"
         }
       ],
-      "gecko_id": "x-2"
+      "gecko_id": null
     },
     {
       "id": 20279,
@@ -53907,7 +53907,7 @@
           "contract_address": "0x5E54301415546401626036a10f85F9f06DE8dFfd"
         }
       ],
-      "gecko_id": "staicy-sport"
+      "gecko_id": "sports-analyst-ai"
     },
     {
       "id": 20396,
@@ -54778,7 +54778,7 @@
           "contract_address": "0x963035453633f6f7433032c958F82Eb3043D8cD2"
         }
       ],
-      "gecko_id": "falcon-finance"
+      "gecko_id": "fluid-usd"
     },
     {
       "id": 20782,
@@ -54911,7 +54911,7 @@
           "contract_address": "0x04fA9Eb295266d9d4650EDCB879da204887Dc3Da"
         }
       ],
-      "gecko_id": "osk"
+      "gecko_id": "osk-2"
     },
     {
       "id": 20848,
@@ -55094,7 +55094,7 @@
           "contract_address": "0xb2c63830d4478cb331142fac075a39671a5541dc"
         }
       ],
-      "gecko_id": "bomb"
+      "gecko_id": null
     },
     {
       "id": 20927,
@@ -55323,7 +55323,7 @@
           "contract_address": "8c71AvjQeKKeWRe8jtTGG1bJ2WiYXQdbjqFbUfhHgSVk"
         }
       ],
-      "gecko_id": "gary"
+      "gecko_id": "gary-3"
     },
     {
       "id": 21060,
@@ -56219,7 +56219,7 @@
           "contract_address": "0x2b867efD2dE4Ad2B583Ca0CB3dF9C4040Ef4D329"
         }
       ],
-      "gecko_id": "lucky-block"
+      "gecko_id": null
     },
     {
       "id": 21418,
@@ -56892,7 +56892,7 @@
           "contract_address": "0xc7198437980c041c805a1edcba50c1ce5db95118"
         }
       ],
-      "gecko_id": "rainbow-bridged-usdt-aurora"
+      "gecko_id": "tether-rainbow-bridge"
     },
     {
       "id": 21768,
@@ -57204,7 +57204,7 @@
           "contract_address": "0xB0B195aEFA3650A6908f15CdaC7D92F8a5791B0B"
         }
       ],
-      "gecko_id": "bob"
+      "gecko_id": "bob-3"
     },
     {
       "id": 21885,
@@ -57415,7 +57415,7 @@
           "contract_address": "0x4b87F578d6FaBf381f43bd2197fBB2A877da6ef8"
         }
       ],
-      "gecko_id": "brazil-fan-token"
+      "gecko_id": "the-big-five"
     },
     {
       "id": 21959,
@@ -58634,7 +58634,7 @@
           "contract_address": "0xef00278d7eadf3b2c05267a2f185e468ad7eab7d"
         }
       ],
-      "gecko_id": "pepe"
+      "gecko_id": null
     },
     {
       "id": 22458,
@@ -59214,7 +59214,7 @@
       "website": "miaswap.io",
       "source_code": "github.com/miaswap/miaswap-info-api",
       "platform": null,
-      "gecko_id": "mia-2"
+      "gecko_id": null
     },
     {
       "id": 22736,
@@ -59511,7 +59511,7 @@
           "contract_address": "0xa55f26319462355474a9f2c8790860776a329aa4"
         }
       ],
-      "gecko_id": null
+      "gecko_id": "wrapped-energi"
     },
     {
       "id": 22837,
@@ -60295,7 +60295,7 @@
           "contract_address": "0x8f2E6758C4D6570344bd5007DEc6301cd57590A0"
         }
       ],
-      "gecko_id": "spot"
+      "gecko_id": "spot-2"
     },
     {
       "id": 23063,
@@ -61165,7 +61165,7 @@
           "contract_address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
         }
       ],
-      "gecko_id": "core-2"
+      "gecko_id": "coredaoorg"
     },
     {
       "id": 23262,
@@ -61554,7 +61554,7 @@
       "explorer": "explorer.nexa.org",
       "source_code": "gitlab.com/nexa/nexa",
       "platform": null,
-      "gecko_id": "nexa-3"
+      "gecko_id": "nexacoin"
     },
     {
       "id": 23388,
@@ -61644,7 +61644,7 @@
           "contract_address": "0xc11158c5dA9db1D553ED28f0C2BA1CbEDD42CFcb"
         }
       ],
-      "gecko_id": "paw-2"
+      "gecko_id": "pawswap"
     },
     {
       "id": 23405,
@@ -61762,7 +61762,7 @@
           "contract_address": "0x1ef4c0b20340b8c6a59438204467ca71e1e7cbe918526f9c2c6c5444517cd5ca::chirp::CHIRP"
         }
       ],
-      "gecko_id": "chirper-ai"
+      "gecko_id": "chirp-token"
     },
     {
       "id": 23450,
@@ -62654,7 +62654,7 @@
           "contract_address": "0xB6b8CCD230Bb4235C7b87986274E7aB550b72261"
         }
       ],
-      "gecko_id": "halo-coin"
+      "gecko_id": null
     },
     {
       "id": 23751,
@@ -63212,7 +63212,7 @@
           "contract_address": "0xb8fda5aee55120247f16225feff266dfdb381d4c"
         }
       ],
-      "gecko_id": "0x0-ai-ai-smart-contract"
+      "gecko_id": null
     },
     {
       "id": 23913,
@@ -63764,7 +63764,7 @@
           "contract_address": "0x7d4984490c4c68f8ead9dddca6d04c514ef77324"
         }
       ],
-      "gecko_id": "golden-inu-token"
+      "gecko_id": "golden-inu"
     },
     {
       "id": 24112,
@@ -64042,7 +64042,7 @@
           "contract_address": "0xf7a0b80681ec935d6dd9f3af9826e68b99897d6d"
         }
       ],
-      "gecko_id": "lfgswap-finance-core"
+      "gecko_id": null
     },
     {
       "id": 24176,
@@ -64527,7 +64527,7 @@
           "contract_address": "0xa555d5344f6fb6c65da19e403cb4c1ec4a1a5ee3"
         }
       ],
-      "gecko_id": "bread-2"
+      "gecko_id": "bread-3"
     },
     {
       "id": 24341,
@@ -64868,7 +64868,7 @@
           "contract_address": "6bn6rKWbTRAQwizwqEfcmpAtoAMnqzfG7F8DYMK5reYn"
         }
       ],
-      "gecko_id": "wojak-5"
+      "gecko_id": "wojak-4"
     },
     {
       "id": 24526,
@@ -64948,7 +64948,7 @@
           "contract_address": "0xB85C6FBF780eB913dC34aA0B6F74D1e6A15c356f"
         }
       ],
-      "gecko_id": "next-gen-pepe"
+      "gecko_id": "pepe-sol"
     },
     {
       "id": 24552,
@@ -64964,7 +64964,7 @@
           "contract_address": "0x5888641e3e6cBeA6D84Ba81EDb217bD691d3bE38"
         }
       ],
-      "gecko_id": "bobo-2"
+      "gecko_id": "bobo"
     },
     {
       "id": 24554,
@@ -65789,7 +65789,7 @@
           "contract_address": "0x3d2b66bc4f9d6388bd2d97b95b565be1686aefb3"
         }
       ],
-      "gecko_id": "lambo-2"
+      "gecko_id": "lambo-5"
     },
     {
       "id": 24859,
@@ -66190,7 +66190,7 @@
           "contract_address": "0xB52575Ce47c4534f7B0ba88acfba7546350197d8"
         }
       ],
-      "gecko_id": "perry"
+      "gecko_id": null
     },
     {
       "id": 25014,
@@ -66392,7 +66392,7 @@
           "contract_address": "0xf03d5fc6e08de6ad886fca34abf9a59ef633b78a"
         }
       ],
-      "gecko_id": "capybara-4"
+      "gecko_id": "capybara-2"
     },
     {
       "id": 25081,
@@ -66626,7 +66626,7 @@
           "contract_address": "0x04C618CDbc1D59142dFEB4B9864835A06983EC2d"
         }
       ],
-      "gecko_id": null
+      "gecko_id": "jaseonmun"
     },
     {
       "id": 25196,
@@ -66884,7 +66884,7 @@
           "contract_address": "0xfe1ef2b469846d1832b25095ff51b004f090e0c6"
         }
       ],
-      "gecko_id": "next-gen-pepe"
+      "gecko_id": "pepe-2"
     },
     {
       "id": 25330,
@@ -66969,7 +66969,7 @@
           "contract_address": "0xb46584e0efdE3092e04010A13f2eAe62aDb3b9F0"
         }
       ],
-      "gecko_id": "next-gen-pepe"
+      "gecko_id": "el-sapo-pepe"
     },
     {
       "id": 25380,
@@ -67150,7 +67150,7 @@
           "contract_address": "0x6730f7A6BbB7b9C8e60843948f7FEB4B6a17B7F7"
         }
       ],
-      "gecko_id": "seed-4"
+      "gecko_id": "seed-2"
     },
     {
       "id": 25512,
@@ -67230,7 +67230,7 @@
           "contract_address": "0x3007083eaa95497cd6b2b809fb97b6a30bdf53d3"
         }
       ],
-      "gecko_id": "psyop"
+      "gecko_id": "psyop-2"
     },
     {
       "id": 25645,
@@ -67246,7 +67246,7 @@
           "contract_address": "0xdA1689C5557564d06E2A546F8FD47350b9D44a73"
         }
       ],
-      "gecko_id": "bnb-lion"
+      "gecko_id": null
     },
     {
       "id": 25653,
@@ -67723,7 +67723,7 @@
           "contract_address": "0xd0AC5Be680Bfbc0f1958413f4201f91934F61BEA"
         }
       ],
-      "gecko_id": "milo-inu"
+      "gecko_id": null
     },
     {
       "id": 26081,
@@ -70379,7 +70379,7 @@
           "contract_address": "0xa62894D5196bC44e4C3978400Ad07E7b30352372"
         }
       ],
-      "gecko_id": "x-2"
+      "gecko_id": "xerc20-pro"
     },
     {
       "id": 27712,
@@ -70411,7 +70411,7 @@
           "contract_address": "0x27D2DECb4bFC9C76F0309b8E88dec3a601Fe25a8"
         }
       ],
-      "gecko_id": "bald-2"
+      "gecko_id": "bald"
     },
     {
       "id": 27736,
@@ -70448,7 +70448,7 @@
           "contract_address": "0xac1bd2486aaf3b5c0fc3fd868558b082a531b2b4"
         }
       ],
-      "gecko_id": "toshi-2"
+      "gecko_id": "toshi"
     },
     {
       "id": 27755,
@@ -70791,7 +70791,7 @@
           "contract_address": "0x0A074378461FB7ed3300eA638c6Cc38246db4434"
         }
       ],
-      "gecko_id": "el-dorado-exchange-base"
+      "gecko_id": null
     },
     {
       "id": 27856,
@@ -71702,7 +71702,7 @@
           "contract_address": "0x089453742936dd35134383aee9d78bee63a69b01"
         }
       ],
-      "gecko_id": "gold-2"
+      "gecko_id": "gold-11"
     },
     {
       "id": 28177,
@@ -71897,7 +71897,7 @@
           "contract_address": "0xfC8774321Ee4586aF183bAca95A8793530056353"
         }
       ],
-      "gecko_id": "long-4"
+      "gecko_id": "long-3"
     },
     {
       "id": 28217,
@@ -72226,7 +72226,7 @@
           "contract_address": "0x0b5a91a43cb798c45fd56bfb5d41c13c42a7afa8"
         }
       ],
-      "gecko_id": "apu-apustaja-sol"
+      "gecko_id": "apu-apustaja"
     },
     {
       "id": 28292,
@@ -72327,7 +72327,7 @@
           "contract_address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
         }
       ],
-      "gecko_id": "beam-2"
+      "gecko_id": "beam"
     },
     {
       "id": 28299,
@@ -72396,7 +72396,7 @@
           "contract_address": "0x69b14e8D3CEBfDD8196Bfe530954A0C226E5008E"
         }
       ],
-      "gecko_id": "spacepi-token"
+      "gecko_id": null
     },
     {
       "id": 28312,
@@ -72434,7 +72434,7 @@
           "contract_address": "0x0000000000000000000000000000000000001010"
         }
       ],
-      "gecko_id": null
+      "gecko_id": "polygon-ecosystem-token"
     },
     {
       "id": 28324,
@@ -72830,7 +72830,7 @@
           "contract_address": "0x8390a1da07e376ef7add4be859ba74fb83aa02d5"
         }
       ],
-      "gecko_id": "grok-2"
+      "gecko_id": "grok-4"
     },
     {
       "id": 28395,
@@ -72973,7 +72973,7 @@
           "contract_address": "0x6A9431b9ecce9dDe3f7a32391d5b61C5AD11e4A0"
         }
       ],
-      "gecko_id": "nutcoin-2"
+      "gecko_id": "nutcoin-meme"
     },
     {
       "id": 28418,
@@ -73199,7 +73199,7 @@
           "contract_address": "77df24c9f1bd1c6a606eb12eeae3e2a2db40774d54b839b5ae11f438353ddf47i0"
         }
       ],
-      "gecko_id": "rats"
+      "gecko_id": null
     },
     {
       "id": 28453,
@@ -73356,7 +73356,7 @@
           "contract_address": "0xf6e932ca12afa26665dc4dde7e27be02a7c02e50"
         }
       ],
-      "gecko_id": "mochi-3"
+      "gecko_id": "mochi-thecatcoin"
     },
     {
       "id": 28479,
@@ -73485,7 +73485,7 @@
           "contract_address": "0x76e222b07c53d28b89b0bac18602810fc22b49a8"
         }
       ],
-      "gecko_id": "joe-coin"
+      "gecko_id": null
     },
     {
       "id": 28506,
@@ -73553,7 +73553,7 @@
           "contract_address": "0x87682C4813B7d43447C6dcb8eD6b4a599C9CEC7E"
         }
       ],
-      "gecko_id": "jeff-3"
+      "gecko_id": "jeff"
     },
     {
       "id": 28510,
@@ -73590,7 +73590,7 @@
           "contract_address": "0x2749C9f2f8568d389BBF61ed77784A43C3cD3E19"
         }
       ],
-      "gecko_id": "liquidus-2"
+      "gecko_id": null
     },
     {
       "id": 28529,
@@ -73669,7 +73669,7 @@
           "contract_address": "0x5b2124D427fAc9C80c902cbDD74b03Dd85d7d3FE"
         }
       ],
-      "gecko_id": "defi-yield-protocol"
+      "gecko_id": null
     },
     {
       "id": 28545,
@@ -73876,7 +73876,7 @@
           "contract_address": "0xcAb254f1a32343f11aB41fbdE90eCB410cDe348a"
         }
       ],
-      "gecko_id": "frogevip"
+      "gecko_id": null
     },
     {
       "id": 28590,
@@ -74046,7 +74046,7 @@
           "contract_address": "0x3001f57F8308b189EB412a64322Aad5eF9951290"
         }
       ],
-      "gecko_id": "gecko-inu"
+      "gecko_id": "gecoin"
     },
     {
       "id": 28649,
@@ -74487,7 +74487,7 @@
           "contract_address": "0x2466858ab5edAd0BB597FE9f008F568B00d25Fe3"
         }
       ],
-      "gecko_id": "micropets-2"
+      "gecko_id": "micropets-3"
     },
     {
       "id": 28710,
@@ -74503,7 +74503,7 @@
           "contract_address": "0x102A6625b69b214BD2422952C8A6401a4b800B73"
         }
       ],
-      "gecko_id": "simon-s-cat"
+      "gecko_id": "cat-terminal"
     },
     {
       "id": 28717,
@@ -74747,7 +74747,7 @@
           "contract_address": "5SuHxgTNE8cbCoK4gfQ7LxpiKgrkENVEQmq78FoAr6La"
         }
       ],
-      "gecko_id": "degen-arena"
+      "gecko_id": "degen-the-otter-4"
     },
     {
       "id": 28778,
@@ -74876,7 +74876,7 @@
           "contract_address": "0x6cc89e057570F4A17D0eb3e20004A616A7C500e9"
         }
       ],
-      "gecko_id": "baby-cat"
+      "gecko_id": null
     },
     {
       "id": 28800,
@@ -74924,7 +74924,7 @@
           "contract_address": "3acxNNmfdKKZj9i35P4VDBFm74Ufdt8ojKWceVGynwC5"
         }
       ],
-      "gecko_id": "gm-2"
+      "gecko_id": "gm-machine"
     },
     {
       "id": 28803,
@@ -75025,7 +75025,7 @@
           "contract_address": "0x619574A4A35e16BdA3942c7500054D531b311d0e"
         }
       ],
-      "gecko_id": "santa-coin-2"
+      "gecko_id": "santa-2"
     },
     {
       "id": 28817,
@@ -75193,7 +75193,7 @@
           "contract_address": "0x9E64D3b9e8eC387a9a58CED80b71Ed815f8D82B5"
         }
       ],
-      "gecko_id": "smolcoin"
+      "gecko_id": "smolcoin-2"
     },
     {
       "id": 28841,
@@ -75241,7 +75241,7 @@
           "contract_address": "99ouK5YUK3JPGCPX9joNtHsMU7NPpU7w91JN4kdQ97po"
         }
       ],
-      "gecko_id": "sleepless-ai"
+      "gecko_id": "flourishing-ai-token"
     },
     {
       "id": 28850,
@@ -75433,7 +75433,7 @@
           "contract_address": "0x2603a2F40Cd0dC2f6a6FB02A0c0768108b9F5F46"
         }
       ],
-      "gecko_id": "doge-grok-companion"
+      "gecko_id": null
     },
     {
       "id": 28881,
@@ -76129,7 +76129,7 @@
           "contract_address": "BoZoQQRAmYkr5iJhqo7DChAs7DPDwEZ5cv1vkYC9yzJG"
         }
       ],
-      "gecko_id": "bozo-hybrid"
+      "gecko_id": "bozo-the-bull"
     },
     {
       "id": 28992,
@@ -76150,7 +76150,7 @@
           "contract_address": "0xb10cb07ca2cdac77fbb5707f6690301f9d036f45"
         }
       ],
-      "gecko_id": "win-2"
+      "gecko_id": "win-3"
     },
     {
       "id": 28993,
@@ -76501,7 +76501,7 @@
           "contract_address": "0xc3e8F389C4ACEDB0AFe230d713136bE21D0421Ac"
         }
       ],
-      "gecko_id": "dragon-4"
+      "gecko_id": null
     },
     {
       "id": 29047,
@@ -76602,7 +76602,7 @@
           "contract_address": "0x40A32606A4CE9b4F350421642Ebf65C052d5389b"
         }
       ],
-      "gecko_id": "up"
+      "gecko_id": null
     },
     {
       "id": 29073,
@@ -76809,7 +76809,7 @@
           "contract_address": "0x765275f72c061C0e1ae037e5d0e5CE4785091Cf1"
         }
       ],
-      "gecko_id": "doge-grok-companion"
+      "gecko_id": null
     },
     {
       "id": 29098,
@@ -77428,7 +77428,7 @@
           "contract_address": "xjngq-yaaaa-aaaaq-aabha-cai"
         }
       ],
-      "gecko_id": "boom-2"
+      "gecko_id": "boom-token-2"
     },
     {
       "id": 29210,
@@ -77444,7 +77444,7 @@
           "contract_address": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN"
         }
       ],
-      "gecko_id": "jupiter-exchange-solana"
+      "gecko_id": null
     },
     {
       "id": 29211,
@@ -77597,7 +77597,7 @@
           "contract_address": "0x97280BEAfc195E4CcdFeAF4658b4974F8e69d625"
         }
       ],
-      "gecko_id": "lion-scrub-money-2"
+      "gecko_id": "the-lion"
     },
     {
       "id": 29241,
@@ -77860,7 +77860,7 @@
           "contract_address": "0xf78BB77A0c86ea29964c12Ec8D55AaC4EBb4B304"
         }
       ],
-      "gecko_id": "dragon-4"
+      "gecko_id": null
     },
     {
       "id": 29281,
@@ -78370,7 +78370,7 @@
           "contract_address": "0x4E6fbE303c3C4a08F51B42bD10F2Ad15749ac612"
         }
       ],
-      "gecko_id": "dragon-4"
+      "gecko_id": null
     },
     {
       "id": 29349,
@@ -78503,7 +78503,7 @@
           "contract_address": "0xCf0709A7B7f000D49BF2614Af56773a1C10AfDdE"
         }
       ],
-      "gecko_id": "dragon-4"
+      "gecko_id": null
     },
     {
       "id": 29370,
@@ -78561,7 +78561,7 @@
           "contract_address": "0x682f8fddfec6ebdf6c7bf1c0eec276b37a647d59"
         }
       ],
-      "gecko_id": "gigachad-2"
+      "gecko_id": null
     },
     {
       "id": 29386,
@@ -78705,7 +78705,7 @@
           "contract_address": "0xD2f1635AC07E1eA4c68d954E120C272B8380F038"
         }
       ],
-      "gecko_id": "doge-grok-companion"
+      "gecko_id": null
     },
     {
       "id": 29405,
@@ -78859,7 +78859,7 @@
           "contract_address": "0xb8a87405d9a4F2F866319B77004e88dfF66c0d92"
         }
       ],
-      "gecko_id": "sora-oracle"
+      "gecko_id": "sora-ai"
     },
     {
       "id": 29443,
@@ -79028,7 +79028,7 @@
           "contract_address": "0x11D64c639823A44c1FbeFC88e9459bdd3585BEbD"
         }
       ],
-      "gecko_id": "simon-s-cat"
+      "gecko_id": "cat-call-agent"
     },
     {
       "id": 29470,
@@ -79166,7 +79166,7 @@
           "contract_address": "G33s1LiUADEBLzN5jL6ocSXqrT2wsUq9W6nZ8o4k1b4L"
         }
       ],
-      "gecko_id": "magic-internet-money-optimism"
+      "gecko_id": "magic-internet-money"
     },
     {
       "id": 29475,
@@ -80200,7 +80200,7 @@
           "contract_address": "0x9d6db6382444b70a51307a4291188f60d4eef205"
         }
       ],
-      "gecko_id": "baby-pepe-erc20"
+      "gecko_id": "baby-pepe-3"
     },
     {
       "id": 29651,
@@ -80751,7 +80751,7 @@
           "contract_address": "0xa7440029eca41deabd8775ef1d6086b37d4df8d6"
         }
       ],
-      "gecko_id": "based-brett"
+      "gecko_id": "brett"
     },
     {
       "id": 29750,
@@ -80924,7 +80924,7 @@
           "contract_address": "0x000c94565910eD59AB98Fc47Fe3b39ed5Acba34C"
         }
       ],
-      "gecko_id": "next-gen-pepe"
+      "gecko_id": "pepe-solana"
     },
     {
       "id": 29787,
@@ -81020,7 +81020,7 @@
           "contract_address": "F9Jt81i9smJWJf7kvwGZizW452boKAgw9RUJ3G9aXGCG"
         }
       ],
-      "gecko_id": "pou"
+      "gecko_id": null
     },
     {
       "id": 29804,
@@ -81360,7 +81360,7 @@
           "contract_address": "0xE02b264915474eB711832BFB8fB6A765B2d36e68"
         }
       ],
-      "gecko_id": "floki"
+      "gecko_id": null
     },
     {
       "id": 29862,
@@ -81429,7 +81429,7 @@
           "contract_address": "0x68bbed6a47194eff1cf514b50ea91895597fc91e"
         }
       ],
-      "gecko_id": "andy-on-base"
+      "gecko_id": "andy-the-wisguy"
     },
     {
       "id": 29884,
@@ -81722,7 +81722,7 @@
           "contract_address": "93n51i8anR3ziS6kxqXEACjrvJoXpAxt3qbbo3eaRFRz"
         }
       ],
-      "gecko_id": "andy-on-base"
+      "gecko_id": "andy"
     },
     {
       "id": 29960,
@@ -81886,7 +81886,7 @@
           "contract_address": "0x1aE7e1d0ce06364CED9aD58225a1705b3e5DB92b"
         }
       ],
-      "gecko_id": "lmeow-3"
+      "gecko_id": "lmeow-2"
     },
     {
       "id": 29998,
@@ -81992,7 +81992,7 @@
           "contract_address": "26s3UGB9hund1qspApy1zYgCritxAooGg7o63BMn89Yq"
         }
       ],
-      "gecko_id": "apu-apustaja"
+      "gecko_id": "apu-s-club"
     },
     {
       "id": 30011,
@@ -82338,7 +82338,7 @@
           "contract_address": "0xc0dB17Bc219C5ca8746C29ee47862ee3Ad742F4a"
         }
       ],
-      "gecko_id": "scotty-beam"
+      "gecko_id": null
     },
     {
       "id": 30092,
@@ -82486,7 +82486,7 @@
           "contract_address": "5MBBsoCVddAuF8XixvCcXNbHAw6WfpZ8WyTKMmczxxRN"
         }
       ],
-      "gecko_id": "shib-on-solana"
+      "gecko_id": null
     },
     {
       "id": 30109,
@@ -82662,7 +82662,7 @@
           "contract_address": "0xf1b4ddf712e108cf43711b1c39f2fddb0d5ce243"
         }
       ],
-      "gecko_id": "base"
+      "gecko_id": "base-2"
     },
     {
       "id": 30133,
@@ -82710,7 +82710,7 @@
           "contract_address": "0xf5f374eef64c5f4c5485c460720aadfcc2d2c83a"
         }
       ],
-      "gecko_id": "simon-s-cat"
+      "gecko_id": "sol-cat"
     },
     {
       "id": 30143,
@@ -83083,7 +83083,7 @@
           "contract_address": "0x7Cea2ECba159f793C6eC302a5883fA0d3F018899"
         }
       ],
-      "gecko_id": "floki"
+      "gecko_id": null
     },
     {
       "id": 30263,
@@ -83200,7 +83200,7 @@
           "contract_address": "5LafQUrVco6o7KMz42eqVEJ9LW31StPyGjeeu5sKoMtA"
         }
       ],
-      "gecko_id": "mumu"
+      "gecko_id": "mumu-the-bull-3"
     },
     {
       "id": 30287,
@@ -83333,7 +83333,7 @@
           "contract_address": "0x36e66fbbce51e4cd5bd3c62b637eb411b18949d4"
         }
       ],
-      "gecko_id": "omni-2"
+      "gecko_id": "omni-network"
     },
     {
       "id": 30322,
@@ -83397,7 +83397,7 @@
           "contract_address": "0xB64d3aF541fc6b924523383cDb3c9225dF45DE49"
         }
       ],
-      "gecko_id": "simon-s-cat"
+      "gecko_id": "cat-2"
     },
     {
       "id": 30329,
@@ -83508,7 +83508,7 @@
           "contract_address": "BSkz8QHwk1DaT3Dcf1L5vWsCRzgrfrLR3qYmwSt1rtUM"
         }
       ],
-      "gecko_id": "bitcat"
+      "gecko_id": "bitcat-3"
     },
     {
       "id": 30351,
@@ -83577,7 +83577,7 @@
           "contract_address": "0x9c7d4fb43919def524c1a9d92fe836169eaf0615"
         }
       ],
-      "gecko_id": "landwolf-0x67"
+      "gecko_id": "landwolf-eth"
     },
     {
       "id": 30365,
@@ -83794,7 +83794,7 @@
           "contract_address": "0x747e550a7b848ace786c3cfe754aa78febc8a022"
         }
       ],
-      "gecko_id": "dodo"
+      "gecko_id": "dodo-2"
     },
     {
       "id": 30412,
@@ -83836,7 +83836,7 @@
           "contract_address": "0x94012a40F9190A1c0ce4947813f1ed2154a423c6"
         }
       ],
-      "gecko_id": "simon-s-cat"
+      "gecko_id": "cat-token"
     },
     {
       "id": 30422,
@@ -83916,7 +83916,7 @@
           "contract_address": "EjmDTt8G3T725eFSV7oWmGD8J848guo3LZ1EB3RfwGSw"
         }
       ],
-      "gecko_id": "harold"
+      "gecko_id": "haroldonsol"
     },
     {
       "id": 30442,
@@ -84049,7 +84049,7 @@
           "contract_address": "0x18a8bd1fe17a1bb9ffb39ecd83e9489cfd17a022"
         }
       ],
-      "gecko_id": "andy-on-base"
+      "gecko_id": "andy-on-eth"
     },
     {
       "id": 30456,
@@ -84395,7 +84395,7 @@
           "contract_address": "2HrZ5R18H48b8ptL3n8N5zX65zDB4o2cMCHcP3QfSfye"
         }
       ],
-      "gecko_id": "boop-4"
+      "gecko_id": "boop-2"
     },
     {
       "id": 30528,
@@ -84512,7 +84512,7 @@
           "contract_address": "0x6F8dEB41aD9c9E25B2674A9eD083afc4F529Bc11"
         }
       ],
-      "gecko_id": "doge-grok-companion"
+      "gecko_id": null
     },
     {
       "id": 30549,
@@ -84990,7 +84990,7 @@
           "contract_address": "0xA47F5646fd7A92595B69000A31a069f6b5c7777c"
         }
       ],
-      "gecko_id": "simon-s-cat"
+      "gecko_id": "the-life-of-cat"
     },
     {
       "id": 30640,
@@ -85182,7 +85182,7 @@
           "contract_address": "0x80eE5c641A8fFC607545219a3856562F56427FE9"
         }
       ],
-      "gecko_id": "based-brett"
+      "gecko_id": "brett-eth"
     },
     {
       "id": 30666,
@@ -85383,7 +85383,7 @@
           "contract_address": "0xc92d954B07Cf80Db8c7981a46A6be8588f2043d0"
         }
       ],
-      "gecko_id": "simon-s-cat"
+      "gecko_id": "cat-3"
     },
     {
       "id": 30696,
@@ -85868,7 +85868,7 @@
           "contract_address": "0x33ABE795f9c1b6136608c36dB211bD7590f5FdAE"
         }
       ],
-      "gecko_id": "landwolf-0x67"
+      "gecko_id": "the-real-landwolf"
     },
     {
       "id": 30787,
@@ -85884,7 +85884,7 @@
           "contract_address": "0xf6ce4be313ead51511215f1874c898239a331e37"
         }
       ],
-      "gecko_id": "bird-dog"
+      "gecko_id": null
     },
     {
       "id": 30788,
@@ -86038,7 +86038,7 @@
           "contract_address": "0x88faea256f789f8dd50de54f9c807eef24f71b16"
         }
       ],
-      "gecko_id": "landwolf-0x67"
+      "gecko_id": "landwolf-on-avax"
     },
     {
       "id": 30825,
@@ -86202,7 +86202,7 @@
           "contract_address": "EQDv-yr41_CZ2urg2gfegVfa44PDPjIK9F-MilEDKDUIhlwZ"
         }
       ],
-      "gecko_id": "anon-2"
+      "gecko_id": "super-anon"
     },
     {
       "id": 30852,
@@ -86218,7 +86218,7 @@
           "contract_address": "0x0AeE21B4a1F322E84ab29F58Af8350D0eE968399"
         }
       ],
-      "gecko_id": "doge-grok-companion"
+      "gecko_id": null
     },
     {
       "id": 30859,
@@ -86399,7 +86399,7 @@
           "contract_address": "0x85D19fb57CA7DA715695FCf347CA2169144523a7"
         }
       ],
-      "gecko_id": "conan"
+      "gecko_id": "conan-2"
     },
     {
       "id": 30890,
@@ -86431,7 +86431,7 @@
           "contract_address": "0x67466be17df832165f8c80a5a120ccc652bd7e69"
         }
       ],
-      "gecko_id": "landwolf-0x67"
+      "gecko_id": "landwolf-2"
     },
     {
       "id": 30905,
@@ -86659,7 +86659,7 @@
           "contract_address": "GxojtGb9BMitaKSzJVHcB5XkZHc7E7swSRy9ZwxUxza1"
         }
       ],
-      "gecko_id": "andy-on-base"
+      "gecko_id": "andy-2"
     },
     {
       "id": 30936,
@@ -86675,7 +86675,7 @@
           "contract_address": "0x47b464eDB8Dc9BC67b5CD4C9310BB87b773845bD"
         }
       ],
-      "gecko_id": "normie-4"
+      "gecko_id": "normie-2"
     },
     {
       "id": 30941,
@@ -87137,7 +87137,7 @@
           "contract_address": "EATGZHJViJsk7nEKkrdJicwNbfpkJfAtmrEmrjXR8NBj"
         }
       ],
-      "gecko_id": "popdog-2"
+      "gecko_id": "popdog"
     },
     {
       "id": 31021,
@@ -87307,7 +87307,7 @@
           "contract_address": "0x3636a7734b669Ce352e97780Df361ce1f809c58C"
         }
       ],
-      "gecko_id": "rocky-the-rock"
+      "gecko_id": null
     },
     {
       "id": 31050,
@@ -87339,7 +87339,7 @@
           "contract_address": "LOBOTHEWOLFPUP"
         }
       ],
-      "gecko_id": "lobo"
+      "gecko_id": "lobo-the-wolf-pup-runes"
     },
     {
       "id": 31052,
@@ -87540,7 +87540,7 @@
           "contract_address": "0x80e3ee7bab68feaea6e01c44df9daa5de53e4818"
         }
       ],
-      "gecko_id": "dogecoin"
+      "gecko_id": null
     },
     {
       "id": 31094,
@@ -87609,7 +87609,7 @@
           "contract_address": "0xdE8e272ed57488C817B9023C1b2d3e1923CCaB86"
         }
       ],
-      "gecko_id": "xdai-stake"
+      "gecko_id": null
     },
     {
       "id": 31108,
@@ -87757,7 +87757,7 @@
           "contract_address": "0xc8168d5665f4418353728ac970713e09C0B7c20e"
         }
       ],
-      "gecko_id": "monke"
+      "gecko_id": "monke-5"
     },
     {
       "id": 31154,
@@ -88570,7 +88570,7 @@
           "contract_address": "0x137fFd84025C582482E03D3A0B9f74c26dDDFBad"
         }
       ],
-      "gecko_id": "hodl"
+      "gecko_id": "hodl-5"
     },
     {
       "id": 31283,
@@ -88618,7 +88618,7 @@
           "contract_address": "c409d95ec5d858dcac9ef2e7b6bb57752b2e213f4e5443a252bdcc74625ec674i0"
         }
       ],
-      "gecko_id": "trio-icm"
+      "gecko_id": "trio-ordinals"
     },
     {
       "id": 31290,
@@ -88682,7 +88682,7 @@
           "contract_address": "0xe9689028eDE16c2FDFE3D11855D28f8E3fC452a3"
         }
       ],
-      "gecko_id": "bubblelabs"
+      "gecko_id": "the-bubbleheads"
     },
     {
       "id": 31299,
@@ -88746,7 +88746,7 @@
           "contract_address": "0xd29da236dd4aac627346e1bba06a619e8c22d7c5"
         }
       ],
-      "gecko_id": "maga-coin-eth"
+      "gecko_id": "maga-hat"
     },
     {
       "id": 31309,
@@ -88894,7 +88894,7 @@
           "contract_address": "0x1888847B50BC1833E268348896dEe58701fc06A9"
         }
       ],
-      "gecko_id": "bitcoin-pizza"
+      "gecko_id": "pizza"
     },
     {
       "id": 31341,
@@ -89086,7 +89086,7 @@
           "contract_address": "0xD33fd95fC17bc808b35e98458e078330F35Dbfa3"
         }
       ],
-      "gecko_id": "midnight-3"
+      "gecko_id": "midnight"
     },
     {
       "id": 31378,
@@ -89450,7 +89450,7 @@
           "contract_address": "0xaD0354F71332AAd8Df5d840458d4Fd86456DC7b5"
         }
       ],
-      "gecko_id": "simon-s-cat"
+      "gecko_id": null
     },
     {
       "id": 31429,
@@ -89865,7 +89865,7 @@
           "contract_address": "AwduJQUJoSCZm5BUdhF99iZkUTUGHU34TPft8w5kNbw1"
         }
       ],
-      "gecko_id": "maga-hat"
+      "gecko_id": null
     },
     {
       "id": 31503,
@@ -90220,7 +90220,7 @@
           "contract_address": "0x4BcCA035cBf685723BF5aA366CE430BAFee9AA73"
         }
       ],
-      "gecko_id": "bald-eagle"
+      "gecko_id": "the-eagle"
     },
     {
       "id": 31561,
@@ -90342,7 +90342,7 @@
           "contract_address": "FViMp5phQH2bX81S7Yyn1yXjj3BRddFBNcMCbTH8FCze"
         }
       ],
-      "gecko_id": "toad-killer"
+      "gecko_id": "toad-sol"
     },
     {
       "id": 31600,
@@ -90432,7 +90432,7 @@
           "contract_address": "B5WTLaRwaUQpKk7ir1wniNB6m5o8GgMrimhKMYan2R6B"
         }
       ],
-      "gecko_id": "pepe"
+      "gecko_id": null
     },
     {
       "id": 31622,
@@ -90448,7 +90448,7 @@
           "contract_address": "0xdE6ebb336FfCF4d3ef3F74E0cc295aEE994893Ed"
         }
       ],
-      "gecko_id": "bald-eagle"
+      "gecko_id": "aura-farming-eagle"
     },
     {
       "id": 31625,
@@ -90522,7 +90522,7 @@
           "contract_address": "0x3ffeea07a27fab7ad1df5297fa75e77a43cb5790"
         }
       ],
-      "gecko_id": "peipeicoin-vip"
+      "gecko_id": "peipei-sol"
     },
     {
       "id": 31637,
@@ -90676,7 +90676,7 @@
           "contract_address": "0x2351b9c22987c945A36Be991422031d86ee70bF6"
         }
       ],
-      "gecko_id": "simon-s-cat"
+      "gecko_id": null
     },
     {
       "id": 31662,
@@ -90729,7 +90729,7 @@
           "contract_address": "BILLIONDOLLARCAT"
         }
       ],
-      "gecko_id": "billy"
+      "gecko_id": "billy-base"
     },
     {
       "id": 31670,
@@ -91145,7 +91145,7 @@
           "contract_address": "0x7Cf7132EdE0ca592A236b6198A681bB7B42dd5ae"
         }
       ],
-      "gecko_id": "bolt"
+      "gecko_id": null
     },
     {
       "id": 31747,
@@ -91209,7 +91209,7 @@
           "contract_address": "0x69babE9811CC86dCfC3B8f9a14de6470Dd18EDA4"
         }
       ],
-      "gecko_id": "baby-pepe-erc20"
+      "gecko_id": "baby-pepe-2"
     },
     {
       "id": 31755,
@@ -91476,7 +91476,7 @@
           "contract_address": "4h8LjZWUfUQVgbEZ29UzTuGXNW6rwrJis78ZU66ekkPV"
         }
       ],
-      "gecko_id": "official-trump"
+      "gecko_id": null
     },
     {
       "id": 31797,
@@ -91508,7 +91508,7 @@
           "contract_address": "0x7d4a23832fad83258b32ce4fd3109ceef4332af4"
         }
       ],
-      "gecko_id": "stonks-3"
+      "gecko_id": "stonks-5"
     },
     {
       "id": 31806,
@@ -91700,7 +91700,7 @@
           "contract_address": "Faf89929Ni9fbg4gmVZTca7eW6NFg877Jqn6MizT3Gvw"
         }
       ],
-      "gecko_id": "landwolf-0x67"
+      "gecko_id": "landwolf-base"
     },
     {
       "id": 31849,
@@ -91849,7 +91849,7 @@
           "contract_address": "0xD860549FD64FE8ba0040F73Be302EaCc4BeF9C40"
         }
       ],
-      "gecko_id": "peipeicoin-vip"
+      "gecko_id": null
     },
     {
       "id": 31878,
@@ -92594,7 +92594,7 @@
           "contract_address": "0x86bF362B3bcb067895481AA071A7364e5884232e"
         }
       ],
-      "gecko_id": "andy-on-base"
+      "gecko_id": "andy-3"
     },
     {
       "id": 32000,
@@ -92658,7 +92658,7 @@
           "contract_address": "0x7137e8a3b069C3F787c4fFbb901b91E4bA47d082"
         }
       ],
-      "gecko_id": "zeus-network"
+      "gecko_id": "zeus-4"
     },
     {
       "id": 32011,
@@ -92780,7 +92780,7 @@
           "contract_address": "0xe8Db8733c5baDF634F86D6EF894fFdBF0e85B7c2"
         }
       ],
-      "gecko_id": "my-lovely-coin"
+      "gecko_id": null
     },
     {
       "id": 32037,
@@ -92843,7 +92843,7 @@
           "contract_address": "sPiKEYAqoaGYYBAnPxro8NLSYLu93sr56n352jJRLN5"
         }
       ],
-      "gecko_id": "spike-on-eth"
+      "gecko_id": "spike"
     },
     {
       "id": 32044,
@@ -93846,7 +93846,7 @@
           "contract_address": "BVG3BJH4ghUPJT9mCi7JbziNwx3dqRTzgo9x5poGpump"
         }
       ],
-      "gecko_id": "rocky-the-rock"
+      "gecko_id": null
     },
     {
       "id": 32207,
@@ -93899,7 +93899,7 @@
           "contract_address": "0x7087c92EC764e75e7be7701EBA15cD95D90F501F"
         }
       ],
-      "gecko_id": "matt-0x79"
+      "gecko_id": null
     },
     {
       "id": 32215,
@@ -93989,7 +93989,7 @@
           "contract_address": "G8Vy25NzjRmuQtnN35xF7j3X2Z1TrV39XijZu8Mg4w8n"
         }
       ],
-      "gecko_id": "cook"
+      "gecko_id": "cook-4"
     },
     {
       "id": 32229,
@@ -94085,7 +94085,7 @@
           "contract_address": "KMnDBXcPXoz6oMJW5XG4tXdwSWpmWEP2RQM1Uujpump"
         }
       ],
-      "gecko_id": "fight"
+      "gecko_id": "fight-2"
     },
     {
       "id": 32246,
@@ -94276,7 +94276,7 @@
           "contract_address": "3T3R5KTAXgMF5KVw6v38qUfSUernCHQwYFzfVo1jdjMX"
         }
       ],
-      "gecko_id": "grass"
+      "gecko_id": "grass-2"
     },
     {
       "id": 32277,
@@ -94308,7 +94308,7 @@
           "contract_address": "https://ordinals.com/rune/RUNESXBITCOIN"
         }
       ],
-      "gecko_id": "x-2"
+      "gecko_id": null
     },
     {
       "id": 32281,
@@ -94727,7 +94727,7 @@
           "contract_address": "0xfefe157c9d0ae025213092ff9a5cb56ab492bab8"
         }
       ],
-      "gecko_id": "fefe"
+      "gecko_id": "fefe-on-eth"
     },
     {
       "id": 32370,
@@ -94769,7 +94769,7 @@
           "contract_address": "4UbvZiomFvXDnZSz6vdHiDNiHozH2ykTEqjhhbVHiv9z"
         }
       ],
-      "gecko_id": "straitsx-xusd"
+      "gecko_id": "staked-stream-usd"
     },
     {
       "id": 32373,
@@ -95189,7 +95189,7 @@
           "contract_address": "8NNXWrWVctNw1UFeaBypffimTdcLCcD8XJzHvYsmgwpF"
         }
       ],
-      "gecko_id": "brainlet"
+      "gecko_id": "brainlet-2"
     },
     {
       "id": 32450,
@@ -95205,7 +95205,7 @@
           "contract_address": "57WfTMNw4QNiYQvMqBMmAGNScCMYRgphyBwDkdMvKVf1"
         }
       ],
-      "gecko_id": "baby-neiro-cto"
+      "gecko_id": "baby-neiro-2"
     },
     {
       "id": 32452,
@@ -95306,7 +95306,7 @@
           "contract_address": "CTJf74cTo3cw8acFP1YXF3QpsQUUBGBjh2k2e8xsZ6UL"
         }
       ],
-      "gecko_id": "neiro-2"
+      "gecko_id": "neiro"
     },
     {
       "id": 32467,
@@ -95607,7 +95607,7 @@
           "contract_address": "5SVG3T9CNQsm2kEwzbRq6hASqh1oGfjqTtLXYUibpump"
         }
       ],
-      "gecko_id": "sigma-2"
+      "gecko_id": "sigma"
     },
     {
       "id": 32500,
@@ -95745,7 +95745,7 @@
           "contract_address": "AbrMJWfDVRZ2EWCQ1xSCpoVeVgZNpq1U2AoYG98oRXfn"
         }
       ],
-      "gecko_id": "cheese-2"
+      "gecko_id": "cheese-3"
     },
     {
       "id": 32516,
@@ -95792,7 +95792,7 @@
           "contract_address": "FkmodwcM4YULTKLNMo7VHs4HLPvm8iBVLJHTj9YhMr9h"
         }
       ],
-      "gecko_id": "neiro-2"
+      "gecko_id": "neiro-3"
     },
     {
       "id": 32524,
@@ -95845,7 +95845,7 @@
           "contract_address": "8nQtmv1ipzUg6VrafDUy38M122DQ8vXNEGJiZtUapepe"
         }
       ],
-      "gecko_id": "pepecoin-on-solana"
+      "gecko_id": "pepe-king-prawn"
     },
     {
       "id": 32529,
@@ -95989,7 +95989,7 @@
           "contract_address": "0x60f67e1015b3f069dd4358a78c38f83fe3a667a9"
         }
       ],
-      "gecko_id": "route"
+      "gecko_id": "router-protocol-2"
     },
     {
       "id": 32545,
@@ -96005,7 +96005,7 @@
           "contract_address": "EQD4P32U10snNoIavoq6cYPTQR82ewAjO20epigrWRAup54_"
         }
       ],
-      "gecko_id": "hydra"
+      "gecko_id": "hydra-3"
     },
     {
       "id": 32546,
@@ -96053,7 +96053,7 @@
           "contract_address": "0xfE3DDeDde73809862d0104218c81dD8c478fA9d3"
         }
       ],
-      "gecko_id": "bridged-maga-wormhole"
+      "gecko_id": null
     },
     {
       "id": 32570,
@@ -96699,7 +96699,7 @@
           "contract_address": "0x16120Ef3d353224222b0A257AD15B5eAec0525c5"
         }
       ],
-      "gecko_id": "bebe"
+      "gecko_id": null
     },
     {
       "id": 32713,
@@ -96715,7 +96715,7 @@
           "contract_address": "0xdA1e806FFc0eE2e541a212183306071C3a375b74"
         }
       ],
-      "gecko_id": "dogs-2"
+      "gecko_id": "we-love-dogs"
     },
     {
       "id": 32717,
@@ -96906,7 +96906,7 @@
           "contract_address": "0xf211B655431c10E72C1CAeae37688Ae9f7F7A549"
         }
       ],
-      "gecko_id": "maga-coin-eth"
+      "gecko_id": "maga-coin"
     },
     {
       "id": 32753,
@@ -97017,7 +97017,7 @@
           "contract_address": "0x1121AcC14c63f3C872BFcA497d10926A6098AAc5"
         }
       ],
-      "gecko_id": "department-of-gov-efficiency"
+      "gecko_id": "department-of-government-efficiency"
     },
     {
       "id": 32780,
@@ -97227,7 +97227,7 @@
           "contract_address": "TJvwMR3RjHc8jA9QwwjWGANrR3Y4scLSZm"
         }
       ],
-      "gecko_id": "rock-2"
+      "gecko_id": "rock-4"
     },
     {
       "id": 32818,
@@ -97243,7 +97243,7 @@
           "contract_address": "TFenNvccFr9zvkh9xhQspcAxY4xxttNkWg"
         }
       ],
-      "gecko_id": "fred-the-kitty"
+      "gecko_id": "clawfred"
     },
     {
       "id": 32819,
@@ -97259,7 +97259,7 @@
           "contract_address": "0x9B700B043e9587ddE9a0c29A9483e2F8FA450d54"
         }
       ],
-      "gecko_id": "axondao-governance-token-2"
+      "gecko_id": null
     },
     {
       "id": 32820,
@@ -97323,7 +97323,7 @@
           "contract_address": "0x4a67b2F73337D2A4f7d3084d9A117e464E55bed0"
         }
       ],
-      "gecko_id": "official-trump"
+      "gecko_id": null
     },
     {
       "id": 32836,
@@ -97531,7 +97531,7 @@
           "contract_address": "0xccdF812aa7cdee4fF7cb89546d7f1718bb8d46E1"
         }
       ],
-      "gecko_id": "official-trump"
+      "gecko_id": null
     },
     {
       "id": 32866,
@@ -97802,7 +97802,7 @@
           "contract_address": "0xD7CFDb3cdc33dBeb9e9A4C95b61953Cf12A008b3"
         }
       ],
-      "gecko_id": "bruh"
+      "gecko_id": "bruh-2"
     },
     {
       "id": 32907,
@@ -97887,7 +97887,7 @@
           "contract_address": "0xC53Eb9eCc247465e2E1fb16B2EdE3A6446053170"
         }
       ],
-      "gecko_id": "safuu"
+      "gecko_id": null
     },
     {
       "id": 32925,
@@ -97945,7 +97945,7 @@
           "contract_address": "0xC1b75f11D319A5F1b676073Daa1f5dcDF0163f0D"
         }
       ],
-      "gecko_id": "bridged-maga-wormhole"
+      "gecko_id": null
     },
     {
       "id": 32933,
@@ -98211,7 +98211,7 @@
           "contract_address": "0xB2388648CB6D7BCDfb3A623B424660448d31C1b6"
         }
       ],
-      "gecko_id": "next-gen-pepe"
+      "gecko_id": "pepe-cto"
     },
     {
       "id": 32984,
@@ -98521,7 +98521,7 @@
           "contract_address": "Cq1y5UdQfqf1JMFw98iEYHRXm1VY7aLxhdShxGbffp7e"
         }
       ],
-      "gecko_id": "world-liberty-financial"
+      "gecko_id": "stupid-world-liberty-financial"
     },
     {
       "id": 33027,
@@ -98585,7 +98585,7 @@
           "contract_address": "0x7391425CA7ceE3eE03E09794b819291a572af83E"
         }
       ],
-      "gecko_id": "mog-2"
+      "gecko_id": "based-mog-coin"
     },
     {
       "id": 33034,
@@ -98744,7 +98744,7 @@
           "contract_address": "0xC9bd9b4F5e96644B9C5C525E99f655Ff31ce5Ce6"
         }
       ],
-      "gecko_id": "world-liberty-financial"
+      "gecko_id": null
     },
     {
       "id": 33055,
@@ -98882,7 +98882,7 @@
           "contract_address": "ED5nyyWEzpPPiWimP8vYm7sD7TD3LAt3Q3gRTWHzPJBY"
         }
       ],
-      "gecko_id": "moo-deng"
+      "gecko_id": "moo-deng-2"
     },
     {
       "id": 33094,
@@ -98898,7 +98898,7 @@
           "contract_address": "0xd39ba5680e5a59ed032054485a0a8d2d5a6a2366"
         }
       ],
-      "gecko_id": "mcoin1"
+      "gecko_id": null
     },
     {
       "id": 33098,
@@ -99168,7 +99168,7 @@
           "contract_address": "0x41b1f9dcd5923c9542b6957b9b72169595acbc5c"
         }
       ],
-      "gecko_id": "cheems"
+      "gecko_id": null
     },
     {
       "id": 33148,
@@ -99299,7 +99299,7 @@
           "contract_address": "0xcb5e6e276adf62d68a1857880359750c8f79d076"
         }
       ],
-      "gecko_id": "mars-3"
+      "gecko_id": "mars-2"
     },
     {
       "id": 33165,
@@ -99459,7 +99459,7 @@
           "contract_address": "0x339058Ca41e17b55B6dd295373C5d3cBe8000Cd9"
         }
       ],
-      "gecko_id": "neiro-2"
+      "gecko_id": "neiro-4"
     },
     {
       "id": 33186,
@@ -99597,7 +99597,7 @@
           "contract_address": "0x85bea4ee627b795a79583fcede229e198aa57055"
         }
       ],
-      "gecko_id": "marvin-the-robot"
+      "gecko_id": "marvin-inu-2"
     },
     {
       "id": 33207,
@@ -99783,7 +99783,7 @@
           "contract_address": "0x70c29e99ca32592c0e88bb571b87444bb0e08e33"
         }
       ],
-      "gecko_id": "marvin-2"
+      "gecko_id": null
     },
     {
       "id": 33258,
@@ -99863,7 +99863,7 @@
           "contract_address": "0x0df0587216a4a1bb7d5082fdc491d93d2dd4b413"
         }
       ],
-      "gecko_id": "cheems-cto"
+      "gecko_id": "cheems-token"
     },
     {
       "id": 33281,
@@ -99991,7 +99991,7 @@
           "contract_address": "0x6969f3a3754ab674b48b7829a8572360e98132ba"
         }
       ],
-      "gecko_id": "izzy-2"
+      "gecko_id": "izzy"
     },
     {
       "id": 33296,
@@ -100007,7 +100007,7 @@
           "contract_address": "JJ4QpqUYzs9LUPrF6uJKQbkA4ofSnvkwQ3RBcVLFSjd"
         }
       ],
-      "gecko_id": "moo"
+      "gecko_id": "moomoo-token"
     },
     {
       "id": 33297,
@@ -100023,7 +100023,7 @@
           "contract_address": "0x240Cd7b53d364a208eD41f8cEd4965D11F571B7a"
         }
       ],
-      "gecko_id": "doggo-3"
+      "gecko_id": "doggo-inu"
     },
     {
       "id": 33304,
@@ -100065,7 +100065,7 @@
           "contract_address": "E6AujzX54E1ZoPDFP2CyG3HHUVKygEkp6DRqig61pump"
         }
       ],
-      "gecko_id": "pochita-3"
+      "gecko_id": "pochita"
     },
     {
       "id": 33308,
@@ -100472,7 +100472,7 @@
           "contract_address": "0xF56B3b3972F2f154555a0b62FF5A22b7b2A3C90B"
         }
       ],
-      "gecko_id": "zap"
+      "gecko_id": "zap-2"
     },
     {
       "id": 33361,
@@ -100721,7 +100721,7 @@
           "contract_address": "0xF563E86e461dE100CfCfD8b65dAA542d3d4B0550"
         }
       ],
-      "gecko_id": "coco-3"
+      "gecko_id": "coco-2"
     },
     {
       "id": 33408,
@@ -100870,7 +100870,7 @@
           "contract_address": "CzLSujWBLFsSjncfkh59rUFqvafWcY5tzedWJSuypump"
         }
       ],
-      "gecko_id": "goatseus-maximus-on-eth"
+      "gecko_id": "goatseus-maximus"
     },
     {
       "id": 33441,
@@ -100902,7 +100902,7 @@
           "contract_address": "0x66f85E3865D0cFDC009acf6280a8621f12e46CCf"
         }
       ],
-      "gecko_id": "world-liberty-financial"
+      "gecko_id": null
     },
     {
       "id": 33447,
@@ -100918,7 +100918,7 @@
           "contract_address": "0x87230146e138d3f296a9a77e497a2a83012e9bc5"
         }
       ],
-      "gecko_id": "squid-game"
+      "gecko_id": null
     },
     {
       "id": 33448,
@@ -101008,7 +101008,7 @@
           "contract_address": "0x1e005d033d858a39e1210aafdd139ce4fa21c79cdb8acadd16513a03c9d4cebd::seed::SEED"
         }
       ],
-      "gecko_id": "seed-4"
+      "gecko_id": "seed-3"
     },
     {
       "id": 33469,
@@ -101045,7 +101045,7 @@
           "contract_address": "0x2bB84fd8F7eD0FfAe3da36AD60d4D7840bdeEADa"
         }
       ],
-      "gecko_id": "grok-2"
+      "gecko_id": "grok-6"
     },
     {
       "id": 33478,
@@ -101179,7 +101179,7 @@
           "contract_address": "0xb3E41D6e0ea14b43BC5DE3C314A408af171b03dD"
         }
       ],
-      "gecko_id": "kabosu"
+      "gecko_id": "kabosu-kabosucoin-erc"
     },
     {
       "id": 33500,
@@ -101804,7 +101804,7 @@
           "contract_address": "FqvtZ2UFR9we82Ni4LeacC1zyTiQ77usDo31DUokpump"
         }
       ],
-      "gecko_id": "slop-2"
+      "gecko_id": "slop"
     },
     {
       "id": 33597,
@@ -101937,7 +101937,7 @@
           "contract_address": "6tVZVjcppH2BZ9Xj5yFU1Zt34m2rYcyDqqpSeMDZpump"
         }
       ],
-      "gecko_id": "smiling-dolphin-2"
+      "gecko_id": "smiling-dolphin"
     },
     {
       "id": 33614,
@@ -102261,7 +102261,7 @@
           "contract_address": "EQBxo4huVJXaf1ZOdwnnDdxa9OVoyNGhXMsJVzobmxSWITCH"
         }
       ],
-      "gecko_id": "switch-token"
+      "gecko_id": null
     },
     {
       "id": 33680,
@@ -102632,7 +102632,7 @@
           "contract_address": "0xa5c45d48d36607741E90c0CCa29545A46f5eE121"
         }
       ],
-      "gecko_id": "chiba-wan"
+      "gecko_id": null
     },
     {
       "id": 33724,
@@ -102648,7 +102648,7 @@
           "contract_address": "0xb6aAa0EfDfAC186652e3b31a6f07A9A74D1B5A75"
         }
       ],
-      "gecko_id": "based-turbo"
+      "gecko_id": null
     },
     {
       "id": 33725,
@@ -103311,7 +103311,7 @@
           "contract_address": "0xd6203889c22d9fe5e938a9200f50fdffe9dd8e02"
         }
       ],
-      "gecko_id": "sbrsol"
+      "gecko_id": "strategic-bitcoin-reserve"
     },
     {
       "id": 33852,
@@ -103412,7 +103412,7 @@
           "contract_address": "FwFJkwW8m4QCuqzYzK6S3UHMPmB7mWWpC1jBEJ6kLW3M"
         }
       ],
-      "gecko_id": "gold-2"
+      "gecko_id": "gold-10"
     },
     {
       "id": 33865,
@@ -103725,7 +103725,7 @@
           "contract_address": "0x336ff048c664a081d527979ac4197d6c3c8bfb14"
         }
       ],
-      "gecko_id": null
+      "gecko_id": "tea-meme-coin"
     },
     {
       "id": 33927,
@@ -103757,7 +103757,7 @@
           "contract_address": "8467ssuj6Gkw15ABv6BvxJAKnGJALXJu6dxDxt4upump"
         }
       ],
-      "gecko_id": "baby-bitcoin-3"
+      "gecko_id": "baby-bitcoin-2"
     },
     {
       "id": 33931,
@@ -103917,7 +103917,7 @@
           "contract_address": "FXJAdx38aXJdQd3ABAVu7fQ7Bjh9oMN92eTxszFNpump"
         }
       ],
-      "gecko_id": "cyberdoge-3"
+      "gecko_id": null
     },
     {
       "id": 33951,
@@ -104277,7 +104277,7 @@
       "website": "stickonkas.com",
       "source_code": "",
       "platform": null,
-      "gecko_id": "stick-on-kaspa"
+      "gecko_id": "stick"
     },
     {
       "id": 33999,
@@ -104522,7 +104522,7 @@
           "contract_address": "bozdUuCb2kdipxES9PzsYHmDVrf7FBTSW3p1CFBpump"
         }
       ],
-      "gecko_id": "aurorasolchain"
+      "gecko_id": "aurora-terminal"
     },
     {
       "id": 34039,
@@ -104538,7 +104538,7 @@
           "contract_address": "0x8e18141efd10C3Df7a33B4D53f608E10Dc4D4fE3"
         }
       ],
-      "gecko_id": "rats"
+      "gecko_id": null
     },
     {
       "id": 34041,
@@ -104602,7 +104602,7 @@
           "contract_address": "EhnkvA1qSXksF3ymqSSo9Psf6Qw8P4v18pp9rdbXpump"
         }
       ],
-      "gecko_id": "tron-bull"
+      "gecko_id": "bull-2"
     },
     {
       "id": 34050,
@@ -104692,7 +104692,7 @@
           "contract_address": "0xf3527ef8de265eaa3716fb312c12847bfba66cef"
         }
       ],
-      "gecko_id": "usdx-money-usdx"
+      "gecko_id": "usdx"
     },
     {
       "id": 34061,
@@ -105181,7 +105181,7 @@
           "contract_address": "DKu9kykSfbN5LBfFXtNNDPaX35o4Fv6vJ9FKk7pZpump"
         }
       ],
-      "gecko_id": "concierge-io"
+      "gecko_id": "ava-ai"
     },
     {
       "id": 34118,
@@ -105319,7 +105319,7 @@
           "contract_address": "0xaCb54d07cA167934F57F829BeE2cC665e1A5ebEF"
         }
       ],
-      "gecko_id": "croakey"
+      "gecko_id": null
     },
     {
       "id": 34139,
@@ -105573,7 +105573,7 @@
           "contract_address": "6cvrZWgEUkr82yKAmxp5cQu7wgYYBPULf16EUBp4pump"
         }
       ],
-      "gecko_id": "manifest-on-sol"
+      "gecko_id": "manifest-3"
     },
     {
       "id": 34173,
@@ -105605,7 +105605,7 @@
           "contract_address": "54meDtup2K7pqyhUK24AymoLzMPtrkhNTbEzQ6gSpump"
         }
       ],
-      "gecko_id": "baby-solana"
+      "gecko_id": "baby-solana-2"
     },
     {
       "id": 34176,
@@ -106123,7 +106123,7 @@
           "contract_address": "0x0C3F86b4e17B5Aaf8AD14f584E33902f505c4e76"
         }
       ],
-      "gecko_id": "mstr2100"
+      "gecko_id": null
     },
     {
       "id": 34246,
@@ -106646,7 +106646,7 @@
           "contract_address": "H1vAwYTZkL2Bq8tpS5DhC4pPJjhMLviH2ScGjuePpump"
         }
       ],
-      "gecko_id": "concierge-io"
+      "gecko_id": "ava-chiang-mai-night-safari-ava"
     },
     {
       "id": 34328,
@@ -107353,7 +107353,7 @@
           "contract_address": "HAWKThXRcNL9ZGZKqgUXLm4W8tnRZ7U6MVdEepSutj34"
         }
       ],
-      "gecko_id": "hawk-2"
+      "gecko_id": null
     },
     {
       "id": 34429,
@@ -107496,7 +107496,7 @@
           "contract_address": "EhzVcKKmGjLk6pD5gLT6ZrTg62bMgPgTSCXXmANnSyQA"
         }
       ],
-      "gecko_id": "santa-2"
+      "gecko_id": "santa-3"
     },
     {
       "id": 34462,
@@ -107818,7 +107818,7 @@
           "contract_address": "0x288710173f12f677ac38b0c2b764a0fea8108cb5e32059c3dd8f650d65e2cb25::pepe::PEPE"
         }
       ],
-      "gecko_id": "next-gen-pepe"
+      "gecko_id": "pepe-gold"
     },
     {
       "id": 34520,
@@ -107850,7 +107850,7 @@
           "contract_address": "0xE3EF5EB1A78E1d1a4Ef345052242cBcbcBCF164D"
         }
       ],
-      "gecko_id": "luffy-inu"
+      "gecko_id": null
     },
     {
       "id": 34524,
@@ -108553,7 +108553,7 @@
           "contract_address": "0xc6e41D1144CFAbd5345e11C7bB5c5944B4c62E33"
         }
       ],
-      "gecko_id": "bucket-protocol-buck-stablecoin"
+      "gecko_id": "buck-2"
     },
     {
       "id": 34623,
@@ -108941,7 +108941,7 @@
           "contract_address": "7Zt2KUh5mkpEpPGcNcFy51aGkh9Ycb5ELcqRH1n2GmAe"
         }
       ],
-      "gecko_id": "libra-4"
+      "gecko_id": "libra-5"
     },
     {
       "id": 34669,
@@ -109359,7 +109359,7 @@
           "contract_address": "0x11c83b5cfeb6419a74a85a5aaba0511d"
         }
       ],
-      "gecko_id": "farm"
+      "gecko_id": "farm-2"
     },
     {
       "id": 34753,
@@ -109391,7 +109391,7 @@
           "contract_address": "ZxBon4vcf3DVcrt63fJU52ywYm9BKZC6YuXDhb3fomo"
         }
       ],
-      "gecko_id": "fomo-3"
+      "gecko_id": "fomo-base"
     },
     {
       "id": 34755,
@@ -110103,7 +110103,7 @@
           "contract_address": "0x1a4c5c74fb1ec39e839799baa0a91caeaeadedf7"
         }
       ],
-      "gecko_id": "akita-inu-5"
+      "gecko_id": "akita-inu"
     },
     {
       "id": 34853,
@@ -110188,7 +110188,7 @@
           "contract_address": "0x10f434B3d1cC13A4A79B062Dcc25706f64D10D47"
         }
       ],
-      "gecko_id": "bepe-3"
+      "gecko_id": "bepe-2"
     },
     {
       "id": 34866,
@@ -110930,7 +110930,7 @@
           "contract_address": "Fe3sEB1cAt4TsETqmaopPQBto5o8TsY2W2NTw6H9pump"
         }
       ],
-      "gecko_id": "zeus-network"
+      "gecko_id": "zeus-3"
     },
     {
       "id": 34971,
@@ -110962,7 +110962,7 @@
           "contract_address": "HAVVqPQf4MKVjvuFVi8y7g3xkArdWQemaJPBvKmEpump"
         }
       ],
-      "gecko_id": "kekius-maximus-3"
+      "gecko_id": "kekius-maximus"
     },
     {
       "id": 34976,
@@ -111095,7 +111095,7 @@
           "contract_address": "0x5aB3D4c385B400F3aBB49e80DE2fAF6a88A7B691"
         }
       ],
-      "gecko_id": "flock-2"
+      "gecko_id": null
     },
     {
       "id": 34988,
@@ -111111,7 +111111,7 @@
           "contract_address": "8bdhP1UQMevciC9oJ7NrvgDfoW8XPXPfbkkm6vKtMS7N"
         }
       ],
-      "gecko_id": "spore"
+      "gecko_id": "spore-2"
     },
     {
       "id": 34993,
@@ -111908,7 +111908,7 @@
           "contract_address": "4EVDa9omQgaaMxHiZukf2F3RMZfEMb1r1jacdiJrT6N8"
         }
       ],
-      "gecko_id": "pepe-ai"
+      "gecko_id": null
     },
     {
       "id": 35090,
@@ -112139,7 +112139,7 @@
           "contract_address": "5csfa95Xf8ebiCwP9joQ7mtC8KwFvnnejnYx5FbYpump"
         }
       ],
-      "gecko_id": "x-money"
+      "gecko_id": null
     },
     {
       "id": 35128,
@@ -112656,7 +112656,7 @@
           "contract_address": "0xf7b0dd0B642a6ccc2fc4d8FfE2BfFb0caC8C43C8"
         }
       ],
-      "gecko_id": "gekko"
+      "gecko_id": "gekko-ai"
     },
     {
       "id": 35194,
@@ -113054,7 +113054,7 @@
           "contract_address": "5LGyBHMMPwzMunxhcBMn6ZWAuqoHUQmcFiboTJidFURP"
         }
       ],
-      "gecko_id": "defai"
+      "gecko_id": null
     },
     {
       "id": 35251,
@@ -113490,7 +113490,7 @@
           "contract_address": "0x2ce1340f1d402ae75afeb55003d7491645db1857"
         }
       ],
-      "gecko_id": "wagmi-2"
+      "gecko_id": "wagmi-6"
     },
     {
       "id": 35311,
@@ -113586,7 +113586,7 @@
           "contract_address": "0xc8db98437bed9943f11c5b31b645b07c0efc17e0"
         }
       ],
-      "gecko_id": "leopold"
+      "gecko_id": "leo-2"
     },
     {
       "id": 35317,
@@ -113772,7 +113772,7 @@
           "contract_address": "EQBYnUrIlwBrWqp_rl-VxeSBvTR2VmTfC4ManQ657n_BUILD"
         }
       ],
-      "gecko_id": "build-4"
+      "gecko_id": "build-2"
     },
     {
       "id": 35347,
@@ -113788,7 +113788,7 @@
           "contract_address": "FUAfBo2jgks6gB4Z4LfZkqSZgzNucisEHqnNebaRxM1P"
         }
       ],
-      "gecko_id": "melania-meme"
+      "gecko_id": null
     },
     {
       "id": 35348,
@@ -114193,7 +114193,7 @@
           "contract_address": "6AJcP7wuLwmRYLBNbi825wgguaPsWzPBEHcHndpRpump"
         }
       ],
-      "gecko_id": "do-it-for-the-vine"
+      "gecko_id": "vine"
     },
     {
       "id": 35422,
@@ -114644,7 +114644,7 @@
           "contract_address": "2sCUCJdVkmyXp4dT8sFaA9LKgSMK4yDPi9zLHiwXpump"
         }
       ],
-      "gecko_id": "alpha-4"
+      "gecko_id": "alpha-6"
     },
     {
       "id": 35486,
@@ -114772,7 +114772,7 @@
           "contract_address": "6HgJHzGpq3fSLmkepsaC8F3VtpUWfXcG4hmUaf4Vpump"
         }
       ],
-      "gecko_id": "regent"
+      "gecko_id": "regent-2"
     },
     {
       "id": 35504,
@@ -115390,7 +115390,7 @@
           "contract_address": "BAezfVmia8UYLt4rst6PCU4dvL2i2qHzqn4wGhytpNJW"
         }
       ],
-      "gecko_id": "aintivirus-2"
+      "gecko_id": "aintivirus"
     },
     {
       "id": 35590,
@@ -115894,7 +115894,7 @@
           "contract_address": "0x86Bb94DdD16Efc8bc58e6b056e8df71D9e666429"
         }
       ],
-      "gecko_id": "test-4"
+      "gecko_id": "test-3"
     },
     {
       "id": 35649,
@@ -116101,7 +116101,7 @@
           "contract_address": "BmXfbamFqrBzrqihr9hbSmEsfQUXMVaqshAjgvZupump"
         }
       ],
-      "gecko_id": "luxxcoin"
+      "gecko_id": "lux-token-2"
     },
     {
       "id": 35681,
@@ -116499,7 +116499,7 @@
           "contract_address": "0xb4d4Ff3fcbd6965962A79229aa94631D394217CB"
         }
       ],
-      "gecko_id": "brat"
+      "gecko_id": "brat-2"
     },
     {
       "id": 35728,
@@ -116674,7 +116674,7 @@
           "contract_address": "0x12B4356C65340Fb02cdff01293F95FEBb1512F3b"
         }
       ],
-      "gecko_id": "broccoli-3"
+      "gecko_id": "broccoli-5"
     },
     {
       "id": 35754,
@@ -116690,7 +116690,7 @@
           "contract_address": "0x343e66bad706eed4350fe96385ffc6336bd653ef"
         }
       ],
-      "gecko_id": "broccoli-3"
+      "gecko_id": "broccoli-4"
     },
     {
       "id": 35755,
@@ -116764,7 +116764,7 @@
           "contract_address": "D13VkjDiCxtgRJsH4s1VCxKS4bFZq5UEz2iRsSbapump"
         }
       ],
-      "gecko_id": "czs-dog"
+      "gecko_id": null
     },
     {
       "id": 35761,
@@ -116780,7 +116780,7 @@
           "contract_address": "0x23D3F4EaaA515403C6765bb623F287a8Cca28F2b"
         }
       ],
-      "gecko_id": "broccoli-3"
+      "gecko_id": "broccoli-2"
     },
     {
       "id": 35763,
@@ -116934,7 +116934,7 @@
           "contract_address": "0x1Fd448D0361c3212961a70930f3129A45f425B68"
         }
       ],
-      "gecko_id": "mars-3"
+      "gecko_id": "mars-4"
     },
     {
       "id": 35779,
@@ -116998,7 +116998,7 @@
           "contract_address": "0x6F05dFBb0174D7e00cfabCED8aa42BC5Ae2601a4"
         }
       ],
-      "gecko_id": "broccoli-3"
+      "gecko_id": null
     },
     {
       "id": 35789,
@@ -117115,7 +117115,7 @@
           "contract_address": "0x39878e8A41af06d99e605c1e65Eea755128f05f1"
         }
       ],
-      "gecko_id": "based-manyu"
+      "gecko_id": "manyu-2"
     },
     {
       "id": 35815,
@@ -117743,7 +117743,7 @@
           "contract_address": "0xA7E4509dcB46a67E73c18fE0D11dd9a337E52AC0"
         }
       ],
-      "gecko_id": "frencoin-3"
+      "gecko_id": null
     },
     {
       "id": 35929,
@@ -118142,7 +118142,7 @@
           "contract_address": "0x0000206329b97DB379d5E1Bf586BbDB969C63274"
         }
       ],
-      "gecko_id": "angle-usd"
+      "gecko_id": "usda-2"
     },
     {
       "id": 35966,
@@ -118211,7 +118211,7 @@
           "contract_address": "5yLVCZFVNAKnDP7xURTSt4uKp4P1sZBvD6MZR4hfpump"
         }
       ],
-      "gecko_id": "elon-coin"
+      "gecko_id": null
     },
     {
       "id": 35980,
@@ -118469,7 +118469,7 @@
           "contract_address": "5HmVrE1nowVnnC5gxtTaDmoRqNwoPw55bRw4scVtpump"
         }
       ],
-      "gecko_id": "cocoro"
+      "gecko_id": "cocoro-2"
     },
     {
       "id": 36024,
@@ -119148,7 +119148,7 @@
           "contract_address": "0x541EEC85ef7452D16814D32aB555dF33F0E4cEAD"
         }
       ],
-      "gecko_id": "biao-on-sol"
+      "gecko_id": "biaocoin"
     },
     {
       "id": 36101,
@@ -119608,7 +119608,7 @@
           "contract_address": "0x0C61cD144B323E1eD680D296d33549Bb7e0F7F35"
         }
       ],
-      "gecko_id": "bridged-maga-wormhole"
+      "gecko_id": null
     },
     {
       "id": 36159,
@@ -119624,7 +119624,7 @@
           "contract_address": "0x05D68F36dc47048A2725Db632F6d442a95C230c4"
         }
       ],
-      "gecko_id": "grok-2"
+      "gecko_id": "first-grok-ai"
     },
     {
       "id": 36161,
@@ -119890,7 +119890,7 @@
           "contract_address": "0x3566C8eE9780245e974e759a7716EA6BA0702588"
         }
       ],
-      "gecko_id": "eva-everywhere"
+      "gecko_id": "eva"
     },
     {
       "id": 36178,
@@ -120102,7 +120102,7 @@
           "contract_address": "0x02627d13ab5edfa99e0c56d13d656f20bd8c4a51"
         }
       ],
-      "gecko_id": "libra-4"
+      "gecko_id": null
     },
     {
       "id": 36212,
@@ -120325,7 +120325,7 @@
           "contract_address": "0x937a1cfaf0a3d9f5dc4d0927f72ee5e3e5f82a00"
         }
       ],
-      "gecko_id": "cocoro"
+      "gecko_id": null
     },
     {
       "id": 36234,
@@ -120813,7 +120813,7 @@
           "contract_address": "0xd769d56f479e9e72a77bb1523e866a33098feec5"
         }
       ],
-      "gecko_id": "baby-base"
+      "gecko_id": "base-protocol"
     },
     {
       "id": 36285,
@@ -120845,7 +120845,7 @@
           "contract_address": "0x0738a4d015e75d08b7f2395877a9404d2841a5d1"
         }
       ],
-      "gecko_id": "official-trump"
+      "gecko_id": null
     },
     {
       "id": 36287,
@@ -120861,7 +120861,7 @@
           "contract_address": "0x0385684e709e5e83dF604fe3d6F0734d0c12E994"
         }
       ],
-      "gecko_id": "next-gen-pepe"
+      "gecko_id": "pepe-black"
     },
     {
       "id": 36288,
@@ -121021,7 +121021,7 @@
           "contract_address": "0xE215f9575e2fAFff8D0D3F9C6866ac656bD25BD9"
         }
       ],
-      "gecko_id": "ducky-2"
+      "gecko_id": "ducky-3"
     },
     {
       "id": 36305,
@@ -121117,7 +121117,7 @@
           "contract_address": "5UUH9RTDiSpq6HKS6bp4NdU9PNJpXRXuiw6ShBTBhgH2"
         }
       ],
-      "gecko_id": "troll-face"
+      "gecko_id": "troll"
     },
     {
       "id": 36314,
@@ -121250,7 +121250,7 @@
           "contract_address": "0x708e3cdcf4e41db8996dc02e340a961b2f4d4444"
         }
       ],
-      "gecko_id": "based-fartcoin"
+      "gecko_id": null
     },
     {
       "id": 36330,
@@ -121727,7 +121727,7 @@
           "contract_address": "0x5BFeB407fFE77DD3086D0A19dE81904270264444"
         }
       ],
-      "gecko_id": "official-trump"
+      "gecko_id": null
     },
     {
       "id": 36376,
@@ -121950,7 +121950,7 @@
           "contract_address": "0x9a70815dfb644a24b57358e1041f8d0324c8f6e1"
         }
       ],
-      "gecko_id": "boop-4"
+      "gecko_id": "boop-3"
     },
     {
       "id": 36394,
@@ -122280,7 +122280,7 @@
           "contract_address": "BufUNrzgHrngzAq5yMzV7p9DvqceFXZnowK8PwsxbKKt"
         }
       ],
-      "gecko_id": "redstone-oracles"
+      "gecko_id": "red-the-mal"
     },
     {
       "id": 36422,
@@ -123325,7 +123325,7 @@
           "contract_address": "0xD663CE0C9F55968B42837954348EaFEb5B9E5d82"
         }
       ],
-      "gecko_id": "next-gen-pepe"
+      "gecko_id": "baby-pepe-5"
     },
     {
       "id": 36549,
@@ -123362,7 +123362,7 @@
           "contract_address": "7tPPYTBKrFLKKnoCwijrsfjAYadyp7GpAmSPUbVwbonk"
         }
       ],
-      "gecko_id": "petunia-2"
+      "gecko_id": "petunia"
     },
     {
       "id": 36552,
@@ -123394,7 +123394,7 @@
           "contract_address": "0x9E1eAD5f33CeE7b0EC79537689f2c24711Ff720b"
         }
       ],
-      "gecko_id": "based-turbo"
+      "gecko_id": null
     },
     {
       "id": 36556,
@@ -123661,7 +123661,7 @@
           "contract_address": "0x4D4574f50dd8B9dBe623cF329DCc78D76935E610"
         }
       ],
-      "gecko_id": "zeus-network"
+      "gecko_id": "zeus-ai"
     },
     {
       "id": 36587,
@@ -124607,7 +124607,7 @@
           "contract_address": "0x93aA0ccD1e5628d3A841C4DbdF602D9eb04085d6"
         }
       ],
-      "gecko_id": "pepe-unchained"
+      "gecko_id": "pepe-unchained-2"
     },
     {
       "id": 36698,
@@ -124719,7 +124719,7 @@
           "contract_address": "0x015e03A6Ccef48a18dDB6cFDC3066D9443875672"
         }
       ],
-      "gecko_id": "block-4"
+      "gecko_id": "block"
     },
     {
       "id": 36713,
@@ -125104,7 +125104,7 @@
           "contract_address": "0x0adc87881b5970013bee20694e5493914fd7dd2e"
         }
       ],
-      "gecko_id": "coin-5"
+      "gecko_id": "coin-4"
     },
     {
       "id": 36757,
@@ -125136,7 +125136,7 @@
           "contract_address": "0x7Cfd34CA2Dceca6c835Adc7E61409a089cffF14a"
         }
       ],
-      "gecko_id": "dawae-3"
+      "gecko_id": "dawae-2"
     },
     {
       "id": 36760,
@@ -125221,7 +125221,7 @@
           "contract_address": "0x488535e0a2503252798f381b2df08a6280e994b2"
         }
       ],
-      "gecko_id": "cyberlife"
+      "gecko_id": "life-if"
     },
     {
       "id": 36765,
@@ -125237,7 +125237,7 @@
           "contract_address": "0x6cb625ea79baa5656b9fef6a0bea110a91ab54ff"
         }
       ],
-      "gecko_id": "myshell"
+      "gecko_id": "stargate-bridged-shell-avalanche"
     },
     {
       "id": 36766,
@@ -125672,7 +125672,7 @@
           "contract_address": "0x6F43fF77A9C0Cf552b5b653268fBFe26A052429b"
         }
       ],
-      "gecko_id": "lambo-2"
+      "gecko_id": "lambo-4"
     },
     {
       "id": 36808,
@@ -125975,7 +125975,7 @@
           "contract_address": "0x4200000623d0242cccd4e907008583dcb4af6472"
         }
       ],
-      "gecko_id": "estee"
+      "gecko_id": null
     },
     {
       "id": 36838,
@@ -126357,7 +126357,7 @@
           "contract_address": "DFVeSFxNohR5CVuReaXSz6rGuJ62LsKhxFpWsDbbjups"
         }
       ],
-      "gecko_id": "vibe-ai-2"
+      "gecko_id": "vibe-cat-3"
     },
     {
       "id": 36882,
@@ -126858,7 +126858,7 @@
           "contract_address": "0x169Bb9F7474C1FfeEe711b76Be3e42ABe10c81C6"
         }
       ],
-      "gecko_id": "coin-5"
+      "gecko_id": "coin-2"
     },
     {
       "id": 36939,
@@ -126965,7 +126965,7 @@
           "contract_address": "DFfPq2hHbJeunp1F6eNyuyvBHcPpnTqaawn2tAFUpump"
         }
       ],
-      "gecko_id": "kitty-ai"
+      "gecko_id": null
     },
     {
       "id": 36953,
@@ -127162,7 +127162,7 @@
           "contract_address": "0x1963A95cfc30e49Cc75F7F2de6027289971cAc79"
         }
       ],
-      "gecko_id": "world-liberty-financial"
+      "gecko_id": null
     },
     {
       "id": 36975,
@@ -129976,7 +129976,7 @@
           "contract_address": "0x05A5B4e217004eB84C6787E0EcBE7a46CfD94CdD"
         }
       ],
-      "gecko_id": "laikachain"
+      "gecko_id": null
     },
     {
       "id": 37105,
@@ -130178,7 +130178,7 @@
           "contract_address": "Cy1GS2FqefgaMbi45UunrUzin1rfEmTUYnomddzBpump"
         }
       ],
-      "gecko_id": "moby"
+      "gecko_id": null
     },
     {
       "id": 37180,
@@ -130215,7 +130215,7 @@
           "contract_address": "0xe60e9BD04ccc0a394f1fDf29874e35a773cb07f4"
         }
       ],
-      "gecko_id": "america-party"
+      "gecko_id": "america-party-4"
     },
     {
       "id": 37222,
@@ -130502,7 +130502,7 @@
           "contract_address": "0x04cD1F7143F84fdeb469325cC763A60BD6E1ec55"
         }
       ],
-      "gecko_id": "maya"
+      "gecko_id": null
     },
     {
       "id": 37285,
@@ -130671,7 +130671,7 @@
           "contract_address": "0x82aA9BE410a7EFB1D112C05A500d58cBf372a4E0"
         }
       ],
-      "gecko_id": "hood"
+      "gecko_id": null
     },
     {
       "id": 37297,
@@ -131157,7 +131157,7 @@
           "contract_address": "0x71823B57de5898957d763D2A92A1571fCb0d6B44"
         }
       ],
-      "gecko_id": "xing-xing-2"
+      "gecko_id": "xing-xing"
     },
     {
       "id": 37355,
@@ -131277,7 +131277,7 @@
           "contract_address": "0xCaB84bc21F9092167fCFe0ea60f5CE053ab39a1E"
         }
       ],
-      "gecko_id": "block-4"
+      "gecko_id": "block-ai"
     },
     {
       "id": 37365,
@@ -131580,7 +131580,7 @@
           "contract_address": "5349474D41000000000000000000000000000000.rfKYWZ84fm9eVEdoTcsQCo1WdqMPyaUF5z"
         }
       ],
-      "gecko_id": "sigma-2"
+      "gecko_id": "sigma-3"
     },
     {
       "id": 37391,
@@ -131644,7 +131644,7 @@
           "contract_address": "0x089765D7f064c1DB4De39451A6492Dd0eA0Ec8b6"
         }
       ],
-      "gecko_id": "sharplink-gaming-inc"
+      "gecko_id": null
     },
     {
       "id": 37396,
@@ -131958,7 +131958,7 @@
           "contract_address": "0x407ECa46fF515cde14410Cdc868C7f82e8c4f41D"
         }
       ],
-      "gecko_id": "gateway-to-mars"
+      "gecko_id": "mars-5"
     },
     {
       "id": 37436,
@@ -132038,7 +132038,7 @@
           "contract_address": "0x080E7a2DC05221B05f22C605056BDE92e56Da73b"
         }
       ],
-      "gecko_id": "hood"
+      "gecko_id": null
     },
     {
       "id": 37446,
@@ -132192,7 +132192,7 @@
           "contract_address": "0x417C2BF30A666E9228f561B417D0E02cb7145dBa"
         }
       ],
-      "gecko_id": "world-liberty-financial"
+      "gecko_id": null
     },
     {
       "id": 37463,
@@ -132240,7 +132240,7 @@
           "contract_address": "4daoTLufDmV3ods48Zh8rymaZKBLtgEvuH9qALYLbonk"
         }
       ],
-      "gecko_id": "just-memecoin-2"
+      "gecko_id": "just-memecoin"
     },
     {
       "id": 37467,
@@ -132378,7 +132378,7 @@
           "contract_address": "9RAghejZNirG4skdqUXxVVSnKGmYSjjjgnPMPjyJmoon"
         }
       ],
-      "gecko_id": "law-of-attraction"
+      "gecko_id": "law-of-attraction-2"
     },
     {
       "id": 37475,
@@ -132559,7 +132559,7 @@
           "contract_address": "84NdpWVhTGVuPFximNBXHQyQQPKumTjBYfFYGqt4bonk"
         }
       ],
-      "gecko_id": "hodl"
+      "gecko_id": "hodl-6"
     },
     {
       "id": 37491,
@@ -132644,7 +132644,7 @@
           "contract_address": "3hrGWXzgQzAikcG6rerG45tK7KLYw2dZ84owWJ14bonk"
         }
       ],
-      "gecko_id": "green"
+      "gecko_id": "green-2"
     },
     {
       "id": 37499,
@@ -132765,7 +132765,7 @@
           "contract_address": "0x42069e779838929495ED0152ffc27145CE5C7f98"
         }
       ],
-      "gecko_id": "spurdo-3"
+      "gecko_id": "spurdo-2"
     },
     {
       "id": 37516,
@@ -132946,7 +132946,7 @@
           "contract_address": "EuU9Vh37eKDdUnZkUfMZLGCcBqwFYpr1E6X3ZwUxhvgm"
         }
       ],
-      "gecko_id": "imagine"
+      "gecko_id": "imagine-2"
     },
     {
       "id": 37533,
@@ -133084,7 +133084,7 @@
           "contract_address": "0xFCa95aeb5bF44aE355806A5ad14659c940dC6BF7"
         }
       ],
-      "gecko_id": "shiba-inu"
+      "gecko_id": null
     },
     {
       "id": 37556,
@@ -134251,7 +134251,7 @@
           "contract_address": "PreC1KtJ1sBPPqaeeqL6Qb15GTLCYVvyYEwxhdfTwfx"
         }
       ],
-      "gecko_id": "xai-blockchain"
+      "gecko_id": "xai-prestocks-2"
     },
     {
       "id": 37693,
@@ -134416,7 +134416,7 @@
           "contract_address": "0x17EAfd08994305D8AcE37EfB82F1523177eC70EE"
         }
       ],
-      "gecko_id": "angle-usd"
+      "gecko_id": "usda-3"
     },
     {
       "id": 37723,
@@ -134627,7 +134627,7 @@
           "contract_address": "STARqri3xhy6Pyv1EpgdjkPDVcs9FncKcaEP6527krs"
         }
       ],
-      "gecko_id": "star"
+      "gecko_id": null
     },
     {
       "id": 37744,
@@ -134880,7 +134880,7 @@
           "contract_address": "0x052Bc78B043be8d39a45Bb33b1fD693d553EAf28"
         }
       ],
-      "gecko_id": "imagine"
+      "gecko_id": null
     },
     {
       "id": 37767,
@@ -134954,7 +134954,7 @@
           "contract_address": "LiGHtkg3uTa9836RaNkKLLriqTNRcMdRAhqjGWNv777"
         }
       ],
-      "gecko_id": "heaven"
+      "gecko_id": null
     },
     {
       "id": 37987,
@@ -138280,7 +138280,7 @@
           "contract_address": "METAwkXcqyXKy1AtsSgJ8JiUHwGCafnZL38n3vYmeta"
         }
       ],
-      "gecko_id": "meta-2-2"
+      "gecko_id": null
     },
     {
       "id": 38147,
@@ -138384,7 +138384,7 @@
           "contract_address": "0x3376C5632f8047D009713884440c0020f2C66c85"
         }
       ],
-      "gecko_id": "binancecoin"
+      "gecko_id": null
     },
     {
       "id": 38159,
@@ -138522,7 +138522,7 @@
           "contract_address": "0xB4C6fedD984bC983b1a758d0875f1Ea34F81A6af"
         }
       ],
-      "gecko_id": "openvpp"
+      "gecko_id": "openvpp-2"
     },
     {
       "id": 38171,
@@ -138570,7 +138570,7 @@
           "contract_address": "0x4111e80dc868599a2a408767176d09b7db84c8a1"
         }
       ],
-      "gecko_id": "dna"
+      "gecko_id": "dna-token"
     },
     {
       "id": 38175,
@@ -138623,7 +138623,7 @@
           "contract_address": "0x4f2CeF6F39114adE3d8AF4020fa1De1d064cadAF"
         }
       ],
-      "gecko_id": "hokkaidu-inu-2"
+      "gecko_id": null
     },
     {
       "id": 38178,
@@ -138819,7 +138819,7 @@
           "contract_address": "0x6d44ddba07a9373d665ce636f639e1c46565a349"
         }
       ],
-      "gecko_id": "fomo-3"
+      "gecko_id": "fomo-5"
     },
     {
       "id": 38199,
@@ -138973,7 +138973,7 @@
           "contract_address": "0xa05cCD2F8ac92afE092A7240E948aA3E17cEF843"
         }
       ],
-      "gecko_id": "binancecoin"
+      "gecko_id": null
     },
     {
       "id": 38211,
@@ -139058,7 +139058,7 @@
           "contract_address": "EEhPz661wF7t9DmEy3SufExspgj1DcxBt2FywvJnbonk"
         }
       ],
-      "gecko_id": "love"
+      "gecko_id": null
     },
     {
       "id": 38217,
@@ -139122,7 +139122,7 @@
           "contract_address": "0x84a599f19184d432CB86eB7fDAda0276c25d4444"
         }
       ],
-      "gecko_id": "huobi-btc"
+      "gecko_id": "huobi-btc-wormhole"
     },
     {
       "id": 38221,
@@ -139207,7 +139207,7 @@
           "contract_address": "0x7f9A1A5C15125940895307A7E567301E51b3b612"
         }
       ],
-      "gecko_id": "cardano"
+      "gecko_id": "binance-peg-cardano"
     },
     {
       "id": 38231,
@@ -139393,7 +139393,7 @@
           "contract_address": "0xcae117ca6bc8a341d2e7207f30e180f0e5618b9d"
         }
       ],
-      "gecko_id": "ark"
+      "gecko_id": "ark-3"
     },
     {
       "id": 38247,
@@ -139595,7 +139595,7 @@
           "contract_address": "0x05aF032eE3c70094e03EB02ADBB91B44eE4638c2"
         }
       ],
-      "gecko_id": "baby-base"
+      "gecko_id": "maximus-base"
     },
     {
       "id": 38265,
@@ -139748,7 +139748,7 @@
           "contract_address": "3Gdx9LmKZJyciSz3mbge3YKLqskiMG71m1iDMPAwpump"
         }
       ],
-      "gecko_id": "army"
+      "gecko_id": "army-4"
     },
     {
       "id": 38279,
@@ -139976,7 +139976,7 @@
           "contract_address": "69RX85eQoEsnZvXGmLNjYcWgVkp9r2JjahVm99KbJETU"
         }
       ],
-      "gecko_id": "holo"
+      "gecko_id": "holoworld"
     },
     {
       "id": 38310,
@@ -140216,7 +140216,7 @@
           "contract_address": "0x111111a1a0667d36bd57c0a9f569b98057111111"
         }
       ],
-      "gecko_id": "usdh-2"
+      "gecko_id": "usdh"
     },
     {
       "id": 38332,
@@ -140692,7 +140692,7 @@
           "contract_address": "DMwbVy48dWVKGe9z1pcVnwF3HLMLrqWdDLfbvx8RchhK"
         }
       ],
-      "gecko_id": "cope-3"
+      "gecko_id": "cope"
     },
     {
       "id": 38376,
@@ -140862,7 +140862,7 @@
           "contract_address": "BKmYE8w1GEQ6khhLkvMj4ULvV4Gq7zLfJZSgsHE5pump"
         }
       ],
-      "gecko_id": "pepecoin-network"
+      "gecko_id": "pepecoin-3"
     },
     {
       "id": 38391,
@@ -140998,7 +140998,7 @@
           "contract_address": "0x84533b1512A3A23F0c9668D88FDf86FEffdbb11A"
         }
       ],
-      "gecko_id": "liquity-bold-2"
+      "gecko_id": "liquity-bold"
     },
     {
       "id": 38408,
@@ -141253,7 +141253,7 @@
           "contract_address": "0x380bf199b3173cf7b3b321848ae1c5014a124444"
         }
       ],
-      "gecko_id": "w"
+      "gecko_id": "w-2"
     },
     {
       "id": 38433,
@@ -141386,7 +141386,7 @@
           "contract_address": "0x1Eb55169C045DD91ac47A0C3aF2FB1df93064444"
         }
       ],
-      "gecko_id": "moon-4"
+      "gecko_id": "moon-3"
     },
     {
       "id": 38446,
@@ -141578,7 +141578,7 @@
           "contract_address": "0x932Fb7f52adBC34ff81B4342b8C036b7b8Ac4444"
         }
       ],
-      "gecko_id": "dust-protocol"
+      "gecko_id": null
     },
     {
       "id": 38462,
@@ -141594,7 +141594,7 @@
           "contract_address": "0xD17FD7002e1B91bA9a38C00426E83a11db587ce6"
         }
       ],
-      "gecko_id": "aster-2"
+      "gecko_id": "aster-3"
     },
     {
       "id": 38464,
@@ -141944,7 +141944,7 @@
           "contract_address": "8Aq4fWMgPqJbF3w8w8PnLDRVUAFe4mzsCvPKxAArbonk"
         }
       ],
-      "gecko_id": "real-3"
+      "gecko_id": "real-4"
     },
     {
       "id": 38493,
@@ -142013,7 +142013,7 @@
           "contract_address": "0xC031F335e7F7B10E559225d723bF189F7C9A1595"
         }
       ],
-      "gecko_id": "ripple"
+      "gecko_id": "binance-peg-xrp"
     },
     {
       "id": 38500,
@@ -142061,7 +142061,7 @@
       "explorer": "nosscan.noschain.org/tx?addr=0x3654E970df72B612113b05D0606E9d8968666b58&idx=2",
       "source_code": "",
       "platform": null,
-      "gecko_id": "nosana"
+      "gecko_id": null
     },
     {
       "id": 38503,
@@ -142151,7 +142151,7 @@
           "contract_address": "0x8Abd1ACa182C18397c2069c0517d19C769A29816"
         }
       ],
-      "gecko_id": "hex-trust-usdx"
+      "gecko_id": null
     },
     {
       "id": 38510,
@@ -142268,7 +142268,7 @@
           "contract_address": "0x7d03759E5B41E36899833cb2E008455d69A24444"
         }
       ],
-      "gecko_id": "priceless"
+      "gecko_id": "priceless-2"
     },
     {
       "id": 38517,
@@ -142372,7 +142372,7 @@
           "contract_address": "0x006a315d2B23E18CC7e4A892EE61c90df6ca0b50"
         }
       ],
-      "gecko_id": "charlie-3"
+      "gecko_id": "charlie-2"
     },
     {
       "id": 38522,
@@ -142601,7 +142601,7 @@
           "contract_address": "0x0e60ce572a5456b6974d5e7507cc07110dd062a4"
         }
       ],
-      "gecko_id": "i-love-puppies"
+      "gecko_id": null
     },
     {
       "id": 38542,
@@ -142707,7 +142707,7 @@
           "contract_address": "AjgSvYmJLhvt3FteiyTqQf8XBj1SVs6T6AmSUfkHpump"
         }
       ],
-      "gecko_id": "groyper-2"
+      "gecko_id": "groyper"
     },
     {
       "id": 38549,
@@ -142824,7 +142824,7 @@
           "contract_address": "0x199E2CFaf8B4f2CC5423971EF3749d1c89Cf815C"
         }
       ],
-      "gecko_id": "opal-3"
+      "gecko_id": "opal-4"
     },
     {
       "id": 38561,
@@ -142978,7 +142978,7 @@
           "contract_address": "0x77D689c28B9a1661AA75451dCee6D3D3C0264444"
         }
       ],
-      "gecko_id": "hodl-coin"
+      "gecko_id": "hodl-3"
     },
     {
       "id": 38572,
@@ -143218,7 +143218,7 @@
           "contract_address": "0x85c4b77896e1e16b2bc14af21299105629724444"
         }
       ],
-      "gecko_id": "baby-bnb"
+      "gecko_id": null
     },
     {
       "id": 38596,
@@ -143298,7 +143298,7 @@
           "contract_address": "0x5c1b89F02CDae86EDe019d6b2AE071E456f4f804"
         }
       ],
-      "gecko_id": "bitcoin"
+      "gecko_id": null
     },
     {
       "id": 38602,
@@ -143829,7 +143829,7 @@
           "contract_address": "0xe993278fF97C505098dEC831Afb9f4afF2526698"
         }
       ],
-      "gecko_id": "bitcoin"
+      "gecko_id": null
     },
     {
       "id": 38651,
@@ -143914,7 +143914,7 @@
           "contract_address": "GnM6XZ7DN9KSPW2ZVMNqCggsxjnxHMGb2t4kiWrUpump"
         }
       ],
-      "gecko_id": "wagmi-2"
+      "gecko_id": "wagmi-5"
     },
     {
       "id": 38657,
@@ -144355,7 +144355,7 @@
           "contract_address": "0xf857213e62d9419Ca2076032A1eA3A89d0714444"
         }
       ],
-      "gecko_id": "pochita-3"
+      "gecko_id": "pochita-2"
     },
     {
       "id": 38698,
@@ -144461,7 +144461,7 @@
           "contract_address": "0x7FA58Cb42fc030D702C2F61559e4744AA756cBBA"
         }
       ],
-      "gecko_id": "silver-3"
+      "gecko_id": null
     },
     {
       "id": 38705,
@@ -144477,7 +144477,7 @@
           "contract_address": "DTLYtCJ6cBHbA1ZTkkL9SAVmUVemdCCuH2QeNNXPpump"
         }
       ],
-      "gecko_id": "jefe-3"
+      "gecko_id": null
     },
     {
       "id": 38707,
@@ -144737,7 +144737,7 @@
           "contract_address": "CizLY8YaSc1MXpEwf9tD89S4A1RgMCR67gXoX5pLpump"
         }
       ],
-      "gecko_id": "the-arena"
+      "gecko_id": null
     },
     {
       "id": 38747,
@@ -144891,7 +144891,7 @@
           "contract_address": "0xfCa5208e4074e06596CC28B47214A109E4c14444"
         }
       ],
-      "gecko_id": "shih-tzu-3"
+      "gecko_id": "shih-tzu"
     },
     {
       "id": 38760,
@@ -144923,7 +144923,7 @@
           "contract_address": "GMvCfcZg8YvkkQmwDaAzCtHDrrEtgE74nQpQ7xNabonk"
         }
       ],
-      "gecko_id": "1-token"
+      "gecko_id": "1-token-2"
     },
     {
       "id": 38764,
@@ -145673,7 +145673,7 @@
           "contract_address": "0xB7C5464F000E019A106361da8e7652087Cde44ff"
         }
       ],
-      "gecko_id": "puff-the-dragon"
+      "gecko_id": null
     },
     {
       "id": 38815,
@@ -145827,7 +145827,7 @@
           "contract_address": "0x20BD5453117acC748895F8F84dD3CD21999B8E6B"
         }
       ],
-      "gecko_id": "cast-oracles"
+      "gecko_id": null
     },
     {
       "id": 38828,
@@ -146240,7 +146240,7 @@
           "contract_address": "0x01d68079416439cf4aad4ab97f507c483ec4970e"
         }
       ],
-      "gecko_id": "neo"
+      "gecko_id": null
     },
     {
       "id": 38862,
@@ -146584,7 +146584,7 @@
           "contract_address": "0x32bb8897ad818f80f2df2703939a02178283c458"
         }
       ],
-      "gecko_id": "doge-1-satellite"
+      "gecko_id": null
     },
     {
       "id": 38888,
@@ -146679,7 +146679,7 @@
           "contract_address": "0x011EBe7d75E2C9D1E0bD0be0bEf5C36f0A90075F"
         }
       ],
-      "gecko_id": "stable-3"
+      "gecko_id": "usdfi-stable"
     },
     {
       "id": 38895,
@@ -146727,7 +146727,7 @@
           "contract_address": "0xa66f35af7C4C2bE09369a6AB50542F48bd3C4804"
         }
       ],
-      "gecko_id": "dash"
+      "gecko_id": "dash-2"
     },
     {
       "id": 38901,
@@ -146775,7 +146775,7 @@
           "contract_address": "0xa90fe0c3e067408e44320db5a4941229da4833c9"
         }
       ],
-      "gecko_id": "doge-1-satellite"
+      "gecko_id": null
     },
     {
       "id": 38905,
@@ -147018,7 +147018,7 @@
           "contract_address": "PLAYs3GSSadH2q2JLS7djp7yzeT75NK78XgrE5YLrfq"
         }
       ],
-      "gecko_id": "play-3"
+      "gecko_id": "play-2"
     },
     {
       "id": 38928,
@@ -147388,7 +147388,7 @@
           "contract_address": "0x600c44acfe5ab4ea0f6080766c90b5473d197f0b"
         }
       ],
-      "gecko_id": "x-money"
+      "gecko_id": null
     },
     {
       "id": 38952,
@@ -147404,7 +147404,7 @@
           "contract_address": "0x6b386e3F98e04558ac14D195a50770c3Df8B1FB7"
         }
       ],
-      "gecko_id": "aster-2"
+      "gecko_id": null
     },
     {
       "id": 38953,
@@ -148291,7 +148291,7 @@
           "contract_address": "0xe7afEB1ED204d7b3C90753b3D00418cF9D2D6a26"
         }
       ],
-      "gecko_id": "bibi-2"
+      "gecko_id": "bibi"
     },
     {
       "id": 39028,
@@ -148355,7 +148355,7 @@
           "contract_address": "0xc497BFc3ef5104272a9b4cCfFf6acc51e62DcB9c"
         }
       ],
-      "gecko_id": "silver-3"
+      "gecko_id": null
     },
     {
       "id": 39034,
@@ -148615,7 +148615,7 @@
           "contract_address": "0x9212cF1f9f4A9c69Bb010146Ba5b0725169D4444"
         }
       ],
-      "gecko_id": "bibi-2"
+      "gecko_id": null
     },
     {
       "id": 39052,
@@ -148663,7 +148663,7 @@
           "contract_address": "0x8f647568fFED14b2A75a6eB911D112B0Fe570C94"
         }
       ],
-      "gecko_id": "gold-6"
+      "gecko_id": null
     },
     {
       "id": 39057,
@@ -148769,7 +148769,7 @@
           "contract_address": "0xee6980A5B9aEe093d55c5e54D588556Ec1e199bE"
         }
       ],
-      "gecko_id": "giggle-fund"
+      "gecko_id": null
     },
     {
       "id": 39064,
@@ -148922,7 +148922,7 @@
       "website": "bytenova.ai",
       "source_code": "",
       "platform": null,
-      "gecko_id": "byte"
+      "gecko_id": null
     },
     {
       "id": 39085,
@@ -149255,7 +149255,7 @@
           "contract_address": "0x45b695F2594713c96B52468ED168A691986b858A"
         }
       ],
-      "gecko_id": "terra-luna"
+      "gecko_id": "luna-wormhole"
     },
     {
       "id": 39119,
@@ -149527,7 +149527,7 @@
           "contract_address": "0x1001fF13bf368Aa4fa85F21043648079F00E1001"
         }
       ],
-      "gecko_id": null
+      "gecko_id": "leverup"
     },
     {
       "id": 39142,
@@ -150073,7 +150073,7 @@
           "contract_address": "0x02cE0F1F6D04a0925AEE71aADdbc226658FC6300"
         }
       ],
-      "gecko_id": "star-atlas"
+      "gecko_id": "atlas-2"
     },
     {
       "id": 39180,
@@ -150137,7 +150137,7 @@
           "contract_address": "0xf19c362d779ade83d4f8708c6c36297b6ad57528"
         }
       ],
-      "gecko_id": null
+      "gecko_id": "coinbank"
     },
     {
       "id": 39187,
@@ -150504,7 +150504,7 @@
           "contract_address": "0x53A8BCFb2b1626C246D875E9B2577aF9d0927201"
         }
       ],
-      "gecko_id": "troll"
+      "gecko_id": "troll-2"
     },
     {
       "id": 39216,
@@ -153270,7 +153270,7 @@
           "contract_address": "0x5a7b8c09a9134a0002e303ff3c737b36d4ca969e"
         }
       ],
-      "gecko_id": "moonbirds"
+      "gecko_id": null
     },
     {
       "id": 39335,
@@ -153286,7 +153286,7 @@
           "contract_address": "0xdb13997f4D83EF343845d0bAEb27d1173dF8c224"
         }
       ],
-      "gecko_id": "bucket-protocol-buck-stablecoin"
+      "gecko_id": null
     },
     {
       "id": 39337,
@@ -153492,7 +153492,7 @@
           "contract_address": "0xab6363da0c80cef3ae105bd6241e30872355d021"
         }
       ],
-      "gecko_id": "roll"
+      "gecko_id": "roll-2"
     },
     {
       "id": 39356,
@@ -154491,7 +154491,7 @@
           "contract_address": "0xA10AC2e9e2eDa0a16585C2F9bf60A0F4f7bFdfB1"
         }
       ],
-      "gecko_id": "monero"
+      "gecko_id": null
     },
     {
       "id": 39434,
@@ -154619,7 +154619,7 @@
           "contract_address": "Cm6fNnMk7NfzStP9CZpsQA2v3jjzbcYGAxdJySmHpump"
         }
       ],
-      "gecko_id": "buttcoin-3"
+      "gecko_id": "buttcoin-7"
     },
     {
       "id": 39453,
@@ -154698,7 +154698,7 @@
           "contract_address": "0x8De39B057CC6522230AB19C0205080a8663331Ef"
         }
       ],
-      "gecko_id": "wojak-5"
+      "gecko_id": "wojak"
     },
     {
       "id": 39460,
@@ -154924,7 +154924,7 @@
       "website": "",
       "source_code": "",
       "platform": null,
-      "gecko_id": "hood"
+      "gecko_id": null
     },
     {
       "id": 39479,
@@ -154970,7 +154970,7 @@
       "website": "",
       "source_code": "",
       "platform": null,
-      "gecko_id": "oracle-3"
+      "gecko_id": null
     },
     {
       "id": 39483,
@@ -154980,7 +154980,7 @@
       "website": "",
       "source_code": "",
       "platform": null,
-      "gecko_id": "coin-5"
+      "gecko_id": null
     },
     {
       "id": 39485,
@@ -154990,7 +154990,7 @@
       "website": "",
       "source_code": "",
       "platform": null,
-      "gecko_id": "openai-prestocks-2"
+      "gecko_id": null
     },
     {
       "id": 39486,
@@ -155110,7 +155110,7 @@
       "website": "",
       "source_code": "",
       "platform": null,
-      "gecko_id": "spacex-prestocks-2"
+      "gecko_id": null
     },
     {
       "id": 39503,
@@ -155160,7 +155160,7 @@
       "website": "",
       "source_code": "",
       "platform": null,
-      "gecko_id": "energy-coin"
+      "gecko_id": "energy-coin-2"
     },
     {
       "id": 39510,
@@ -155272,7 +155272,7 @@
           "contract_address": "eth-0xdac17f958d2ee523a2206206994597c13d831ec7.omft.near"
         }
       ],
-      "gecko_id": "tether"
+      "gecko_id": "cronos-bridged-usdt-cronos"
     },
     {
       "id": 39521,
@@ -155633,7 +155633,7 @@
           "contract_address": "0xdAB8F0568Bd31c427F4B5662D4D0A1c489065F3d"
         }
       ],
-      "gecko_id": "x-2"
+      "gecko_id": null
     },
     {
       "id": 39552,
@@ -155750,7 +155750,7 @@
           "contract_address": "0x14913815bCFDE78BAeAd2111F463D038Ac9C2949"
         }
       ],
-      "gecko_id": "eusd-new"
+      "gecko_id": "eusd-2"
     },
     {
       "id": 39559,
@@ -155972,7 +155972,7 @@
           "contract_address": "0x4b5ae1fb0d931cfa5cdd697da8548e4530157ad4"
         }
       ],
-      "gecko_id": "bitcoin"
+      "gecko_id": null
     },
     {
       "id": 39580,
@@ -156243,7 +156243,7 @@
           "contract_address": "NV2RYH954cTJ3ckFUpvfqaQXU4ARqqDH3562nFSpump"
         }
       ],
-      "gecko_id": "punch-2"
+      "gecko_id": null
     },
     {
       "id": 39601,
@@ -156323,7 +156323,7 @@
           "contract_address": "0x797ef3B1b38F91dd20d3Ad1D57Fb88C03Ad82107"
         }
       ],
-      "gecko_id": "one-punch-cat"
+      "gecko_id": null
     },
     {
       "id": 39606,
@@ -156473,7 +156473,7 @@
           "contract_address": "0x555659a2a856d42399cdde096eb998e9"
         }
       ],
-      "gecko_id": "meta-bsc"
+      "gecko_id": "meta-2"
     },
     {
       "id": 39616,
@@ -156657,7 +156657,7 @@
           "contract_address": "0xe101753dcfea619a512111d3ae54a592"
         }
       ],
-      "gecko_id": "hood"
+      "gecko_id": null
     },
     {
       "id": 39626,
@@ -156673,7 +156673,7 @@
           "contract_address": "0x4D2cC6ee85A9D072fa2fef45DDeBb225404a407F"
         }
       ],
-      "gecko_id": "pleasing-usd"
+      "gecko_id": "plume-usd"
     },
     {
       "id": 39627,
@@ -156771,7 +156771,7 @@
           "contract_address": "0x270329c79A988126684E98BBfFC12fcBb4b33796"
         }
       ],
-      "gecko_id": "new-xai-gork"
+      "gecko_id": "gork-2"
     },
     {
       "id": 39637,
@@ -156787,7 +156787,7 @@
           "contract_address": "0x8a6940912ab777eefd07499e0c39be62fb51d73d"
         }
       ],
-      "gecko_id": "idos"
+      "gecko_id": null
     },
     {
       "id": 39638,
@@ -157046,7 +157046,7 @@
           "contract_address": "EbPSDxxwEFRwx7RbRoagfjdvn46HnzxSUCn4kuBhvaiN"
         }
       ],
-      "gecko_id": "silver-coin-2"
+      "gecko_id": "silver-4"
     },
     {
       "id": 39662,
@@ -157208,7 +157208,7 @@
       "website": "",
       "source_code": "",
       "platform": null,
-      "gecko_id": "dia-data"
+      "gecko_id": null
     },
     {
       "id": 39674,
@@ -157330,7 +157330,7 @@
           "contract_address": "0x212f4305d709ca9a194ff54c0ad58947081c4444"
         }
       ],
-      "gecko_id": "moondoge"
+      "gecko_id": null
     },
     {
       "id": 39685,
@@ -157398,7 +157398,7 @@
           "contract_address": "Hh3oTaqDCKKfdBgsQEvxp9sUwyNf8x9qmKqEMLBWpump"
         }
       ],
-      "gecko_id": "hodl-coin"
+      "gecko_id": "hodl-boyz"
     },
     {
       "id": 39692,
@@ -157541,7 +157541,7 @@
           "contract_address": "0x7deF4573628021500c3207994935a51801fB56bE"
         }
       ],
-      "gecko_id": "akita-inu"
+      "gecko_id": "akita-inu-3"
     },
     {
       "id": 39718,
@@ -157678,7 +157678,7 @@
           "contract_address": "0x2b566950BA2298AcEf3c730CC0129b2f4fBd30a3"
         }
       ],
-      "gecko_id": "kimchi-3"
+      "gecko_id": "kimchi-2"
     },
     {
       "id": 39736,
@@ -159043,7 +159043,7 @@
           "contract_address": "2jUSPvEuxSxJ6nGpUHyXVAcNxyhugPC1iBeNjhTXzAUy"
         }
       ],
-      "gecko_id": "centric-cash"
+      "gecko_id": "centric-swap"
     },
     {
       "id": 39809,

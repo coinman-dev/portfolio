@@ -51,6 +51,12 @@ pub struct AppSettings {
     /// Global: timestamp (ms since epoch) of the last update check.
     #[serde(default)]
     pub last_update_check: Option<u64>,
+    /// Global: CoinMarketCap API key for price fetching.
+    #[serde(default)]
+    pub cmc_api_key: Option<String>,
+    /// Global: whether to use CMC instead of CoinGecko for prices.
+    #[serde(default)]
+    pub use_cmc: Option<bool>,
     /// Per-user (per-database) settings keyed by database filename stem.
     #[serde(default)]
     pub users: HashMap<String, UserSettings>,
@@ -67,6 +73,8 @@ pub struct AppSettingsForUser {
     pub auto_align_columns: Option<bool>,
     pub show_table_footer: Option<bool>,
     pub column_widths: Option<Value>,
+    pub cmc_api_key: Option<String>,
+    pub use_cmc: Option<bool>,
     pub active_portfolio_id: Option<Value>,
     pub portfolio_order: Option<Vec<Value>>,
     pub market_cache: Option<Value>,
@@ -92,6 +100,8 @@ pub fn load_for_user<R: Runtime>(app: &AppHandle<R>, user: &str) -> AppSettingsF
         auto_align_columns: settings.auto_align_columns,
         show_table_footer: settings.show_table_footer,
         column_widths: settings.column_widths,
+        cmc_api_key: settings.cmc_api_key,
+        use_cmc: settings.use_cmc,
         active_portfolio_id: u.active_portfolio_id,
         portfolio_order: u.portfolio_order,
         market_cache: u.market_cache,
@@ -156,6 +166,18 @@ pub fn update_show_table_footer<R: Runtime>(app: &AppHandle<R>, show: bool) {
 pub fn update_is_collapsed<R: Runtime>(app: &AppHandle<R>, collapsed: bool) {
     let mut settings = load(app);
     settings.is_collapsed = Some(collapsed);
+    save(app, &settings);
+}
+
+pub fn update_cmc_api_key<R: Runtime>(app: &AppHandle<R>, key: String) {
+    let mut settings = load(app);
+    settings.cmc_api_key = if key.is_empty() { None } else { Some(key) };
+    save(app, &settings);
+}
+
+pub fn update_use_cmc<R: Runtime>(app: &AppHandle<R>, use_cmc: bool) {
+    let mut settings = load(app);
+    settings.use_cmc = Some(use_cmc);
     save(app, &settings);
 }
 

@@ -306,8 +306,46 @@ fn save_portfolio_order(app: tauri::AppHandle, user: Option<String>, order: Vec<
 }
 
 #[tauri::command]
+fn save_cmc_api_key(app: tauri::AppHandle, key: String) {
+    settings::update_cmc_api_key(&app, key);
+}
+
+#[tauri::command]
+fn save_use_cmc(app: tauri::AppHandle, use_cmc: bool) {
+    settings::update_use_cmc(&app, use_cmc);
+}
+
+#[tauri::command]
 fn save_last_update_check(app: tauri::AppHandle, timestamp: u64) {
     settings::update_last_update_check(&app, timestamp);
+}
+
+#[tauri::command]
+async fn cmc_fetch_quotes(api_key: String, ids: String, convert: String) -> Result<serde_json::Value, String> {
+    let url = format!(
+        "https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest?id={}&convert={}",
+        ids, convert
+    );
+    let client = reqwest::Client::new();
+    let resp = client
+        .get(&url)
+        .header("X-CMC_PRO_API_KEY", &api_key)
+        .header("Accept", "application/json")
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {}", e))?;
+
+    let status = resp.status().as_u16();
+    if status == 401 || status == 403 {
+        return Err("CMC_AUTH_FAILED".to_string());
+    }
+    if !resp.status().is_success() {
+        return Err(format!("CMC API error: HTTP {}", status));
+    }
+
+    resp.json::<serde_json::Value>()
+        .await
+        .map_err(|e| format!("Parse error: {}", e))
 }
 
 #[tauri::command]
@@ -446,7 +484,10 @@ pub fn run() {
             open_file_dialog,
             copy_database,
             save_portfolio_order,
-            save_last_update_check
+            save_last_update_check,
+            save_cmc_api_key,
+            save_use_cmc,
+            cmc_fetch_quotes
         ])
         .setup(|app| {
             let debug_mode = std::env::args()
