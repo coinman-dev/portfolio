@@ -1,9 +1,8 @@
 name: Build Release
 
 on:
-  push:
-    tags:
-      - 'v*'
+  release:
+    types: [published]
 
 jobs:
   build-windows:
@@ -31,7 +30,7 @@ jobs:
       - name: Upload to release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload ${{ github.ref_name }} coinman-portfolio-windows-x64.zip --repo ${{ github.repository }}
+        run: gh release upload ${{ github.event.release.tag_name }} coinman-portfolio-windows-x64.zip --repo ${{ github.repository }}
 
   build-macos:
     runs-on: macos-latest
@@ -64,8 +63,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload ${{ github.ref_name }} coinman-portfolio-macos-x64.dmg --repo ${{ github.repository }}
-          gh release upload ${{ github.ref_name }} coinman-portfolio-macos-arm64.dmg --repo ${{ github.repository }}
+          gh release upload ${{ github.event.release.tag_name }} coinman-portfolio-macos-x64.dmg --repo ${{ github.repository }}
+          gh release upload ${{ github.event.release.tag_name }} coinman-portfolio-macos-arm64.dmg --repo ${{ github.repository }}
 
   build-linux:
     runs-on: ubuntu-22.04
@@ -96,4 +95,4 @@ jobs:
       - name: Upload to release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload ${{ github.ref_name }} coinman-portfolio-linux-x64.tar.gz --repo ${{ github.repository }}
+        run: gh release upload ${{ github.event.release.tag_name }} coinman-portfolio-linux-x64.tar.gz --repo ${{ github.repository }}
