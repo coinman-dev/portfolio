@@ -15,7 +15,7 @@ window.DEBUG_MODE = false;
 var ENC_V1 = 1;
 
 var CONFIG = {
-    APP_VERSION: "0.5.0-alpha",
+    APP_VERSION: "0.6.0-alpha",
     AUTO_ALIGN_RIGHT_MARGIN: 20, // Distance between Change column and right edge
     AUTO_ALIGN_MIN_COIN_WIDTH: 80, // Minimum width for Coin/Date column
     AUTO_ALIGN_COL_PADDING: {
@@ -404,6 +404,7 @@ var AppSettings = {
                 AppBridge.invoke("save_use_cmc", { useCmc: false }).catch(function () {});
             }
             this.applyCmc();
+            MarketCache.clear();
             Market.fetchData();
         } else {
             window.closeAllDropdowns();
@@ -443,7 +444,7 @@ var AppSettings = {
                 }
                 AppSettings.applyCmc();
                 if (okEl) { okEl.textContent = "API key validated. CMC prices enabled."; okEl.classList.remove("hidden"); }
-                setTimeout(function () { closeModal("modal-cmc-apikey"); Market.fetchData(); }, 1200);
+                setTimeout(function () { closeModal("modal-cmc-apikey"); MarketCache.clear(); Market.fetchData(); }, 1200);
             } else {
                 var msg = (data && data.status && data.status.error_message) || "Invalid API key.";
                 if (errEl) { errEl.textContent = msg; errEl.classList.remove("hidden"); }
@@ -2010,7 +2011,7 @@ var Market = {
                 Market.setStatus(
                     "Market data: loaded " +
                         state.marketData.length +
-                        " symbols from API (" +
+                        " symbols from CG (" +
                         new Date().toLocaleString() +
                         ")",
                     "#aaa",
