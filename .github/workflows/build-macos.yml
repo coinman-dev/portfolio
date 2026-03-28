@@ -19,7 +19,7 @@ jobs:
         run: cargo install tauri-cli --version "^2" --locked
 
       - name: Build Windows
-        run: cargo tauri build
+        run: cargo tauri build --bundles none
         working-directory: src-tauri
 
       - name: Create portable zip
@@ -48,11 +48,11 @@ jobs:
         run: cargo install tauri-cli --version "^2" --locked
 
       - name: Build macOS (x86_64)
-        run: cargo tauri build --target x86_64-apple-darwin
+        run: cargo tauri build --target x86_64-apple-darwin --bundles dmg
         working-directory: src-tauri
 
       - name: Build macOS (aarch64)
-        run: cargo tauri build --target aarch64-apple-darwin
+        run: cargo tauri build --target aarch64-apple-darwin --bundles dmg
         working-directory: src-tauri
 
       - name: Rename DMGs
@@ -85,7 +85,7 @@ jobs:
         run: cargo install tauri-cli --version "^2" --locked
 
       - name: Build Linux
-        run: cargo tauri build
+        run: cargo tauri build --bundles none
         working-directory: src-tauri
 
       - name: Create portable tar.gz
