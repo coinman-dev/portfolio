@@ -20,7 +20,7 @@ Most portfolio tracking services store your data on their servers, where third p
 - Multiple independent portfolios within a single database file
 - Add coins with buy price, amount, date, and notes
 - Record sells and track realized profit/loss
-- Automatic current price fetching via [CoinGecko API](https://www.coingecko.com/)
+- Automatic current price fetching via [CoinGecko API](https://www.coingecko.com/) or [CoinMarketCap API](https://coinmarketcap.com/) (configurable)
 - P&L display and price change in %
 - Switch between multiple database files at runtime
 - **AES-256-GCM database encryption** with Argon2id key derivation
@@ -126,6 +126,21 @@ By default, data is saved to `database/default.json` next to the executable. You
 
 ---
 
+## Price Source
+
+By default, CoinMan fetches live prices from the **CoinGecko API** (no API key required).
+
+Optionally, you can switch to **CoinMarketCap** as the price source:
+
+1. Go to **Settings → Price Source → CoinMarketCap**
+2. Enter your CMC API key (free tier available at [coinmarketcap.com](https://coinmarketcap.com/api/))
+3. The key is validated immediately — if valid, CMC becomes the active price source
+4. The status bar shows `from CMC` or `from CG` to indicate which source was last used
+
+If the CMC API key fails or is revoked, the app automatically falls back to CoinGecko.
+
+---
+
 ## Database Encryption
 
 CoinMan Portfolio Tracker supports **AES-256-GCM** encryption for database files, with keys derived via **Argon2id** (memory-hard key derivation). Your data is protected with modern, battle-tested cryptography.
@@ -162,7 +177,8 @@ CoinMan Portfolio Tracker supports **AES-256-GCM** encryption for database files
 - [Tauri v2](https://tauri.app/) — desktop app framework (Rust + WebView)
 - Rust — backend, data storage, system calls
 - Vanilla JavaScript / HTML / CSS — UI (no frameworks, no npm)
-- [CoinGecko API](https://www.coingecko.com/) — live coin prices
+- [CoinGecko API](https://www.coingecko.com/) — live coin prices (default)
+- [CoinMarketCap API](https://coinmarketcap.com/) — live coin prices (optional, requires API key)
 - [CoinMarketCap](https://coinmarketcap.com/) — coin catalog & logos
 
 ---
@@ -184,7 +200,7 @@ CoinMan Portfolio Tracker is provided **for informational purposes only**. It is
 
 ## Data Attribution
 
-Market price data is provided by the [CoinGecko API](https://www.coingecko.com/). CoinMan Portfolio Tracker is not affiliated with or endorsed by CoinGecko.
+Market price data is provided by the [CoinGecko API](https://www.coingecko.com/) (default) or the [CoinMarketCap API](https://coinmarketcap.com/) (optional). CoinMan Portfolio Tracker is not affiliated with or endorsed by CoinGecko or CoinMarketCap.
 
 Coin catalog data (names, symbols, IDs) and coin logos are provided by [CoinMarketCap](https://coinmarketcap.com/). CoinMan Portfolio Tracker is not affiliated with or endorsed by CoinMarketCap.
 
