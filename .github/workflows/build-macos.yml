@@ -19,7 +19,7 @@ jobs:
         run: cargo install tauri-cli --version "^2" --locked
 
       - name: Build Windows
-        run: cargo tauri build --bundles none
+        run: cargo tauri build --bundles nsis
         working-directory: src-tauri
 
       - name: Create portable zip
@@ -85,7 +85,7 @@ jobs:
         run: cargo install tauri-cli --version "^2" --locked
 
       - name: Build Linux
-        run: cargo tauri build --bundles none
+        run: cargo tauri build --bundles deb
         working-directory: src-tauri
 
       - name: Create portable tar.gz
