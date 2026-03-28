@@ -2,10 +2,8 @@ name: Build Release
 
 on:
   push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-  workflow_dispatch:
+    tags:
+      - 'v*'
 
 jobs:
   build-windows:
@@ -16,11 +14,6 @@ jobs:
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
 
       - name: Install Tauri CLI
         run: cargo install tauri-cli --version "^2" --locked
@@ -35,12 +28,10 @@ jobs:
           $exe = Get-ChildItem "target/release/coinman-portfolio.exe"
           Compress-Archive -Path $exe.FullName -DestinationPath "coinman-portfolio-windows-x64.zip"
 
-      - name: Upload Windows artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: coinman-windows-x64
-          path: coinman-portfolio-windows-x64.zip
-          retention-days: 1
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload ${{ github.ref_name }} coinman-portfolio-windows-x64.zip --repo ${{ github.repository }}
 
   build-macos:
     runs-on: macos-latest
@@ -53,11 +44,6 @@ jobs:
         with:
           targets: aarch64-apple-darwin,x86_64-apple-darwin
 
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
       - name: Install Tauri CLI
         run: cargo install tauri-cli --version "^2" --locked
 
@@ -69,16 +55,45 @@ jobs:
         run: cargo tauri build --target aarch64-apple-darwin
         working-directory: src-tauri
 
-      - name: Upload x86_64 artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: coinman-macos-x86_64
-          path: target/x86_64-apple-darwin/release/bundle/dmg/*.dmg
-          retention-days: 1
+      - name: Rename DMGs
+        run: |
+          cp target/x86_64-apple-darwin/release/bundle/dmg/*.dmg coinman-portfolio-macos-x64.dmg
+          cp target/aarch64-apple-darwin/release/bundle/dmg/*.dmg coinman-portfolio-macos-arm64.dmg
 
-      - name: Upload aarch64 artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: coinman-macos-aarch64
-          path: target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
-          retention-days: 1
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload ${{ github.ref_name }} coinman-portfolio-macos-x64.dmg --repo ${{ github.repository }}
+          gh release upload ${{ github.ref_name }} coinman-portfolio-macos-arm64.dmg --repo ${{ github.repository }}
+
+  build-linux:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version "^2" --locked
+
+      - name: Build Linux
+        run: cargo tauri build
+        working-directory: src-tauri
+
+      - name: Create portable tar.gz
+        run: |
+          cp target/release/coinman-portfolio .
+          tar -czf coinman-portfolio-linux-x64.tar.gz coinman-portfolio
+
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload ${{ github.ref_name }} coinman-portfolio-linux-x64.tar.gz --repo ${{ github.repository }}
