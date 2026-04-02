@@ -263,7 +263,9 @@ var AppSettings = {
         } else {
             document.body.classList.remove("show-cur-price");
         }
-        var td = document.querySelector("#transactions-table-body .empty-state-cell");
+        var td = document.querySelector(
+            "#transactions-table-body .empty-state-cell",
+        );
         if (td) {
             td.colSpan = enabled ? 7 : 6;
         }
@@ -391,8 +393,11 @@ var AppSettings = {
         var enabled = this.get("useCmc", false);
         var menuItem = document.getElementById("menu-toggle-cmc");
         if (menuItem) {
-            if (enabled) { menuItem.classList.add("checked"); }
-            else { menuItem.classList.remove("checked"); }
+            if (enabled) {
+                menuItem.classList.add("checked");
+            } else {
+                menuItem.classList.remove("checked");
+            }
         }
     },
 
@@ -401,7 +406,9 @@ var AppSettings = {
         if (current) {
             this.set("useCmc", false);
             if (AppBridge.isTauri()) {
-                AppBridge.invoke("save_use_cmc", { useCmc: false }).catch(function () {});
+                AppBridge.invoke("save_use_cmc", { useCmc: false }).catch(
+                    function () {},
+                );
             }
             this.applyCmc();
             MarketCache.clear();
@@ -411,9 +418,15 @@ var AppSettings = {
             var input = document.getElementById("cmc-apikey-input");
             if (input) input.value = this.get("cmcApiKey", "");
             var errEl = document.getElementById("cmc-apikey-error");
-            if (errEl) { errEl.textContent = ""; errEl.classList.add("hidden"); }
+            if (errEl) {
+                errEl.textContent = "";
+                errEl.classList.add("hidden");
+            }
             var okEl = document.getElementById("cmc-apikey-success");
-            if (okEl) { okEl.textContent = ""; okEl.classList.add("hidden"); }
+            if (okEl) {
+                okEl.textContent = "";
+                okEl.classList.add("hidden");
+            }
             openModal("modal-cmc-apikey");
         }
     },
@@ -426,38 +439,71 @@ var AppSettings = {
         var btn = document.getElementById("cmc-apikey-save-btn");
 
         if (!key) {
-            if (errEl) { errEl.textContent = "Please enter an API key."; errEl.classList.remove("hidden"); }
+            if (errEl) {
+                errEl.textContent = "Please enter an API key.";
+                errEl.classList.remove("hidden");
+            }
             return;
         }
         if (errEl) errEl.classList.add("hidden");
         if (okEl) okEl.classList.add("hidden");
         if (btn) btn.disabled = true;
 
-        AppBridge.invoke("cmc_fetch_quotes", { apiKey: key, ids: "1", convert: "USD" })
-        .then(function (data) {
-            if (data && data.data) {
-                AppSettings.set("cmcApiKey", key);
-                AppSettings.set("useCmc", true);
-                if (AppBridge.isTauri()) {
-                    AppBridge.invoke("save_cmc_api_key", { key: key }).catch(function () {});
-                    AppBridge.invoke("save_use_cmc", { useCmc: true }).catch(function () {});
+        AppBridge.invoke("cmc_fetch_quotes", {
+            apiKey: key,
+            ids: "1",
+            convert: "USD",
+        })
+            .then(function (data) {
+                if (data && data.data) {
+                    AppSettings.set("cmcApiKey", key);
+                    AppSettings.set("useCmc", true);
+                    if (AppBridge.isTauri()) {
+                        AppBridge.invoke("save_cmc_api_key", {
+                            key: key,
+                        }).catch(function () {});
+                        AppBridge.invoke("save_use_cmc", {
+                            useCmc: true,
+                        }).catch(function () {});
+                    }
+                    AppSettings.applyCmc();
+                    if (okEl) {
+                        okEl.textContent =
+                            "API key validated. CMC prices enabled.";
+                        okEl.classList.remove("hidden");
+                    }
+                    setTimeout(function () {
+                        closeModal("modal-cmc-apikey");
+                        MarketCache.clear();
+                        Market.fetchData();
+                    }, 1200);
+                } else {
+                    var msg =
+                        (data && data.status && data.status.error_message) ||
+                        "Invalid API key.";
+                    if (errEl) {
+                        errEl.textContent = msg;
+                        errEl.classList.remove("hidden");
+                    }
                 }
-                AppSettings.applyCmc();
-                if (okEl) { okEl.textContent = "API key validated. CMC prices enabled."; okEl.classList.remove("hidden"); }
-                setTimeout(function () { closeModal("modal-cmc-apikey"); MarketCache.clear(); Market.fetchData(); }, 1200);
-            } else {
-                var msg = (data && data.status && data.status.error_message) || "Invalid API key.";
-                if (errEl) { errEl.textContent = msg; errEl.classList.remove("hidden"); }
-            }
-        })
-        .catch(function (e) {
-            var msg = typeof e === "string" ? e : (e && e.message ? e.message : String(e));
-            if (msg.indexOf("CMC_AUTH_FAILED") !== -1) msg = "Invalid API key.";
-            if (errEl) { errEl.textContent = "Validation failed: " + msg; errEl.classList.remove("hidden"); }
-        })
-        .finally(function () {
-            if (btn) btn.disabled = false;
-        });
+            })
+            .catch(function (e) {
+                var msg =
+                    typeof e === "string"
+                        ? e
+                        : e && e.message
+                          ? e.message
+                          : String(e);
+                if (msg.indexOf("CMC_AUTH_FAILED") !== -1)
+                    msg = "Invalid API key.";
+                if (errEl) {
+                    errEl.textContent = "Validation failed: " + msg;
+                    errEl.classList.remove("hidden");
+                }
+            })
+            .finally(function () {
+                if (btn) btn.disabled = false;
+            });
     },
 
     init: function () {
@@ -865,8 +911,9 @@ var CoinCatalog = {
                     sourceCode: (raw && raw.source_code) || "",
                     explorer: (raw && raw.explorer) || "",
                     category: (raw && raw.category) || "",
-                    platform: (raw && Array.isArray(raw.platform)) ? raw.platform : [],
-                    geckoId: (raw && raw.gecko_id) ? String(raw.gecko_id) : "",
+                    platform:
+                        raw && Array.isArray(raw.platform) ? raw.platform : [],
+                    geckoId: raw && raw.gecko_id ? String(raw.gecko_id) : "",
                 };
                 items.push(item);
                 if (item.id && !mapById[item.id]) mapById[item.id] = item;
@@ -1128,7 +1175,12 @@ var Market = {
         Market.detailsCache = {};
     },
 
-    _sb: { DB_STATUS: "", ENC_ICON: "\uD83D\uDD13", ENC_LABEL: "Not encrypted", MARKET_STATUS: "" },
+    _sb: {
+        DB_STATUS: "",
+        ENC_ICON: "\uD83D\uDD13",
+        ENC_LABEL: "Not encrypted",
+        MARKET_STATUS: "",
+    },
     _encEncrypted: false,
     _marketColor: "",
 
@@ -1542,13 +1594,17 @@ var Market = {
             apiKey: key,
             ids: cmcIds.join(","),
             convert: String(currency || "USD").toUpperCase(),
-        }).then(function (json) {
-            return (json && json.data) ? json.data : {};
-        }).catch(function (e) {
-            var msg = typeof e === "string" ? e : (e && e.message ? e.message : "");
-            if (msg.indexOf("CMC_AUTH_FAILED") !== -1) throw new Error("CMC_AUTH_FAILED");
-            throw new Error(msg || "CMC request failed");
-        });
+        })
+            .then(function (json) {
+                return json && json.data ? json.data : {};
+            })
+            .catch(function (e) {
+                var msg =
+                    typeof e === "string" ? e : e && e.message ? e.message : "";
+                if (msg.indexOf("CMC_AUTH_FAILED") !== -1)
+                    throw new Error("CMC_AUTH_FAILED");
+                throw new Error(msg || "CMC request failed");
+            });
     },
 
     fetchSingleIfMissing: function (symbol, currency, catalogId, coinName) {
@@ -1586,22 +1642,32 @@ var Market = {
                     var entry = data && data[cid];
                     if (Array.isArray(entry)) entry = entry[0];
                     var base = inState || inCache || null;
-                    var coin = base ? Object.assign({}, base) : {
-                        name: catalog && catalog.name ? catalog.name : sym,
-                        symbol: sym,
-                        catalogId: cid,
-                        price: 0,
-                        prices: {},
-                        change24h: 0,
-                        changes24h: {},
-                        image: catalog && catalog.image ? catalog.image : null,
-                    };
+                    var coin = base
+                        ? Object.assign({}, base)
+                        : {
+                              name:
+                                  catalog && catalog.name ? catalog.name : sym,
+                              symbol: sym,
+                              catalogId: cid,
+                              price: 0,
+                              prices: {},
+                              change24h: 0,
+                              changes24h: {},
+                              image:
+                                  catalog && catalog.image
+                                      ? catalog.image
+                                      : null,
+                          };
                     if (!coin.prices) coin.prices = {};
                     if (!coin.changes24h) coin.changes24h = {};
                     if (entry && entry.quote && entry.quote[curr]) {
                         var q = entry.quote[curr];
-                        if (Number.isFinite(Number(q.price))) coin.prices[curr] = Number(q.price);
-                        if (Number.isFinite(Number(q.percent_change_24h))) coin.changes24h[curr] = Number(q.percent_change_24h);
+                        if (Number.isFinite(Number(q.price)))
+                            coin.prices[curr] = Number(q.price);
+                        if (Number.isFinite(Number(q.percent_change_24h)))
+                            coin.changes24h[curr] = Number(
+                                q.percent_change_24h,
+                            );
                     }
                     coin.price = Market.getEntryPrice(coin, "USD");
                     coin.change24h = Market.getEntryChange24h(coin, "USD");
@@ -1609,7 +1675,11 @@ var Market = {
                     Market.persistStateToCache();
                     renderApp();
                     Market.setStatus(
-                        "Market data: loaded " + sym + " from CMC (" + new Date().toLocaleString() + ")",
+                        "Market data: loaded " +
+                            sym +
+                            " from CMC (" +
+                            new Date().toLocaleString() +
+                            ")",
                         "#aaa",
                     );
                     return true;
@@ -1618,14 +1688,27 @@ var Market = {
                     if (e.message === "CMC_AUTH_FAILED") {
                         AppSettings.set("useCmc", false);
                         if (AppBridge.isTauri()) {
-                            AppBridge.invoke("save_use_cmc", { useCmc: false }).catch(function () {});
+                            AppBridge.invoke("save_use_cmc", {
+                                useCmc: false,
+                            }).catch(function () {});
                         }
                         AppSettings.applyCmc();
-                        Market.setStatus("CMC API key failed \u2014 switching to CoinGecko.", "#D32F2F");
-                        return Market.fetchSingleIfMissing(symbol, currency, catalogId, coinName);
+                        Market.setStatus(
+                            "CMC API key failed \u2014 switching to CoinGecko.",
+                            "#D32F2F",
+                        );
+                        return Market.fetchSingleIfMissing(
+                            symbol,
+                            currency,
+                            catalogId,
+                            coinName,
+                        );
                     }
                     console.error("CMC single fetch failed:", sym, e);
-                    Market.setStatus("Market data: CMC API error for " + sym + ".", "#D32F2F");
+                    Market.setStatus(
+                        "Market data: CMC API error for " + sym + ".",
+                        "#D32F2F",
+                    );
                     return false;
                 });
         }
@@ -1740,18 +1823,23 @@ var Market = {
 
         // ── CMC path: catalogId IS the CMC id ──────────────────────────────
         if (AppSettings.get("useCmc", false)) {
-            var cmcChunks = Market.splitToChunks(catalogIds, CONFIG.CMC_CHUNK_SIZE || 100);
+            var cmcChunks = Market.splitToChunks(
+                catalogIds,
+                CONFIG.CMC_CHUNK_SIZE || 100,
+            );
             var cmcRequests = [];
             vsCurrencies.forEach(function (currency) {
                 cmcChunks.forEach(function (chunk) {
                     cmcRequests.push(
                         Market.fetchCmcChunkByIds(chunk, currency)
-                            .then(function (data) { return { currency: currency, data: data }; })
+                            .then(function (data) {
+                                return { currency: currency, data: data };
+                            })
                             .catch(function (e) {
                                 if (e.message === "CMC_AUTH_FAILED") throw e;
                                 console.error("CMC chunk failed:", currency, e);
                                 return { currency: currency, data: {} };
-                            })
+                            }),
                     );
                 });
             });
@@ -1774,7 +1862,9 @@ var Market = {
                                 map[cmcId].prices[curr] = Number(q.price);
                             }
                             if (Number.isFinite(Number(q.percent_change_24h))) {
-                                map[cmcId].changes24h[curr] = Number(q.percent_change_24h);
+                                map[cmcId].changes24h[curr] = Number(
+                                    q.percent_change_24h,
+                                );
                             }
                         });
                     });
@@ -1784,8 +1874,11 @@ var Market = {
                             ? new Date(Market.fileCacheSavedAt).toLocaleString()
                             : "date unknown";
                         Market.setStatus(
-                            "Market data: loaded " + state.marketData.length +
-                                " symbols from file (" + ts + ")",
+                            "Market data: loaded " +
+                                state.marketData.length +
+                                " symbols from file (" +
+                                ts +
+                                ")",
                             "#aaa",
                         );
                         renderApp();
@@ -1793,7 +1886,10 @@ var Market = {
                     }
 
                     if (totalEntries === 0) {
-                        Market.setStatus("Market data: CMC API returned no data.", "#D32F2F");
+                        Market.setStatus(
+                            "Market data: CMC API returned no data.",
+                            "#D32F2F",
+                        );
                         return;
                     }
 
@@ -1801,16 +1897,26 @@ var Market = {
                         catalogIds.map(function (cid) {
                             var item = map[cid];
                             item.price = Market.getEntryPrice(item, "USD");
-                            item.change24h = Market.getEntryChange24h(item, "USD");
+                            item.change24h = Market.getEntryChange24h(
+                                item,
+                                "USD",
+                            );
                             return item;
                         }),
                     );
                     MarketCache.set(catalogIds, vsCurrencies, state.marketData);
                     Market.fileCacheSavedAt = Date.now();
                     if (AppBridge.isTauri()) {
-                        var slimCache = state.marketData.reduce(function (acc, c) {
+                        var slimCache = state.marketData.reduce(function (
+                            acc,
+                            c,
+                        ) {
                             if (c.catalogId) {
-                                acc.push({ catalogId: c.catalogId, prices: c.prices, changes24h: c.changes24h });
+                                acc.push({
+                                    catalogId: c.catalogId,
+                                    prices: c.prices,
+                                    changes24h: c.changes24h,
+                                });
                             }
                             return acc;
                         }, []);
@@ -1822,21 +1928,31 @@ var Market = {
                     }
 
                     Market.setStatus(
-                        "Market data: loaded " + state.marketData.length +
-                            " symbols from CMC (" + new Date().toLocaleString() + ")",
+                        "Market data: loaded " +
+                            state.marketData.length +
+                            " symbols from CMC (" +
+                            new Date().toLocaleString() +
+                            ")",
                         "#aaa",
                     );
                     renderApp();
                 })
                 .catch(function (e) {
                     if (e.message === "CMC_AUTH_FAILED") {
-                        console.error("CMC API key invalid, falling back to CoinGecko");
+                        console.error(
+                            "CMC API key invalid, falling back to CoinGecko",
+                        );
                         AppSettings.set("useCmc", false);
                         if (AppBridge.isTauri()) {
-                            AppBridge.invoke("save_use_cmc", { useCmc: false }).catch(function () {});
+                            AppBridge.invoke("save_use_cmc", {
+                                useCmc: false,
+                            }).catch(function () {});
                         }
                         AppSettings.applyCmc();
-                        Market.setStatus("CMC API key failed \u2014 switching to CoinGecko.", "#D32F2F");
+                        Market.setStatus(
+                            "CMC API key failed \u2014 switching to CoinGecko.",
+                            "#D32F2F",
+                        );
                         Market.refreshInProgress = false;
                         return Market.fetchData();
                     }
@@ -1846,13 +1962,19 @@ var Market = {
                             ? new Date(Market.fileCacheSavedAt).toLocaleString()
                             : "date unknown";
                         Market.setStatus(
-                            "Market data: loaded " + state.marketData.length +
-                                " symbols from file (" + ts + ")",
+                            "Market data: loaded " +
+                                state.marketData.length +
+                                " symbols from file (" +
+                                ts +
+                                ")",
                             "#aaa",
                         );
                         renderApp();
                     } else {
-                        Market.setStatus("Market data: CMC API error.", "#D32F2F");
+                        Market.setStatus(
+                            "Market data: CMC API error.",
+                            "#D32F2F",
+                        );
                     }
                 })
                 .finally(function () {
@@ -1887,10 +2009,7 @@ var Market = {
                     return map[cid];
                 }),
             );
-            Market.setStatus(
-                "Market data: no gecko IDs in catalog.",
-                "#888",
-            );
+            Market.setStatus("Market data: no gecko IDs in catalog.", "#888");
             renderApp();
             Market.refreshInProgress = false;
             return window.Promise.resolve();
@@ -1910,11 +2029,7 @@ var Market = {
                             };
                         })
                         .catch(function (e) {
-                            console.error(
-                                "Market chunk failed:",
-                                currency,
-                                e,
-                            );
+                            console.error("Market chunk failed:", currency, e);
                             return { currency: currency, rows: [] };
                         }),
                 );
@@ -1959,9 +2074,7 @@ var Market = {
                         var cid = catalogIdByGeckoId[row.id];
                         if (!cid || !map[cid]) return;
                         if (Number.isFinite(Number(row.current_price))) {
-                            map[cid].prices[curr] = Number(
-                                row.current_price,
-                            );
+                            map[cid].prices[curr] = Number(row.current_price);
                         } else if (map[cid].prices[curr] === undefined) {
                             map[cid].prices[curr] = 0;
                         }
@@ -1972,9 +2085,7 @@ var Market = {
                             ch24 = Number(row.price_change_percentage_24h);
                         if (Number.isFinite(ch24)) {
                             map[cid].changes24h[curr] = ch24;
-                        } else if (
-                            map[cid].changes24h[curr] === undefined
-                        ) {
+                        } else if (map[cid].changes24h[curr] === undefined) {
                             map[cid].changes24h[curr] = 0;
                         }
                     });
@@ -3063,14 +3174,12 @@ var TimePicker = {
 
 var Autocomplete = {
     closeOtherSuggestions: function (keepListId) {
-        document
-            .querySelectorAll(".suggestions-list")
-            .forEach(function (el) {
-                if (el.id !== keepListId) {
-                    el.classList.remove("active");
-                    el.innerHTML = "";
-                }
-            });
+        document.querySelectorAll(".suggestions-list").forEach(function (el) {
+            if (el.id !== keepListId) {
+                el.classList.remove("active");
+                el.innerHTML = "";
+            }
+        });
     },
 
     handleSearch: function (inputId, listId) {
@@ -3191,7 +3300,8 @@ var Autocomplete = {
     },
 
     select: function (coin, inputId, listId) {
-        var isEdit = inputId === "edit-coin-name" || inputId === "edit-coin-symbol";
+        var isEdit =
+            inputId === "edit-coin-name" || inputId === "edit-coin-symbol";
         var prefix = isEdit ? "edit" : "add";
         var selectedCatalogId = Utils.sanitizeCatalogId(
             coin && coin.id ? coin.id : "",
@@ -3213,7 +3323,10 @@ var Autocomplete = {
             priceInput.value = Utils.normalizePrice(
                 Market.getEntryPrice(marketCoin || coin, curr),
             );
-        CoinCatalog.populateBlockchainSelect(prefix + "-coin-blockchain", selectedCatalogId);
+        CoinCatalog.populateBlockchainSelect(
+            prefix + "-coin-blockchain",
+            selectedCatalogId,
+        );
         var lst = document.getElementById(listId);
         if (lst) lst.classList.remove("active");
     },
@@ -3690,9 +3803,13 @@ function openEditCoinModal(id) {
     document.getElementById("edit-coin-time").value = dt.time;
     document.getElementById("edit-coin-note").value = tx.note || "";
     document.getElementById("edit-coin-wallet").value = tx.wallet || "";
-    CoinCatalog.populateBlockchainSelect("edit-coin-blockchain", state.editCatalogId);
+    CoinCatalog.populateBlockchainSelect(
+        "edit-coin-blockchain",
+        state.editCatalogId,
+    );
     var editBlockchainSel = document.getElementById("edit-coin-blockchain");
-    if (editBlockchainSel && tx.blockchain) editBlockchainSel.value = tx.blockchain;
+    if (editBlockchainSel && tx.blockchain)
+        editBlockchainSel.value = tx.blockchain;
 
     if (tx.status === "sold") {
         document.getElementById("sell-coin-price").value = Utils.normalizePrice(
@@ -3859,9 +3976,15 @@ function toggleCollapse() {
     state.isCollapsed = !state.isCollapsed;
     var collapseLabel = state.isCollapsed ? "EXPAND" : "COLLAPSE";
     var collapseBtn = document.getElementById("btn-collapse");
-    if (collapseBtn) collapseBtn.innerHTML = CoinmanTpl.render("COLLAPSE", { COLLAPSE_LABEL: collapseLabel });
+    if (collapseBtn)
+        collapseBtn.innerHTML = CoinmanTpl.render("COLLAPSE", {
+            COLLAPSE_LABEL: collapseLabel,
+        });
     var collapseFooterBtn = document.getElementById("btn-collapse-footer");
-    if (collapseFooterBtn) collapseFooterBtn.innerHTML = CoinmanTpl.render("COLLAPSE_FOOTER", { COLLAPSE_LABEL_FOOTER: collapseLabel });
+    if (collapseFooterBtn)
+        collapseFooterBtn.innerHTML = CoinmanTpl.render("COLLAPSE_FOOTER", {
+            COLLAPSE_LABEL_FOOTER: collapseLabel,
+        });
     if (AppBridge.isTauri()) {
         AppBridge.invoke("save_is_collapsed", {
             collapsed: state.isCollapsed,
@@ -4038,9 +4161,15 @@ function renderApp() {
 
     var collapseLabel = state.isCollapsed ? "EXPAND" : "COLLAPSE";
     var collapseBtn2 = document.getElementById("btn-collapse");
-    if (collapseBtn2) collapseBtn2.innerHTML = CoinmanTpl.render("COLLAPSE", { COLLAPSE_LABEL: collapseLabel });
+    if (collapseBtn2)
+        collapseBtn2.innerHTML = CoinmanTpl.render("COLLAPSE", {
+            COLLAPSE_LABEL: collapseLabel,
+        });
     var collapseFooterBtn2 = document.getElementById("btn-collapse-footer");
-    if (collapseFooterBtn2) collapseFooterBtn2.innerHTML = CoinmanTpl.render("COLLAPSE_FOOTER", { COLLAPSE_LABEL_FOOTER: collapseLabel });
+    if (collapseFooterBtn2)
+        collapseFooterBtn2.innerHTML = CoinmanTpl.render("COLLAPSE_FOOTER", {
+            COLLAPSE_LABEL_FOOTER: collapseLabel,
+        });
 
     if (state.needsAutoAlign && AppSettings.get("autoAlignColumns", false)) {
         setTimeout(function () {
@@ -4068,9 +4197,10 @@ function renderTabs() {
     for (var i = 0; i < tabs.length; i++) {
         var pid = parseInt(tabs[i].getAttribute("data-portfolio-id"), 10);
         var pObj = portfolios[i];
-        var dateStr = pObj && pObj.createdAt
-            ? new Date(pObj.createdAt).toLocaleString()
-            : "Unknown";
+        var dateStr =
+            pObj && pObj.createdAt
+                ? new Date(pObj.createdAt).toLocaleString()
+                : "Unknown";
         tabs[i].title = "Created: " + dateStr;
         if (pid === state.activePortfolioId) tabs[i].classList.add("active");
         tabs[i].onmousedown = (function (id) {
@@ -4117,22 +4247,28 @@ function renderMetrics(p) {
 
     // CSS color classes — direct DOM, as before
     var realEl = mt.querySelector(".m-realized-pl");
-    if (realEl) realEl.className = "metric-value " + Utils.getColorClass(m.realized);
+    if (realEl)
+        realEl.className = "metric-value " + Utils.getColorClass(m.realized);
 
     var realPctEl = mt.querySelector(".m-realized-pct");
     if (realPctEl) realPctEl.className = Utils.getColorClass(m.realizedPct);
 
     var unrealEl = mt.querySelector(".m-unrealized-pl");
-    if (unrealEl) unrealEl.className = "metric-value " + Utils.getColorClass(m.unrealized);
+    if (unrealEl)
+        unrealEl.className =
+            "metric-value " + Utils.getColorClass(m.unrealized);
 
     var pctEl = mt.querySelector(".m-unrealized-pct");
-    if (pctEl) pctEl.className = "metric-sub " + Utils.getColorClass(m.unrealizedPct);
+    if (pctEl)
+        pctEl.className = "metric-sub " + Utils.getColorClass(m.unrealizedPct);
 
     var dayEl = mt.querySelector(".m-24h-pl");
-    if (dayEl) dayEl.className = "metric-value " + Utils.getColorClass(m.day24h);
+    if (dayEl)
+        dayEl.className = "metric-value " + Utils.getColorClass(m.day24h);
 
     var dayPctEl = mt.querySelector(".m-24h-pct");
-    if (dayPctEl) dayPctEl.className = "metric-sub " + Utils.getColorClass(m.day24hPct);
+    if (dayPctEl)
+        dayPctEl.className = "metric-sub " + Utils.getColorClass(m.day24hPct);
 }
 
 function buildSummaryRowData(txs, curr, view) {
@@ -4222,9 +4358,15 @@ function renderTable(p) {
           ? "Sell Price"
           : "Buy Price";
     var priceHeader = document.getElementById("col-header-price-label");
-    if (priceHeader) priceHeader.innerHTML = CoinmanTpl.render("PRICE_HEADER", { PRICE_LABEL: priceText });
+    if (priceHeader)
+        priceHeader.innerHTML = CoinmanTpl.render("PRICE_HEADER", {
+            PRICE_LABEL: priceText,
+        });
     var priceFooter = document.getElementById("col-footer-price-label");
-    if (priceFooter) priceFooter.innerHTML = CoinmanTpl.render("PRICE_FOOTER", { PRICE_LABEL_FOOTER: priceText });
+    if (priceFooter)
+        priceFooter.innerHTML = CoinmanTpl.render("PRICE_FOOTER", {
+            PRICE_LABEL_FOOTER: priceText,
+        });
 
     // Build coin row data array
     var rows = [];
@@ -4343,9 +4485,11 @@ function renderTable(p) {
     // Build summary data
     var summaryArr = [];
     if (txsRaw.length) {
-        summaryArr.push(buildSummaryTplData(
-            buildSummaryRowData(txsRaw, curr, state.currentView),
-        ));
+        summaryArr.push(
+            buildSummaryTplData(
+                buildSummaryRowData(txsRaw, curr, state.currentView),
+            ),
+        );
     }
 
     var colCount = AppSettings.get("showCurPrice", false) ? "7" : "6";
@@ -4362,7 +4506,8 @@ function renderTable(p) {
         var val = parseFloat(profitEls[i].getAttribute("data-profit"));
         var isS = profitEls[i].classList.contains("s-profit");
         profitEls[i].className =
-            "text-bold " + (isS ? "s-profit " : "t-profit ") +
+            "text-bold " +
+            (isS ? "s-profit " : "t-profit ") +
             Utils.getColorClass(val);
     }
     var pctEls = tbody.querySelectorAll("[data-pct]");
@@ -4370,7 +4515,8 @@ function renderTable(p) {
         var pval = parseFloat(pctEls[j].getAttribute("data-pct"));
         var isSc = pctEls[j].classList.contains("s-change");
         pctEls[j].className =
-            "text-bold " + (isSc ? "s-change " : "t-change ") +
+            "text-bold " +
+            (isSc ? "s-change " : "t-change ") +
             Utils.getColorClass(pval);
     }
 
@@ -4467,7 +4613,6 @@ function buildCoinRowData(d) {
             var explorerFullUrl =
                 "https://" +
                 Utils.escapeAttr(_explorerHost) +
-                "/?" +
                 Utils.escapeAttr(_explorerAddr);
             explorerUrl =
                 '<a href="#" class="coin-ext-link" title="' +
@@ -4870,10 +5015,19 @@ var DbSelector = {
                         user: ServerSync.user,
                     })
                         .then(function (appSettings) {
-                            if (appSettings && appSettings.cmcApiKey !== undefined) {
-                                AppSettings.set("cmcApiKey", appSettings.cmcApiKey || "");
+                            if (
+                                appSettings &&
+                                appSettings.cmcApiKey !== undefined
+                            ) {
+                                AppSettings.set(
+                                    "cmcApiKey",
+                                    appSettings.cmcApiKey || "",
+                                );
                             }
-                            if (appSettings && appSettings.useCmc !== undefined) {
+                            if (
+                                appSettings &&
+                                appSettings.useCmc !== undefined
+                            ) {
                                 AppSettings.set("useCmc", !!appSettings.useCmc);
                                 AppSettings.applyCmc();
                             }
@@ -5555,7 +5709,10 @@ window.onload = function () {
     AppSettings.init();
     var aboutModal = document.getElementById("modal-about");
     var aboutVersion = document.getElementById("about-version");
-    if (aboutVersion) aboutVersion.innerHTML = CoinmanTpl.render("APP_VERSION", { VERSION_APP: "Version " + CONFIG.APP_VERSION });
+    if (aboutVersion)
+        aboutVersion.innerHTML = CoinmanTpl.render("APP_VERSION", {
+            VERSION_APP: "Version " + CONFIG.APP_VERSION,
+        });
     AppBridge.bootstrap()
         .catch(function (e) {
             console.error("Bootstrap failed:", e);
@@ -5622,10 +5779,19 @@ window.onload = function () {
                         user: ServerSync.user,
                     })
                         .then(function (appSettings) {
-                            if (appSettings && appSettings.cmcApiKey !== undefined) {
-                                AppSettings.set("cmcApiKey", appSettings.cmcApiKey || "");
+                            if (
+                                appSettings &&
+                                appSettings.cmcApiKey !== undefined
+                            ) {
+                                AppSettings.set(
+                                    "cmcApiKey",
+                                    appSettings.cmcApiKey || "",
+                                );
                             }
-                            if (appSettings && appSettings.useCmc !== undefined) {
+                            if (
+                                appSettings &&
+                                appSettings.useCmc !== undefined
+                            ) {
                                 AppSettings.set("useCmc", !!appSettings.useCmc);
                                 AppSettings.applyCmc();
                             }
