@@ -1,0 +1,35 @@
+name: Cleanup Actions Cache
+
+on:
+  schedule:
+    - cron: '0 3 * * *'   # каждый день в 03:00 UTC
+  workflow_dispatch:        # можно запустить вручную
+
+permissions:
+  actions: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete all cache entries
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Fetching cache list..."
+          CACHES=$(gh api repos/${{ github.repository }}/actions/caches \
+            --paginate --jq '.actions_caches[].id')
+
+          if [ -z "$CACHES" ]; then
+            echo "No caches found."
+            exit 0
+          fi
+
+          COUNT=0
+          for ID in $CACHES; do
+            gh api --method DELETE repos/${{ github.repository }}/actions/caches/$ID
+            echo "Deleted cache $ID"
+            COUNT=$((COUNT + 1))
+          done
+
+          echo "Done. Deleted $COUNT cache(s)."
