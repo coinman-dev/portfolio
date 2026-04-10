@@ -1,126 +1,152 @@
 name: Build Release
 
 on:
-    workflow_dispatch:
-    push:
-        branches:
-            - main
-            - dev
-        tags:
-            - "v*"
-    pull_request:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - dev
+    tags:
+      - "v*"
+  pull_request:
 
 permissions:
-    contents: write
+  contents: write
 
 env:
-    FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-    build:
-        permissions:
-            contents: write
-        strategy:
-            fail-fast: false
-            matrix:
-                include:
-                    - platform: "windows-latest"
-                      args: "--target x86_64-pc-windows-msvc --bundles nsis"
-                    - platform: "macos-latest"
-                      args: "--target x86_64-apple-darwin --bundles dmg"
-                    - platform: "macos-latest"
-                      args: "--target aarch64-apple-darwin --bundles dmg"
-                    - platform: "ubuntu-22.04"
-                      args: "--bundles deb"
+  build:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: "windows-latest"
+            args: "--target x86_64-pc-windows-msvc --bundles nsis"
+          - platform: "macos-latest"
+            args: "--target x86_64-apple-darwin --bundles dmg"
+          - platform: "macos-latest"
+            args: "--target aarch64-apple-darwin --bundles dmg"
+          - platform: "ubuntu-22.04"
+            args: "--bundles deb"
 
-        runs-on: ${{ matrix.platform }}
-        steps:
-            - uses: actions/checkout@v4
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
 
-            - name: Install system dependencies (Linux only)
-              if: matrix.platform == 'ubuntu-22.04'
-              run: |
-                  sudo apt-get update
-                  sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+      - name: Install system dependencies (Linux only)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
-            - name: Install Rust
-              uses: dtolnay/rust-toolchain@stable
-              with:
-                  targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
-            - name: Install Tauri CLI
-              run: cargo install tauri-cli --version "^2" --locked
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version "^2" --locked
 
-            - name: Set Version from Tag or Branch
-              shell: bash
-              run: |
-                  # Get version from tag (e.g., v0.7.0 -> 0.7.0) or branch
-                  if [[ $GITHUB_REF == refs/tags/v* ]]; then
-                    VERSION=${GITHUB_REF#refs/tags/v}
-                  else
-                    # Fallback for branches
-                    VERSION="0.0.0-${GITHUB_REF_NAME}"
-                  fi
-                  echo "Setting version to: $VERSION"
+      - name: Set Version from Tag or Branch
+        shell: bash
+        run: |
+          # Get version from tag (e.g., v0.7.0 -> 0.7.0) or branch
+          if [[ $GITHUB_REF == refs/tags/v* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            # Fallback for branches
+            VERSION="0.0.0-${GITHUB_REF_NAME}"
+          fi
+          echo "Setting version to: $VERSION"
 
-                  # Update tauri.conf.json
-                  # Note: uses python because it's available on all runners
-                  python3 -c "import json; f=open('src-tauri/tauri.conf.json','r+'); d=json.load(f); d['version']='$VERSION'; f.seek(0); json.dump(d,f,indent=4); f.truncate()"
+          # Use Python to update versions in all files - reliable across all platforms
+          python3 <<EOF
+import json, re
 
-                  # Update Cargo.toml [package] version
-                  sed -i 's/^version = ".*"/version = "'$VERSION'"/' src-tauri/Cargo.toml
+version = "$VERSION"
 
-                  # Print for debug
-                  grep "version =" src-tauri/Cargo.toml
-                  grep "\"version\":" src-tauri/tauri.conf.json
+# 1. Update tauri.conf.json
+with open('src-tauri/tauri.conf.json', 'r+') as f:
+    d = json.load(f)
+    d['version'] = version
+    f.seek(0)
+    json.dump(d, f, indent=4)
+    f.truncate()
 
-            - name: Build App
-              run: cargo tauri build ${{ matrix.args }}
-              working-directory: src-tauri
+# 2. Update Cargo.toml
+with open('src-tauri/Cargo.toml', 'r+') as f:
+    content = f.read()
+    content = re.sub(r'^version = ".*"', f'version = "{version}"', content, flags=re.MULTILINE)
+    f.seek(0)
+    f.write(content)
+    f.truncate()
 
-            - name: Prepare Artifacts (Windows)
-              if: matrix.platform == 'windows-latest'
-              shell: pwsh
-              run: |
-                  $exe = Get-ChildItem "target/x86_64-pc-windows-msvc/release/coinman-portfolio.exe"
-                  Compress-Archive -Path $exe.FullName -DestinationPath "coinman-portfolio-windows-x64.zip"
-                  echo "ASSET_PATH=coinman-portfolio-windows-x64.zip" >> $env:GITHUB_ENV
-                  echo "ASSET_NAME=coinman-portfolio-windows-x64.zip" >> $env:GITHUB_ENV
+# 3. Update frontend/index.js (CONFIG.APP_VERSION)
+with open('frontend/index.js', 'r+') as f:
+    content = f.read()
+    content = re.sub(r'APP_VERSION: ".*"', f'APP_VERSION: "{version}"', content)
+    f.seek(0)
+    f.write(content)
+    f.truncate()
+EOF
 
-            - name: Prepare Artifacts (macOS)
-              if: matrix.platform == 'macos-latest'
-              shell: bash
-              run: |
-                  TARGET=$(echo "${{ matrix.args }}" | grep -oE "[a-zA-Z0-0_-]+-apple-darwin")
-                  ARCH=$(echo $TARGET | cut -d'-' -f1)
-                  cp src-tauri/target/$TARGET/release/bundle/dmg/*.dmg coinman-portfolio-macos-$ARCH.dmg
-                  echo "ASSET_PATH=coinman-portfolio-macos-$ARCH.dmg" >> $GITHUB_ENV
-                  echo "ASSET_NAME=coinman-portfolio-macos-$ARCH.dmg" >> $GITHUB_ENV
+          # Print for debug
+          grep "version =" src-tauri/Cargo.toml
+          grep "\"version\":" src-tauri/tauri.conf.json
+          grep "APP_VERSION:" frontend/index.js | head -n 1
 
-            - name: Prepare Artifacts (Linux)
-              if: matrix.platform == 'ubuntu-22.04'
-              shell: bash
-              run: |
-                  cp src-tauri/target/release/coinman-portfolio .
-                  tar -czf coinman-portfolio-linux-x64.tar.gz coinman-portfolio
-                  echo "ASSET_PATH=coinman-portfolio-linux-x64.tar.gz" >> $GITHUB_ENV
-                  echo "ASSET_NAME=coinman-portfolio-linux-x64.tar.gz" >> $GITHUB_ENV
+      - name: Build App
+        run: cargo tauri build ${{ matrix.args }}
+        working-directory: src-tauri
 
-            - name: Upload files to GH release
-              uses: svenstaro/upload-release-action@v2
-              if: startsWith(github.ref, 'refs/tags/')
-              with:
-                  repo_token: ${{ secrets.GITHUB_TOKEN }}
-                  tag: ${{ github.ref_name }}
-                  file: ${{ env.ASSET_PATH }}
-                  asset_name: ${{ env.ASSET_NAME }}
-                  overwrite: true
-                  prerelease: ${{ contains(github.ref_name, '-') }}
+      - name: Prepare Artifacts (Windows)
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem "src-tauri/target/x86_64-pc-windows-msvc/release/coinman-portfolio.exe"
+          Compress-Archive -Path $exe.FullName -DestinationPath "coinman-portfolio-windows-x64.zip"
+          echo "ASSET_PATH=coinman-portfolio-windows-x64.zip" >> $env:GITHUB_ENV
+          echo "ASSET_NAME=coinman-portfolio-windows-x64.zip" >> $env:GITHUB_ENV
 
-            - name: Upload artifacts (on branch push)
-              if: "!startsWith(github.ref, 'refs/tags/')"
-              uses: actions/upload-artifact@v4
-              with:
-                  name: coinman-portfolio-${{ runner.os }}-${{ strategy.job-index }}
-                  path: ${{ env.ASSET_PATH }}
-                  retention-days: 7
+      - name: Prepare Artifacts (macOS)
+        if: matrix.platform == 'macos-latest'
+        shell: bash
+        run: |
+          TARGET=$(echo "${{ matrix.args }}" | grep -oE "[a-zA-Z0-0_-]+-apple-darwin")
+          ARCH=$(echo $TARGET | cut -d'-' -f1)
+          cp src-tauri/target/$TARGET/release/bundle/dmg/*.dmg coinman-portfolio-macos-$ARCH.dmg
+          echo "ASSET_PATH=coinman-portfolio-macos-$ARCH.dmg" >> $GITHUB_ENV
+          echo "ASSET_NAME=coinman-portfolio-macos-$ARCH.dmg" >> $GITHUB_ENV
+
+      - name: Prepare Artifacts (Linux)
+        if: matrix.platform == 'ubuntu-22.04'
+        shell: bash
+        run: |
+          # Use the actual binary path from the build output
+          cp src-tauri/target/release/coinman-portfolio .
+          tar -czf coinman-portfolio-linux-x64.tar.gz coinman-portfolio
+          echo "ASSET_PATH=coinman-portfolio-linux-x64.tar.gz" >> $GITHUB_ENV
+          echo "ASSET_NAME=coinman-portfolio-linux-x64.tar.gz" >> $GITHUB_ENV
+
+      - name: Upload files to GH release
+        uses: svenstaro/upload-release-action@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ github.ref_name }}
+          file: ${{ env.ASSET_PATH }}
+          asset_name: ${{ env.ASSET_NAME }}
+          overwrite: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
+
+      - name: Upload artifacts (on branch push)
+        if: "!startsWith(github.ref, 'refs/tags/')"
+        uses: actions/upload-artifact@v4
+        with:
+          name: coinman-portfolio-${{ runner.os }}-${{ strategy.job-index }}
+          path: ${{ env.ASSET_PATH }}
+          retention-days: 7
