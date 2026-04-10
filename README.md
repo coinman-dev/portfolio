@@ -1,12 +1,12 @@
 # CoinMan Portfolio Tracker
 
+A simple desktop application for tracking and managing your cryptocurrency portfolio. All data is stored **locally on your hard drive** — no cloud, no servers, no registration required.
+
 [![Release](https://img.shields.io/github/v/release/coinman-dev/portfolio.svg)](https://github.com/coinman-dev/portfolio/releases)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/coinman-dev/portfolio/build-release.yml?branch=main)](https://github.com/coinman-dev/portfolio/actions)
 [![Rust Version](https://img.shields.io/badge/rust-1.77.2%2B-orange.svg)](#)
 [![Downloads](https://img.shields.io/github/downloads/coinman-dev/portfolio/total.svg)](https://github.com/coinman-dev/portfolio/releases/latest)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg?longCache=true)](LICENSE)
-
-A simple desktop application for tracking and managing your cryptocurrency portfolio. All data is stored **locally on your hard drive** — no cloud, no servers, no registration required.
 
 ---
 
