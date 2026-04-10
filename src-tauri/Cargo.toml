@@ -3,8 +3,8 @@ name = "coinman-portfolio"
 version = "0.6.0"
 description = "CoinMan desktop portfolio tracker"
 authors = ["modulator"]
-license = ""
-repository = ""
+license = "MIT"
+repository = "https://github.com/coinman-dev/portfolio"
 edition = "2021"
 rust-version = "1.77.2"
 

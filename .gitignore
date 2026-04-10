@@ -14,7 +14,8 @@ database/
 .DS_Store
 Thumbs.db
 
+.ai/
 .memory/
-
+.claude/
 debug/
-
+tmp/
