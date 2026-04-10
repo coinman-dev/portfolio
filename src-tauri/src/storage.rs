@@ -60,6 +60,7 @@ pub struct BootstrapConfig {
     pub user: String,
     pub coinbase: CoinCatalogConfig,
     pub debug_mode: bool,
+    pub app_version: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -240,13 +241,14 @@ pub fn sanitize_user(value: Option<String>) -> String {
 }
 
 pub fn load_bootstrap<R: Runtime>(
-    _app: &AppHandle<R>,
+    app: &AppHandle<R>,
     debug_mode: bool,
 ) -> Result<BootstrapConfig, String> {
     Ok(BootstrapConfig {
         user: DEFAULT_USER.to_string(),
         coinbase: load_coin_catalog()?,
         debug_mode,
+        app_version: app.package_info().version.to_string(),
     })
 }
 

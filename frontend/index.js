@@ -120,10 +120,26 @@ var AppBridge = {
         return AppBridge.invoke("bootstrap_app").then(function (config) {
             window.SERVER_CONFIG = config || {};
             window.DEBUG_MODE = !!(config && config.debugMode);
+            if (config && config.appVersion) {
+                CONFIG.APP_VERSION = String(config.appVersion).replace(/^v/, "");
+            }
             return window.SERVER_CONFIG;
         });
     },
 };
+
+function getDisplayAppVersion() {
+    if (!CONFIG.APP_VERSION) return "";
+    return "v" + String(CONFIG.APP_VERSION).replace(/^v/, "");
+}
+
+function renderAboutVersion() {
+    var aboutVersion = document.getElementById("about-version");
+    if (!aboutVersion) return;
+    aboutVersion.innerHTML = CoinmanTpl.render("APP_VERSION", {
+        VERSION_APP: "Version " + getDisplayAppVersion(),
+    });
+}
 
 // ─── DEBUG LOGGER ────────────────────────────────────────────────────────────
 var DebugLog = {
@@ -5708,17 +5724,14 @@ window.onload = function () {
     CoinmanTpl.init();
     AppSettings.init();
     var aboutModal = document.getElementById("modal-about");
-    var aboutVersion = document.getElementById("about-version");
-    if (aboutVersion)
-        aboutVersion.innerHTML = CoinmanTpl.render("APP_VERSION", {
-            VERSION_APP: "Version " + CONFIG.APP_VERSION,
-        });
+    renderAboutVersion();
     AppBridge.bootstrap()
         .catch(function (e) {
             console.error("Bootstrap failed:", e);
             window.SERVER_CONFIG = window.SERVER_CONFIG || {};
         })
         .finally(function () {
+            renderAboutVersion();
             ServerSync.init();
             Market.setDbStatus(ServerSync.user);
             CoinCatalog.initFromServer();
