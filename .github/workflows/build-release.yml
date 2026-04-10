@@ -13,29 +13,31 @@ on:
 permissions:
   contents: write
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   build:
+    name: Build (${{ matrix.name }})
     permissions:
       contents: write
     strategy:
       fail-fast: false
       matrix:
         include:
-          - platform: "windows-latest"
+          - name: "Windows x64"
+            platform: "windows-latest"
             args: "--target x86_64-pc-windows-msvc --bundles nsis"
-          - platform: "macos-latest"
+          - name: "macOS Intel"
+            platform: "macos-latest"
             args: "--target x86_64-apple-darwin --bundles dmg"
-          - platform: "macos-latest"
+          - name: "macOS Silicon"
+            platform: "macos-latest"
             args: "--target aarch64-apple-darwin --bundles dmg"
-          - platform: "ubuntu-22.04"
+          - name: "Linux x64"
+            platform: "ubuntu-22.04"
             args: "--bundles deb"
 
     runs-on: ${{ matrix.platform }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install system dependencies (Linux only)
         if: matrix.platform == 'ubuntu-22.04'
@@ -54,50 +56,40 @@ jobs:
       - name: Set Version from Tag or Branch
         shell: bash
         run: |
-          # Get version from tag (e.g., v0.7.0 -> 0.7.0) or branch
           if [[ $GITHUB_REF == refs/tags/v* ]]; then
             VERSION=${GITHUB_REF#refs/tags/v}
           else
-            # Fallback for branches
             VERSION="0.0.0-${GITHUB_REF_NAME}"
           fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Setting version to: $VERSION"
 
-          # Use Python to update versions in all files - reliable across all platforms
-          python3 <<EOF
-import json, re
+      - name: Update Version in Files
+        shell: python
+        run: |
+          import json, re, os
+          version = os.environ.get('VERSION')
 
-version = "$VERSION"
+          with open('src-tauri/tauri.conf.json', 'r+', encoding='utf-8') as f:
+              d = json.load(f)
+              d['version'] = version
+              f.seek(0)
+              json.dump(d, f, indent=4)
+              f.truncate()
 
-# 1. Update tauri.conf.json
-with open('src-tauri/tauri.conf.json', 'r+') as f:
-    d = json.load(f)
-    d['version'] = version
-    f.seek(0)
-    json.dump(d, f, indent=4)
-    f.truncate()
+          with open('src-tauri/Cargo.toml', 'r+', encoding='utf-8') as f:
+              content = f.read()
+              content = re.sub(r'^version\s*=\s*".*"', f'version = "{version}"', content, flags=re.MULTILINE)
+              f.seek(0)
+              f.write(content)
+              f.truncate()
 
-# 2. Update Cargo.toml
-with open('src-tauri/Cargo.toml', 'r+') as f:
-    content = f.read()
-    content = re.sub(r'^version = ".*"', f'version = "{version}"', content, flags=re.MULTILINE)
-    f.seek(0)
-    f.write(content)
-    f.truncate()
-
-# 3. Update frontend/index.js (CONFIG.APP_VERSION)
-with open('frontend/index.js', 'r+') as f:
-    content = f.read()
-    content = re.sub(r'APP_VERSION: ".*"', f'APP_VERSION: "{version}"', content)
-    f.seek(0)
-    f.write(content)
-    f.truncate()
-EOF
-
-          # Print for debug
-          grep "version =" src-tauri/Cargo.toml
-          grep "\"version\":" src-tauri/tauri.conf.json
-          grep "APP_VERSION:" frontend/index.js | head -n 1
+          with open('frontend/index.js', 'r+', encoding='utf-8') as f:
+              content = f.read()
+              content = re.sub(r'APP_VERSION:\s*".*"', f'APP_VERSION: "{version}"', content)
+              f.seek(0)
+              f.write(content)
+              f.truncate()
 
       - name: Build App
         run: cargo tauri build ${{ matrix.args }}
@@ -107,7 +99,8 @@ EOF
         if: matrix.platform == 'windows-latest'
         shell: pwsh
         run: |
-          $exe = Get-ChildItem "src-tauri/target/x86_64-pc-windows-msvc/release/coinman-portfolio.exe"
+          $exe = Get-ChildItem -Path "target" -Filter "coinman-portfolio.exe" -Recurse | Where-Object { $_.FullName -like "*release*" } | Select-Object -First 1
+          if (-not $exe) { throw "Could not find coinman-portfolio.exe" }
           Compress-Archive -Path $exe.FullName -DestinationPath "coinman-portfolio-windows-x64.zip"
           echo "ASSET_PATH=coinman-portfolio-windows-x64.zip" >> $env:GITHUB_ENV
           echo "ASSET_NAME=coinman-portfolio-windows-x64.zip" >> $env:GITHUB_ENV
@@ -116,9 +109,9 @@ EOF
         if: matrix.platform == 'macos-latest'
         shell: bash
         run: |
-          TARGET=$(echo "${{ matrix.args }}" | grep -oE "[a-zA-Z0-0_-]+-apple-darwin")
-          ARCH=$(echo $TARGET | cut -d'-' -f1)
-          cp src-tauri/target/$TARGET/release/bundle/dmg/*.dmg coinman-portfolio-macos-$ARCH.dmg
+          TARGET=$(echo "${{ matrix.args }}" | grep -oE "[a-zA-Z0-9_-]+-apple-darwin")
+          ARCH=$(echo "$TARGET" | cut -d'-' -f1)
+          cp target/$TARGET/release/bundle/dmg/*.dmg coinman-portfolio-macos-$ARCH.dmg
           echo "ASSET_PATH=coinman-portfolio-macos-$ARCH.dmg" >> $GITHUB_ENV
           echo "ASSET_NAME=coinman-portfolio-macos-$ARCH.dmg" >> $GITHUB_ENV
 
@@ -126,8 +119,7 @@ EOF
         if: matrix.platform == 'ubuntu-22.04'
         shell: bash
         run: |
-          # Use the actual binary path from the build output
-          cp src-tauri/target/release/coinman-portfolio .
+          cp target/release/coinman-portfolio .
           tar -czf coinman-portfolio-linux-x64.tar.gz coinman-portfolio
           echo "ASSET_PATH=coinman-portfolio-linux-x64.tar.gz" >> $GITHUB_ENV
           echo "ASSET_NAME=coinman-portfolio-linux-x64.tar.gz" >> $GITHUB_ENV
@@ -145,7 +137,7 @@ EOF
 
       - name: Upload artifacts (on branch push)
         if: "!startsWith(github.ref, 'refs/tags/')"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: coinman-portfolio-${{ runner.os }}-${{ strategy.job-index }}
           path: ${{ env.ASSET_PATH }}
