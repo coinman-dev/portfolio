@@ -367,10 +367,12 @@ var AppSettings = {
         }
         this.applyAutoAlign();
         if (newVal) {
-            // Reset snapshot so it captures fresh Change width
-            UI._changeWidthSnapshot = null;
             state.needsAutoAlign = true;
             renderApp();
+        } else {
+            // Clear explicit Change width so it becomes elastic again
+            var thChange = document.getElementById("th-change");
+            if (thChange) thChange.style.width = "";
         }
     },
 
@@ -537,6 +539,22 @@ var portfolios = [];
 // Templates object replaced by CoinmanTpl — see coinman-tpl.js
 
 var Utils = {
+    confirm: function (message) {
+        var tauriDialog =
+            window.__TAURI__ && window.__TAURI__.dialog
+                ? window.__TAURI__.dialog
+                : null;
+        if (tauriDialog && typeof tauriDialog.ask === "function") {
+            return tauriDialog.ask(message, {
+                title: "Confirm",
+                kind: "warning",
+            });
+        }
+        var result = window.confirm(message);
+        if (result && typeof result.then === "function") return result;
+        return window.Promise.resolve(!!result);
+    },
+
     parseNumber: function (value, fallback) {
         if (fallback === undefined) fallback = 0;
         var s = String(value || "").trim();
@@ -582,6 +600,14 @@ var Utils = {
             minimumFractionDigits: minD,
             maximumFractionDigits: maxD,
         });
+        // Strip trailing zeros after the decimal but keep at least 2 places.
+        var dotPos = s.indexOf(".");
+        if (dotPos !== -1) {
+            var intPart = s.substring(0, dotPos);
+            var fracPart = s.substring(dotPos + 1).replace(/0+$/, "");
+            if (fracPart.length < 2) fracPart = fracPart.padEnd(2, "0");
+            s = intPart + "." + fracPart;
+        }
         if (CONFIG.DECIMAL_SEPARATOR === ",") s = s.replace(".", ",");
         return symbol + " " + s;
     },
@@ -1351,6 +1377,7 @@ var Market = {
         Market.clearDetailsCache();
         state.marketData = nextList;
         state.marketDataByCatalogId = nextMap;
+        state.needsAutoAlign = true;
     },
 
     getMarketCoin: function (catalogId) {
@@ -1416,6 +1443,7 @@ var Market = {
         } else {
             state.marketData[idx] = next;
         }
+        state.needsAutoAlign = true;
     },
 
     buildCoinFromRow: function (symbol, currency, row, baseCoin, catalogCoin) {
@@ -2325,6 +2353,7 @@ var Tx = {
         );
         Tx.normalize(tx);
         p.transactions.push(tx);
+        state.needsAutoAlign = true;
         Storage.save();
         return tx;
     },
@@ -2342,6 +2371,7 @@ var Tx = {
         if (!tx) return null;
         Object.assign(tx, data);
         Tx.normalize(tx);
+        state.needsAutoAlign = true;
         Storage.save();
         return tx;
     },
@@ -2354,6 +2384,7 @@ var Tx = {
         p.transactions = p.transactions.filter(function (t) {
             return t.id !== txId;
         });
+        state.needsAutoAlign = true;
         Storage.save();
         return true;
     },
@@ -2403,6 +2434,7 @@ var Tx = {
             Tx.normalize(tx);
         }
 
+        state.needsAutoAlign = true;
         Storage.save();
         return true;
     },
@@ -2492,6 +2524,7 @@ var Tx = {
             left = Utils.normalizeAmount(left - take);
         }
 
+        state.needsAutoAlign = true;
         Storage.save();
         return {
             ok: true,
@@ -2866,8 +2899,23 @@ var UI = {
         });
     },
 
-    // Snapshot of Change column width, captured once per session
-    _changeWidthSnapshot: null,
+    initWindowResize: function () {
+        var resizeTimer = null;
+        window.addEventListener("resize", function () {
+            if (resizeTimer) window.clearTimeout(resizeTimer);
+            resizeTimer = window.setTimeout(function () {
+                resizeTimer = null;
+                if (AppSettings.get("autoAlignColumns", false)) {
+                    UI.autoAlignTableColumns();
+                } else {
+                    // In manual mode, drop explicit Change width so the
+                    // browser refits it to the remaining space.
+                    var thChange = document.getElementById("th-change");
+                    if (thChange) thChange.style.width = "";
+                }
+            }, 150);
+        });
+    },
 
     autoAlignTableColumns: function () {
         var table = document.getElementById("portfolio-transactions-table");
@@ -2879,18 +2927,10 @@ var UI = {
         if (availableWidth < 100) availableWidth = 1000;
 
         var thChange = document.getElementById("th-change");
-
-        // Capture Change column width once and reuse it forever
-        if (this._changeWidthSnapshot === null) {
-            this._changeWidthSnapshot = thChange ? thChange.offsetWidth : 120;
-        }
-        var fixedChangeWidth = this._changeWidthSnapshot;
-
-        // Collect all th from thead and tfoot
         var headThs = table.querySelectorAll("thead th");
         var footThs = table.querySelectorAll("tfoot th");
 
-        // Reset all column widths to auto (except Change — hidden via CSS)
+        // Reset all column widths to auto so measurements reflect content
         headThs.forEach(function (th) {
             th.style.width = "auto";
         });
@@ -2898,22 +2938,47 @@ var UI = {
             th.style.width = "auto";
         });
 
-        // auto-aligning class hides entire Change column (last-child)
-        // and sets white-space: nowrap on all td
+        // Switch table to auto layout so each column sizes to its content
         table.style.tableLayout = "auto";
         table.style.width = "auto";
+
+        // First pass: measure Change column at its natural content width
+        // (header + value), without the auto-aligning class that hides it.
+        table.offsetHeight; // force reflow
+        var changeContentWidth = thChange ? thChange.offsetWidth : 0;
+        if (changeContentWidth < 80) changeContentWidth = 80;
+
+        // Second pass: hide Change via auto-aligning class, measure others
         table.classList.add("auto-aligning");
+        table.offsetHeight; // force reflow
 
-        var dummy = table.offsetHeight; // force reflow
+        // User's saved widths (from manual drag) act as preferences;
+        // auto-align respects them while ensuring content still fits.
+        var savedObj = AppSettings.get("columnWidths", {});
+        var saved = savedObj.widths || savedObj;
 
-        // Measure true minimum widths from thead (Change column is hidden by CSS)
-        var newWidths = {};
-        var totalNeededWidth = fixedChangeWidth;
+        // Change: respect the user's saved width exactly (their resize was
+        // a deliberate choice), or fall back to natural content width.
+        var savedChange = parseInt(saved["th-change"]) || 0;
+        var changeWidth = savedChange >= 30 ? savedChange : changeContentWidth;
+
+        var newWidths = { "th-change": changeWidth };
+        var totalNeededWidth = changeWidth;
+
         headThs.forEach(function (th) {
             if (th.id === "th-change") return;
             if (window.getComputedStyle(th).display !== "none") {
                 var pad = CONFIG.AUTO_ALIGN_COL_PADDING[th.id] || 0;
-                var w = th.offsetWidth + pad;
+                var contentW = th.offsetWidth + pad;
+                var w;
+                if (th.id === "th-coin") {
+                    // Coin always absorbs the remainder; start at content
+                    // width and the fitter below adjusts it.
+                    w = contentW;
+                } else {
+                    var savedW = parseInt(saved[th.id]) || 0;
+                    w = Math.max(contentW, savedW);
+                }
                 if (th.id) {
                     newWidths[th.id] = w;
                 }
@@ -2926,10 +2991,9 @@ var UI = {
         table.style.width = "100%";
         table.classList.remove("auto-aligning");
 
-        newWidths["th-change"] = fixedChangeWidth;
-
-        // Adjust Coin/Date column to fit within available width
-        if (newWidths["th-coin"]) {
+        // Coin/Date absorbs the difference so the right edge of Change lands
+        // exactly at availableWidth (parent.clientWidth - right margin).
+        if (newWidths["th-coin"] !== undefined) {
             if (totalNeededWidth > availableWidth) {
                 var excess = totalNeededWidth - availableWidth;
                 newWidths["th-coin"] = Math.max(
@@ -2937,8 +3001,7 @@ var UI = {
                     newWidths["th-coin"] - excess,
                 );
             } else if (totalNeededWidth < availableWidth) {
-                var extra = availableWidth - totalNeededWidth;
-                newWidths["th-coin"] += extra;
+                newWidths["th-coin"] += availableWidth - totalNeededWidth;
             }
         }
 
@@ -2949,14 +3012,12 @@ var UI = {
             }
         });
 
-        var savedObj = AppSettings.get("columnWidths", {});
-        var saved = savedObj.widths || savedObj;
+        // Persist computed widths so a reload reproduces the same layout.
+        // User's manual drags also write here, so subsequent runs read them
+        // back as preferences via the max(content, saved) logic above.
         Object.keys(newWidths).forEach(function (k) {
-            if (k !== "th-change") {
-                saved[k] = newWidths[k];
-            }
+            saved[k] = newWidths[k];
         });
-
         AppSettings.set("columnWidths", saved);
         if (AppBridge.isTauri()) {
             AppBridge.invoke("save_column_widths", { widths: saved }).catch(
@@ -2998,23 +3059,28 @@ var UI = {
                 var startX = e.pageX;
                 var startWidth = prevTh.getBoundingClientRect().width;
 
-                // Calculate how much we can expand to the right before the last column hits its minimum width (80px)
                 var thChange = document.getElementById("th-change");
-                var availableSlack = thChange
-                    ? thChange.offsetWidth - 80
-                    : 10000;
+                var startChangeWidth = thChange
+                    ? thChange.getBoundingClientRect().width
+                    : 0;
+                var minChangeWidth = 80;
+                var minPrevWidth = 30;
+
+                // Clamp delta so neither column violates its minimum
+                var maxDelta = thChange
+                    ? startChangeWidth - minChangeWidth
+                    : Infinity;
+                var minDelta = minPrevWidth - startWidth;
 
                 function onMouseMove(eMove) {
                     var delta = eMove.pageX - startX;
+                    if (delta > maxDelta) delta = maxDelta;
+                    if (delta < minDelta) delta = minDelta;
 
-                    // Limit movement to the right to prevent table overflow and scrollbars
-                    if (delta > availableSlack) {
-                        delta = availableSlack;
-                    }
-
-                    var newWidth = startWidth + delta;
-                    if (newWidth > 30) {
-                        prevTh.style.width = newWidth + "px";
+                    prevTh.style.width = startWidth + delta + "px";
+                    if (thChange) {
+                        thChange.style.width =
+                            startChangeWidth - delta + "px";
                     }
                 }
 
@@ -3032,7 +3098,7 @@ var UI = {
                         "#portfolio-transactions-table th",
                     );
                     allThs.forEach(function (t) {
-                        if (t.id && t.id !== "th-change" && t.offsetWidth > 0) {
+                        if (t.id && t.offsetWidth > 0) {
                             widths[t.id] = t.offsetWidth;
                         }
                     });
@@ -3678,10 +3744,12 @@ function handleUpdatePortfolio() {
 function handleDeletePortfolio() {
     if (portfolios.length <= 1)
         return window.alert("Cannot delete the last portfolio.");
-    if (!window.confirm("Delete this portfolio?")) return;
-    Portfolio.delete(state.activePortfolioId);
-    renderApp();
-    UI.closeModal("modal-edit-portfolio");
+    Utils.confirm("Delete this portfolio?").then(function (ok) {
+        if (!ok) return;
+        Portfolio.delete(state.activePortfolioId);
+        renderApp();
+        UI.closeModal("modal-edit-portfolio");
+    });
 }
 
 function openAddCoinModal() {
@@ -3955,10 +4023,12 @@ function handleSellTransaction() {
 }
 
 function handleDeleteTransaction() {
-    if (!window.confirm("Delete this transaction?")) return;
-    Tx.delete(state.activePortfolioId, state.currentEditingId);
-    renderApp();
-    UI.closeModal("modal-edit-coin");
+    Utils.confirm("Delete this transaction?").then(function (ok) {
+        if (!ok) return;
+        Tx.delete(state.activePortfolioId, state.currentEditingId);
+        renderApp();
+        UI.closeModal("modal-edit-coin");
+    });
 }
 
 function openClearDatabaseModal() {
@@ -5100,12 +5170,11 @@ var DbSelector = {
                                 var widthsData = appSettings.columnWidths;
                                 var widths = widthsData.widths || widthsData;
                                 AppSettings.set("columnWidths", widths);
-                                AppSettings.applyCurPrice(); // Still call here to apply widths correctly
+                                AppSettings.applyCurPrice(); // sets th-coin and th-cur-price in manual mode
                                 Object.keys(widths).forEach(function (id) {
                                     var th = document.getElementById(id);
                                     if (
                                         th &&
-                                        id !== "th-change" &&
                                         id !== "th-coin" &&
                                         id !== "th-cur-price"
                                     ) {
@@ -5749,6 +5818,7 @@ window.onload = function () {
                 UI.initRestrictions();
                 UI.initSortingUI();
                 UI.initColumnResizing();
+                UI.initWindowResize();
 
                 UI.applyModalSize("modal-create-portfolio", "DEFAULT");
                 UI.applyModalSize("modal-edit-portfolio", "DEFAULT");
@@ -5861,12 +5931,11 @@ window.onload = function () {
                                 var widthsData = appSettings.columnWidths;
                                 var widths = widthsData.widths || widthsData;
                                 AppSettings.set("columnWidths", widths);
-                                AppSettings.applyCurPrice(); // Still call here to apply widths correctly
+                                AppSettings.applyCurPrice(); // sets th-coin and th-cur-price in manual mode
                                 Object.keys(widths).forEach(function (id) {
                                     var th = document.getElementById(id);
                                     if (
                                         th &&
-                                        id !== "th-change" &&
                                         id !== "th-coin" &&
                                         id !== "th-cur-price"
                                     ) {
