@@ -4,7 +4,8 @@ A simple desktop application for tracking and managing your cryptocurrency portf
 
 [![Release](https://img.shields.io/github/v/release/coinman-dev/portfolio.svg)](https://github.com/coinman-dev/portfolio/releases)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/coinman-dev/portfolio/build-release.yml?branch=main)](https://github.com/coinman-dev/portfolio/actions)
-[![Rust Version](https://img.shields.io/badge/rust-1.77.2%2B-orange.svg)](#)
+[![Rust Version](https://img.shields.io/badge/rust-1.95.0%2B-orange.svg)](#)
+[![Tauri Version](https://img.shields.io/badge/tauri-2.11.1-blue.svg)](https://tauri.app/)
 [![Downloads](https://img.shields.io/github/downloads/coinman-dev/portfolio/total.svg)](https://github.com/coinman-dev/portfolio/releases/latest)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg?longCache=true)](LICENSE)
 
@@ -60,28 +61,35 @@ Most portfolio tracking services store your data on their servers, where third p
 ### Prerequisites
 
 **All platforms:**
-- [Rust](https://rustup.rs/) (1.77.2 or newer)
-- [Node.js](https://nodejs.org/) (v18+) — required by Tauri CLI only
-- Tauri CLI:
+- [Rust](https://rustup.rs/) 1.95.0 or newer (MSRV pinned in `src-tauri/Cargo.toml`)
+- Tauri CLI v2:
   ```bash
-  cargo install tauri-cli --version "^2"
+  cargo install tauri-cli --version "^2" --locked
   ```
 
-**Linux (Ubuntu/Debian) only:**
+> The frontend is plain vanilla JS — Tauri 2's CLI is a Rust binary, so **Node.js is not required**.
+
+**Linux (Ubuntu/Debian):**
 ```bash
 sudo apt update
 sudo apt install -y \
   libwebkit2gtk-4.1-dev \
-  libssl-dev \
   libgtk-3-dev \
   libayatana-appindicator3-dev \
   librsvg2-dev \
   patchelf
 ```
 
-**Windows only:**
-- [WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) (already bundled in Windows 11)
+**Windows:**
+- [WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) (bundled in Windows 11)
 - [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) with the **Desktop development with C++** workload
+
+**Cross-compiling for Windows from Linux/WSL:**
+```bash
+sudo apt install -y clang lld llvm
+rustup target add x86_64-pc-windows-msvc
+cargo install cargo-xwin --locked
+```
 
 ---
 
@@ -97,24 +105,32 @@ cargo tauri dev
 
 ### Building portable binaries (no installer)
 
-#### Windows — portable .exe
+#### Quick: scripted Windows build from Linux/WSL
 
-Supports cross-compilation via `cargo-xwin` (can be built from Linux or Windows):
+The repo includes [`scripts/build-windows-local.sh`](scripts/build-windows-local.sh) which automates the whole cross-compilation flow — it verifies prerequisites (offering to install any that are missing), stamps the version from the latest `v*` git tag plus the short HEAD SHA (e.g. `0.7.1-beta-69e6f13`), runs the build, and restores the source files afterwards:
 
 ```bash
-# Install cargo-xwin (once)
-cargo install cargo-xwin
-
-# Add the target (once)
-rustup target add x86_64-pc-windows-msvc
-
-# Build
-cargo tauri build --runner cargo-xwin --target x86_64-pc-windows-msvc --no-bundle --ci
+./scripts/build-windows-local.sh                # latest v* tag
+./scripts/build-windows-local.sh v0.7.0-beta   # specific tag
 ```
 
 Output: `target/x86_64-pc-windows-msvc/release/coinman-portfolio.exe`
 
-#### Linux (Ubuntu) — portable binary
+#### Manual: Windows portable .exe
+
+Cross-compile from Linux or WSL via `cargo-xwin`:
+```bash
+cargo tauri build --runner cargo-xwin --target x86_64-pc-windows-msvc --no-bundle --ci
+```
+
+Native build on Windows:
+```bash
+cargo tauri build --target x86_64-pc-windows-msvc --no-bundle --ci
+```
+
+Output: `target/x86_64-pc-windows-msvc/release/coinman-portfolio.exe`
+
+#### Manual: Linux portable binary
 
 ```bash
 cargo tauri build --no-bundle --ci
@@ -180,9 +196,10 @@ CoinMan Portfolio Tracker supports **AES-256-GCM** encryption for database files
 
 ## Tech Stack
 
-- [Tauri v2](https://tauri.app/) — desktop app framework (Rust + WebView)
-- Rust — backend, data storage, system calls
-- Vanilla JavaScript / HTML / CSS — UI (no frameworks, no npm)
+- [Tauri v2](https://tauri.app/) (2.11.x) — desktop app framework (Rust + WebView)
+- Rust (MSRV 1.95.0) — backend, data storage, system calls
+- Vanilla JavaScript / HTML / CSS — UI (no frameworks, no npm, no Node.js)
+- Python 3 — used only by maintainer-side scripts under `scripts/catalog/` for coin catalog updates (not needed to run or build the app)
 - [CoinGecko API](https://www.coingecko.com/) — live coin prices (default)
 - [CoinMarketCap API](https://coinmarketcap.com/) — live coin prices (optional, requires API key)
 - [CoinMarketCap](https://coinmarketcap.com/) — coin catalog & logos
