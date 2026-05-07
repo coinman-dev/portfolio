@@ -1024,24 +1024,21 @@ var CoinCatalog = {
         if (!catalogId) return;
         var coin = CoinCatalog.getById(catalogId);
         if (!coin) return;
-        var platforms = coin.platform || [];
-        if (!platforms.length && coin.category !== "coin") return;
-        if (coin.category === "coin") {
-            var opt = document.createElement("option");
-            opt.value = "Native";
-            opt.textContent = "Native";
-            sel.appendChild(opt);
-        }
-        platforms.forEach(function (p) {
+
+        var nativeOpt = document.createElement("option");
+        nativeOpt.value = "Native";
+        nativeOpt.textContent = "Native";
+        sel.appendChild(nativeOpt);
+
+        (coin.platform || []).forEach(function (p) {
             var opt = document.createElement("option");
             opt.value = p.name || "";
             opt.textContent = p.name || "";
             sel.appendChild(opt);
         });
-        if (sel.options.length > 1) {
-            sel.disabled = false;
-            sel.selectedIndex = 1;
-        }
+
+        sel.disabled = false;
+        sel.selectedIndex = 1; // Native by default
     },
 };
 
@@ -4674,26 +4671,30 @@ function buildCoinRowData(d) {
         }
         var _explorerHost = "";
         var _explorerAddr = "";
-        if (cat.category === "token" && d.blockchain && d.wallet) {
-            // Find matching platform entry by blockchain name to get the blockchain's explorer
-            var _platforms = cat.platform || [];
-            var _platform = null;
-            for (var _pi = 0; _pi < _platforms.length; _pi++) {
-                if (_platforms[_pi].name === d.blockchain) {
-                    _platform = _platforms[_pi];
-                    break;
+        if (d.wallet) {
+            // If user picked a specific (non-Native) blockchain that exists in
+            // cat.platform[], resolve that chain's explorer. Otherwise fall
+            // back to the coin's own explorer (Native case).
+            var _matchedPlatform = null;
+            if (d.blockchain && d.blockchain !== "Native") {
+                var _platforms = cat.platform || [];
+                for (var _pi = 0; _pi < _platforms.length; _pi++) {
+                    if (_platforms[_pi].name === d.blockchain) {
+                        _matchedPlatform = _platforms[_pi];
+                        break;
+                    }
                 }
             }
-            if (_platform && _platform.id) {
-                var _chainCat = CoinCatalog.getById(String(_platform.id));
+            if (_matchedPlatform && _matchedPlatform.id) {
+                var _chainCat = CoinCatalog.getById(String(_matchedPlatform.id));
                 if (_chainCat && _chainCat.explorer) {
                     _explorerHost = _chainCat.explorer;
                     _explorerAddr = d.wallet;
                 }
+            } else if (cat.explorer) {
+                _explorerHost = cat.explorer;
+                _explorerAddr = d.wallet;
             }
-        } else if (cat.explorer && d.wallet) {
-            _explorerHost = cat.explorer;
-            _explorerAddr = d.wallet;
         }
         if (_explorerHost && _explorerAddr) {
             var explorerFullUrl =
