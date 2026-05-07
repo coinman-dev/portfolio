@@ -6,7 +6,7 @@ authors = ["modulator"]
 license = "MIT"
 repository = "https://github.com/coinman-dev/portfolio"
 edition = "2021"
-rust-version = "1.77.2"
+rust-version = "1.95.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -15,7 +15,7 @@ name = "coinman_portfolio_lib"
 crate-type = ["rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2.5.6", features = [] }
+tauri-build = { version = "2.6.1", features = [] }
 
 [profile.release]
 opt-level = "z"
@@ -29,10 +29,10 @@ incremental = false
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
-tauri = { version = "2.10.3", features = ["devtools"] }
-tauri-plugin-log = "2"
-tauri-plugin-single-instance = "2.4.0"
-tauri-plugin-dialog = "2.2.0"
+tauri = { version = "2.11.1", features = ["devtools"] }
+tauri-plugin-log = "2.8.0"
+tauri-plugin-single-instance = "2.4.2"
+tauri-plugin-dialog = "2.7.1"
 aes-gcm = "0.10"
 argon2 = "0.5"
 rand = "0.8"
