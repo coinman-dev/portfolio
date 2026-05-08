@@ -2,7 +2,7 @@
 
 A simple desktop application for tracking and managing your cryptocurrency portfolio. All data is stored **locally on your hard drive** — no cloud, no servers, no registration required.
 
-[![Release](https://img.shields.io/github/v/release/coinman-dev/portfolio.svg)](https://github.com/coinman-dev/portfolio/releases)
+[![Release](https://img.shields.io/github/v/release/coinman-dev/portfolio.svg?include_prereleases)](https://github.com/coinman-dev/portfolio/releases)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/coinman-dev/portfolio/build-release.yml?branch=main)](https://github.com/coinman-dev/portfolio/actions)
 [![Rust Version](https://img.shields.io/badge/rust-1.95.0%2B-orange.svg)](#)
 [![Tauri Version](https://img.shields.io/badge/tauri-2.11.1-blue.svg)](https://tauri.app/)
