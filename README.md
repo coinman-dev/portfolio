@@ -58,87 +58,51 @@ Most portfolio tracking services store your data on their servers, where third p
 
 ## Building from Source
 
-### Prerequisites
+The only host requirement is **Rust** ([install via rustup](https://rustup.rs/)). The build scripts under `scripts/` take care of everything else — system packages, the Windows cross-compile toolchain, Tauri CLI — and prompt before installing anything (default **Y**).
 
-**All platforms:**
-- [Rust](https://rustup.rs/) 1.95.0 or newer (MSRV pinned in `src-tauri/Cargo.toml`)
-- Tauri CLI v2:
-  ```bash
-  cargo install tauri-cli --version "^2" --locked
-  ```
+> Both scripts run on Debian/Ubuntu-based hosts: Linux directly, or Windows via WSL.
 
-> The frontend is plain vanilla JS — Tauri 2's CLI is a Rust binary, so **Node.js is not required**.
-
-**Linux (Ubuntu/Debian):**
-```bash
-sudo apt update
-sudo apt install -y \
-  libwebkit2gtk-4.1-dev \
-  libgtk-3-dev \
-  libayatana-appindicator3-dev \
-  librsvg2-dev \
-  patchelf
-```
-
-**Windows:**
-- [WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) (bundled in Windows 11)
-- [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) with the **Desktop development with C++** workload
-
-**Cross-compiling for Windows from Linux/WSL:**
-```bash
-sudo apt install -y clang lld llvm
-rustup target add x86_64-pc-windows-msvc
-cargo install cargo-xwin --locked
-```
-
----
-
-### Development mode
+### Linux portable binary
 
 ```bash
 git clone https://github.com/coinman-dev/portfolio.git
 cd portfolio
-cargo tauri dev
-```
-
----
-
-### Building portable binaries (no installer)
-
-#### Quick: scripted Windows build from Linux/WSL
-
-The repo includes [`scripts/build-windows-local.sh`](scripts/build-windows-local.sh) which automates the whole cross-compilation flow — it verifies prerequisites (offering to install any that are missing), stamps the version from the latest `v*` git tag plus the short HEAD SHA (e.g. `0.7.1-beta-69e6f13`), runs the build, and restores the source files afterwards:
-
-```bash
-./scripts/build-windows-local.sh                # latest v* tag
-./scripts/build-windows-local.sh v0.7.0-beta   # specific tag
-```
-
-Output: `target/x86_64-pc-windows-msvc/release/coinman-portfolio.exe`
-
-#### Manual: Windows portable .exe
-
-Cross-compile from Linux or WSL via `cargo-xwin`:
-```bash
-cargo tauri build --runner cargo-xwin --target x86_64-pc-windows-msvc --no-bundle --ci
-```
-
-Native build on Windows:
-```bash
-cargo tauri build --target x86_64-pc-windows-msvc --no-bundle --ci
-```
-
-Output: `target/x86_64-pc-windows-msvc/release/coinman-portfolio.exe`
-
-#### Manual: Linux portable binary
-
-```bash
-cargo tauri build --no-bundle --ci
+bash scripts/build-linux-local.sh
 ```
 
 Output: `target/release/coinman-portfolio`
 
-> To run on another Ubuntu machine, `libwebkit2gtk-4.1-0` must be installed on the target system.
+> To run on another Ubuntu machine, the package `libwebkit2gtk-4.1-0` must be present on the target system.
+
+### Windows portable `.exe` (cross-compiled from Linux/WSL)
+
+```bash
+git clone https://github.com/coinman-dev/portfolio.git
+cd portfolio
+bash scripts/build-windows-local.sh
+```
+
+Output: `target/x86_64-pc-windows-msvc/release/coinman-portfolio.exe`
+
+The script uses [`cargo-xwin`](https://github.com/rust-cross/cargo-xwin), which fetches Microsoft's MSVC SDK on demand (MIT-licensed) — no Windows VM or Visual Studio install required.
+
+### What the scripts do
+
+- Verify prerequisites and offer to install anything missing (`apt`, `rustup target add`, `cargo install`).
+- Stamp the binary version from the latest `v*` git tag plus the short HEAD SHA — e.g. `0.7.2-beta-37c3484` — so the version shown in the desktop UI uniquely identifies the build.
+- Accept a specific tag as an argument: `bash scripts/build-linux-local.sh v0.7.0-beta`.
+- Restore the working tree after the build via a `trap`, even on failure or Ctrl+C.
+
+### Development mode
+
+For hot-reload dev iteration:
+
+```bash
+cd portfolio
+cargo tauri dev
+```
+
+Run the relevant build script once beforehand — it installs the same system packages and Tauri CLI that `cargo tauri dev` needs.
 
 ---
 
