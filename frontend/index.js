@@ -555,10 +555,9 @@ var Utils = {
         return window.Promise.resolve(!!result);
     },
 
-    parseNumber: function (value, fallback) {
-        if (fallback === undefined) fallback = 0;
+    normalizeNumericString: function (value) {
         var s = String(value || "").trim();
-        if (!s) return fallback;
+        if (!s) return "";
 
         // Preserve a leading minus before stripping non-numeric noise
         var negative = s.charAt(0) === "-";
@@ -567,19 +566,19 @@ var Utils = {
         // currency labels ("USDT", "HIGH"), whitespace thousand separators,
         // plus signs, NBSPs, etc.
         s = s.replace(/[^0-9.,]/g, "");
-        if (!s) return fallback;
+        if (!s) return "";
 
         var hasComma = s.indexOf(",") !== -1;
         var hasDot = s.indexOf(".") !== -1;
 
-        var n;
+        var result;
         if (hasComma && hasDot) {
             // Mixed format → rightmost separator is the decimal point,
             // every other separator (of either kind) is thousands.
             var di = Math.max(s.lastIndexOf("."), s.lastIndexOf(","));
             var intPart = s.substring(0, di).replace(/[.,]/g, "");
             var fracPart = s.substring(di + 1).replace(/[.,]/g, "");
-            n = parseFloat(intPart + "." + fracPart);
+            result = (intPart || "0") + "." + fracPart;
         } else if (hasComma || hasDot) {
             // Single separator type. If we have 2+ occurrences and every
             // segment after the first is exactly 3 digits, it's a thousand
@@ -593,20 +592,27 @@ var Utils = {
                     return p.length === 3;
                 });
             if (allThousands) {
-                n = parseFloat(parts.join(""));
+                result = parts.join("");
             } else {
                 var di2 = s.lastIndexOf(sep);
                 var rxSep = sep === "." ? /\./g : /,/g;
                 var intPart2 = s.substring(0, di2).replace(rxSep, "");
                 var fracPart2 = s.substring(di2 + 1);
-                n = parseFloat(intPart2 + "." + fracPart2);
+                result = (intPart2 || "0") + "." + fracPart2;
             }
         } else {
-            n = parseFloat(s);
+            result = s;
         }
 
-        if (!Number.isFinite(n)) return fallback;
-        return negative ? -n : n;
+        return negative ? "-" + result : result;
+    },
+
+    parseNumber: function (value, fallback) {
+        if (fallback === undefined) fallback = 0;
+        var s = Utils.normalizeNumericString(value);
+        if (!s) return fallback;
+        var n = parseFloat(s);
+        return Number.isFinite(n) ? n : fallback;
     },
 
     roundTo: function (value, decimals) {
@@ -2907,11 +2913,49 @@ var UI = {
         input.addEventListener("blur", handler);
     },
 
+    attachNumericPaste: function (inputId) {
+        var input = document.getElementById(inputId);
+        if (!input) return;
+        input.addEventListener("paste", function (e) {
+            if (!e.clipboardData) return;
+            var text = e.clipboardData.getData("text");
+            if (!text) return;
+            var clean = Utils.normalizeNumericString(text);
+            if (!clean) return; // unparseable — let the browser paste as-is
+            e.preventDefault();
+            var start = this.selectionStart != null ? this.selectionStart : 0;
+            var end =
+                this.selectionEnd != null ? this.selectionEnd : start;
+            this.value =
+                this.value.substring(0, start) +
+                clean +
+                this.value.substring(end);
+            var newPos = start + clean.length;
+            try {
+                this.setSelectionRange(newPos, newPos);
+            } catch (err) {
+                /* ignore */
+            }
+            this.dispatchEvent(new Event("input", { bubbles: true }));
+        });
+    },
+
     initRestrictions: function () {
         UI.attachRestriction("add-coin-name", Utils.sanitizeCoinName);
         UI.attachRestriction("edit-coin-name", Utils.sanitizeCoinName);
         UI.attachRestriction("add-coin-symbol", Utils.sanitizeSymbol);
         UI.attachRestriction("edit-coin-symbol", Utils.sanitizeSymbol);
+
+        [
+            "add-coin-price",
+            "add-coin-amount",
+            "edit-coin-price",
+            "edit-coin-amount",
+            "sell-coin-price",
+            "sell-coin-amount",
+            "bulk-sell-price",
+            "bulk-sell-amount",
+        ].forEach(UI.attachNumericPaste);
 
         ["add-coin-name", "add-coin-symbol"].forEach(function (id) {
             var el = document.getElementById(id);
