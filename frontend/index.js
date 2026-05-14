@@ -558,9 +558,55 @@ var Utils = {
     parseNumber: function (value, fallback) {
         if (fallback === undefined) fallback = 0;
         var s = String(value || "").trim();
-        s = s.replace(/,/g, ".");
-        var n = parseFloat(s);
-        return Number.isFinite(n) ? n : fallback;
+        if (!s) return fallback;
+
+        // Preserve a leading minus before stripping non-numeric noise
+        var negative = s.charAt(0) === "-";
+
+        // Strip everything that is not a digit, comma, or dot — handles
+        // currency labels ("USDT", "HIGH"), whitespace thousand separators,
+        // plus signs, NBSPs, etc.
+        s = s.replace(/[^0-9.,]/g, "");
+        if (!s) return fallback;
+
+        var hasComma = s.indexOf(",") !== -1;
+        var hasDot = s.indexOf(".") !== -1;
+
+        var n;
+        if (hasComma && hasDot) {
+            // Mixed format → rightmost separator is the decimal point,
+            // every other separator (of either kind) is thousands.
+            var di = Math.max(s.lastIndexOf("."), s.lastIndexOf(","));
+            var intPart = s.substring(0, di).replace(/[.,]/g, "");
+            var fracPart = s.substring(di + 1).replace(/[.,]/g, "");
+            n = parseFloat(intPart + "." + fracPart);
+        } else if (hasComma || hasDot) {
+            // Single separator type. If we have 2+ occurrences and every
+            // segment after the first is exactly 3 digits, it's a thousand
+            // separator throughout ("1,234,567" → 1234567). Otherwise the
+            // rightmost occurrence is the decimal point.
+            var sep = hasComma ? "," : ".";
+            var parts = s.split(sep);
+            var allThousands =
+                parts.length > 2 &&
+                parts.slice(1).every(function (p) {
+                    return p.length === 3;
+                });
+            if (allThousands) {
+                n = parseFloat(parts.join(""));
+            } else {
+                var di2 = s.lastIndexOf(sep);
+                var rxSep = sep === "." ? /\./g : /,/g;
+                var intPart2 = s.substring(0, di2).replace(rxSep, "");
+                var fracPart2 = s.substring(di2 + 1);
+                n = parseFloat(intPart2 + "." + fracPart2);
+            }
+        } else {
+            n = parseFloat(s);
+        }
+
+        if (!Number.isFinite(n)) return fallback;
+        return negative ? -n : n;
     },
 
     roundTo: function (value, decimals) {
