@@ -3,11 +3,9 @@ mod storage;
 
 use serde::Serialize;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Mutex};
-use std::thread;
-use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 
@@ -66,12 +64,11 @@ struct WriteResponse {
     saved_at: u64,
 }
 
-// ─── Tauri commands ───────────────────────────────────────────────────────────
+// ─── Tauri commands ─────────────────────────────────────────────────────────
 
 #[tauri::command]
 fn bootstrap_app(app: tauri::AppHandle) -> Result<storage::BootstrapConfig, String> {
-    let debug_mode = std::env::args()
-        .any(|a| a == "--debug" || a == "-debug" || a == "/debug");
+    let debug_mode = std::env::args().any(|a| a == "--debug" || a == "-debug" || a == "/debug");
     storage::load_bootstrap(&app, debug_mode)
 }
 
@@ -96,11 +93,7 @@ fn load_portfolios(
     let user = storage::sanitize_user(user);
 
     // Resolve effective password: explicit > session
-    let session_pw = session
-        .0
-        .lock()
-        .ok()
-        .and_then(|g| g.clone());
+    let session_pw = session.0.lock().ok().and_then(|g| g.clone());
     let effective_pw = password.clone().or(session_pw);
 
     let data = storage::load_db(&app, &user, effective_pw.as_deref())?;
@@ -183,10 +176,7 @@ fn list_databases(app: tauri::AppHandle) -> Result<ListDatabasesResponse, String
 
 /// Check whether the given user's DB file is encrypted.
 #[tauri::command]
-fn check_db_encrypted(
-    app: tauri::AppHandle,
-    user: Option<String>,
-) -> Result<bool, String> {
+fn check_db_encrypted(app: tauri::AppHandle, user: Option<String>) -> Result<bool, String> {
     let user = storage::sanitize_user(user);
     storage::check_db_encrypted(&app, &user)
 }
@@ -263,7 +253,12 @@ fn load_app_settings(app: tauri::AppHandle, user: Option<String>) -> settings::A
 }
 
 #[tauri::command]
-fn save_market_cache(app: tauri::AppHandle, user: Option<String>, cache: serde_json::Value, saved_at: u64) {
+fn save_market_cache(
+    app: tauri::AppHandle,
+    user: Option<String>,
+    cache: serde_json::Value,
+    saved_at: u64,
+) {
     let user = storage::sanitize_user(user);
     settings::update_market_cache(&app, &user, cache, saved_at);
 }
@@ -300,7 +295,11 @@ fn save_is_collapsed(app: tauri::AppHandle, collapsed: bool) {
 }
 
 #[tauri::command]
-fn save_portfolio_order(app: tauri::AppHandle, user: Option<String>, order: Vec<serde_json::Value>) {
+fn save_portfolio_order(
+    app: tauri::AppHandle,
+    user: Option<String>,
+    order: Vec<serde_json::Value>,
+) {
     let user = storage::sanitize_user(user);
     settings::update_portfolio_order(&app, &user, order);
 }
@@ -321,7 +320,21 @@ fn save_last_update_check(app: tauri::AppHandle, timestamp: u64) {
 }
 
 #[tauri::command]
-async fn cmc_fetch_quotes(api_key: String, ids: String, convert: String) -> Result<serde_json::Value, String> {
+fn load_exchange_settings(app: tauri::AppHandle) -> serde_json::Value {
+    settings::load_exchange_settings(&app)
+}
+
+#[tauri::command]
+fn save_exchange_settings(app: tauri::AppHandle, settings: serde_json::Value) {
+    settings::update_exchange_settings(&app, settings);
+}
+
+#[tauri::command]
+async fn cmc_fetch_quotes(
+    api_key: String,
+    ids: String,
+    convert: String,
+) -> Result<serde_json::Value, String> {
     let url = format!(
         "https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest?id={}&convert={}",
         ids, convert
@@ -360,6 +373,7 @@ fn exit_app(app: tauri::AppHandle) {
 
 #[tauri::command]
 fn open_url(url: String) {
+    log::info!("[open_url] Request to open URL or protocol: {}", url);
     #[cfg(target_os = "windows")]
     {
         use std::ffi::OsStr;
@@ -376,7 +390,7 @@ fn open_url(url: String) {
         }
         let open: Vec<u16> = OsStr::new("open").encode_wide().chain(Some(0)).collect();
         let wide: Vec<u16> = OsStr::new(&url).encode_wide().chain(Some(0)).collect();
-        unsafe {
+        let res = unsafe {
             ShellExecuteW(
                 std::ptr::null_mut(),
                 open.as_ptr(),
@@ -384,13 +398,19 @@ fn open_url(url: String) {
                 std::ptr::null(),
                 std::ptr::null(),
                 1, // SW_SHOWNORMAL
-            );
+            )
+        };
+        let code = res as usize;
+        if code <= 32 {
+            log::warn!("[open_url] ShellExecuteW failed for '{}' with code: {}", url, code);
+        } else {
+            log::info!("[open_url] ShellExecuteW successfully launched for '{}'", url);
         }
     }
     #[cfg(target_os = "macos")]
-    std::process::Command::new("open").arg(&url).spawn().ok();
+    let _ = std::process::Command::new("open").arg(&url).spawn();
     #[cfg(target_os = "linux")]
-    std::process::Command::new("xdg-open").arg(&url).spawn().ok();
+    let _ = std::process::Command::new("xdg-open").arg(&url).spawn();
 }
 
 #[tauri::command]
@@ -431,7 +451,7 @@ async fn open_file_dialog(app: tauri::AppHandle) -> Result<Option<String>, Strin
     Ok(file.map(|f| f.to_string()))
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
 fn now_unix_ms() -> u64 {
     SystemTime::now()
@@ -440,7 +460,7 @@ fn now_unix_ms() -> u64 {
         .as_millis() as u64
 }
 
-// ─── App setup ────────────────────────────────────────────────────────────────
+// ─── App setup ──────────────────────────────────────────────────────────────
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -487,11 +507,13 @@ pub fn run() {
             save_last_update_check,
             save_cmc_api_key,
             save_use_cmc,
-            cmc_fetch_quotes
+            cmc_fetch_quotes,
+            load_exchange_settings,
+            save_exchange_settings
         ])
         .setup(|app| {
-            let debug_mode = std::env::args()
-                .any(|a| a == "--debug" || a == "-debug" || a == "/debug");
+            let debug_mode =
+                std::env::args().any(|a| a == "--debug" || a == "-debug" || a == "/debug");
             if debug_mode {
                 let log_dir = std::env::current_exe()
                     .ok()
@@ -517,7 +539,6 @@ pub fn run() {
         .expect("error while building tauri application");
 
     let exit_code = app.run_return(|_, _| {});
-    cleanup_webview_data_dir(&webview_data_dir);
     if exit_code != 0 {
         std::process::exit(exit_code);
     }
@@ -561,7 +582,10 @@ fn detect_x11_dpi_scale() -> f64 {
     1.0
 }
 
-fn create_main_window<R: tauri::Runtime>(app: &mut tauri::App<R>, debug_mode: bool) -> tauri::Result<()> {
+fn create_main_window<R: tauri::Runtime>(
+    app: &mut tauri::App<R>,
+    debug_mode: bool,
+) -> tauri::Result<()> {
     if app.get_webview_window("main").is_some() {
         return Ok(());
     }
@@ -592,6 +616,7 @@ fn create_main_window<R: tauri::Runtime>(app: &mut tauri::App<R>, debug_mode: bo
         .min_inner_size(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT)
         .resizable(true)
         .fullscreen(false)
+        .use_https_scheme(true)
         .data_directory(runtime_paths.webview_data_dir.clone());
 
     if let Some((x, y)) = position {
@@ -605,6 +630,19 @@ fn create_main_window<R: tauri::Runtime>(app: &mut tauri::App<R>, debug_mode: bo
         let cal = app.state::<WindowSizeCalibration>();
         *cal.intended.lock().unwrap() = (width, height);
     }
+
+    let builder = builder.on_new_window(|url, _features| {
+        let url_str = url.as_str();
+        log::info!("[on_new_window] Intercepted new window request: {}", url_str);
+        if !url_str.is_empty()
+            && url_str != "about:blank"
+            && !url_str.starts_with("javascript:")
+            && !url_str.starts_with("data:")
+        {
+            open_url(url_str.to_string());
+        }
+        tauri::webview::NewWindowResponse::Deny
+    });
 
     let window = builder.build()?;
 
@@ -692,8 +730,10 @@ fn create_main_window<R: tauri::Runtime>(app: &mut tauri::App<R>, debug_mode: bo
                         let logical_size = size.to_logical::<f64>(scale_factor);
                         // Divide by dpi_mismatch to convert back to "app-logical"
                         // coordinates (the size before X11 DPI compensation).
-                        win_state.width = ((logical_size.width - ow) / dpi_mm).max(DEFAULT_WINDOW_WIDTH);
-                        win_state.height = ((logical_size.height - oh) / dpi_mm).max(DEFAULT_WINDOW_HEIGHT);
+                        win_state.width =
+                            ((logical_size.width - ow) / dpi_mm).max(DEFAULT_WINDOW_WIDTH);
+                        win_state.height =
+                            ((logical_size.height - oh) / dpi_mm).max(DEFAULT_WINDOW_HEIGHT);
                     }
                 }
                 if let Ok(pos) = w.outer_position() {
@@ -714,27 +754,35 @@ fn create_main_window<R: tauri::Runtime>(app: &mut tauri::App<R>, debug_mode: bo
 }
 
 fn prepare_webview_data_dir() -> PathBuf {
-    let dir = std::env::temp_dir().join(format!(
-        "coinman-portfolio-ebwebview-{}",
-        std::process::id()
-    ));
-    if dir.is_dir() {
-        let _ = fs::remove_dir_all(&dir);
+    #[cfg(target_os = "windows")]
+    {
+        if let Some(local_app_data) = std::env::var_os("LOCALAPPDATA") {
+            let dir = PathBuf::from(local_app_data)
+                .join("coinman-portfolio")
+                .join("webview-data");
+            let _ = fs::create_dir_all(&dir);
+            return dir;
+        }
     }
+    #[cfg(not(target_os = "windows"))]
+    {
+        if let Some(data_home) = std::env::var_os("XDG_DATA_HOME") {
+            let dir = PathBuf::from(data_home)
+                .join("coinman-portfolio")
+                .join("webview-data");
+            let _ = fs::create_dir_all(&dir);
+            return dir;
+        } else if let Some(home) = std::env::var_os("HOME") {
+            let dir = PathBuf::from(home)
+                .join(".local")
+                .join("share")
+                .join("coinman-portfolio")
+                .join("webview-data");
+            let _ = fs::create_dir_all(&dir);
+            return dir;
+        }
+    }
+    let dir = std::env::temp_dir().join("coinman-portfolio-webview-data");
     let _ = fs::create_dir_all(&dir);
     dir
-}
-
-fn cleanup_webview_data_dir(path: &Path) {
-    for delay_ms in [0_u64, 100, 250, 500, 1000] {
-        if delay_ms > 0 {
-            thread::sleep(Duration::from_millis(delay_ms));
-        }
-
-        match fs::remove_dir_all(path) {
-            Ok(_) => return,
-            Err(err) if err.kind() == std::io::ErrorKind::NotFound => return,
-            Err(_) => continue,
-        }
-    }
 }

@@ -75438,7 +75438,7 @@
       "symbol": "POL",
       "category": "token",
       "website": "polygon.technology",
-      "explorer": "etherscan.io/address/",
+      "explorer": "polygonscan.com/address/",
       "source_code": "github.com/0xPolygon/pol-token",
       "platform": [
         {

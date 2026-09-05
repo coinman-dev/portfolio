@@ -3,9 +3,85 @@
 	<head>
 		<meta charset="UTF-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-		<title>My Crypto Portfolio</title>
+		<title>CoinMan Portfolio Tracker</title>
+		<meta property="og:site_name" content="CoinMan Portfolio Tracker"/>
+		<meta property="og:title" content="CoinMan Portfolio Tracker"/>
+		<meta name="description" content="CoinMan Cross-Chain Crypto Exchange & Portfolio Tracker"/>
 		<link rel="stylesheet" href="index.css"/>
+		<link rel="stylesheet" href="exchange/exchange-lifi.bundle.css"/>
 		<link rel="icon" type="image/webp" href="images/coinman.dev.webp"/>
+		<script defer src="exchange/exchange-lifi.bundle.js"></script>
+		<script>
+			(function () {
+				var originalOpen = window.open;
+				window.open = function (url, target, features) {
+					if (url) {
+						var urlStr = String(url);
+						var isInternal = /^(data:|blob:|about:|javascript:)/i.test(urlStr);
+						var isLocalApp = urlStr.startsWith("tauri://") ||
+							urlStr.startsWith("http://tauri.localhost") ||
+							urlStr.startsWith("https://tauri.localhost");
+
+						if (!isInternal && !isLocalApp) {
+							console.log("[CoinMan] Intercepted window.open -> open_url:", urlStr);
+							var invoke = (window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke) ||
+								(window.__TAURI_INTERNALS__ && window.__TAURI_INTERNALS__.invoke) ||
+								(window.AppBridge && window.AppBridge.invoke);
+							if (invoke) {
+								invoke("open_url", { url: urlStr }).catch(function (err) {
+									console.error("[CoinMan] open_url failed:", err);
+								});
+								return { closed: false, close: function () {}, focus: function () {} };
+							}
+						}
+					}
+					return originalOpen ? originalOpen.apply(this, arguments) : null;
+				};
+
+				window.addEventListener("message", function (event) {
+					if (event && event.data && typeof event.data === "object") {
+						if (event.data.method === "INTERCEPT_WINDOW_OPEN" && event.data.href) {
+							var targetUrl = String(event.data.href);
+							console.log("[CoinMan] Intercepted postMessage INTERCEPT_WINDOW_OPEN -> open_url:", targetUrl);
+							var invoke = (window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke) ||
+								(window.__TAURI_INTERNALS__ && window.__TAURI_INTERNALS__.invoke) ||
+								(window.AppBridge && window.AppBridge.invoke);
+							if (invoke) {
+								invoke("open_url", { url: targetUrl }).catch(function (err) {
+									console.error("[CoinMan] postMessage open_url failed:", err);
+								});
+							}
+						}
+					}
+				});
+
+				document.addEventListener("click", function (e) {
+					var anchor = e.target && e.target.closest ? e.target.closest("a") : null;
+					if (!anchor || !anchor.href) return;
+					var href = anchor.href;
+					var isInternal = /^(data:|blob:|about:|javascript:)/i.test(href);
+					var isLocalApp = href.startsWith("tauri://") ||
+						href.startsWith("http://tauri.localhost") ||
+						href.startsWith("https://tauri.localhost");
+
+					var isCustomScheme = !/^(http|https|file):/i.test(href);
+					var isExternalWeb = /^(http|https):/i.test(href) && (anchor.target === "_blank" || !isLocalApp);
+
+					if (!isInternal && !isLocalApp && (isCustomScheme || isExternalWeb)) {
+						e.preventDefault();
+						e.stopPropagation();
+						console.log("[CoinMan] Intercepted link click -> open_url:", href);
+						var invoke = (window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke) ||
+							(window.__TAURI_INTERNALS__ && window.__TAURI_INTERNALS__.invoke);
+						if (invoke) {
+							invoke("open_url", { url: href }).catch(function (err) {
+								console.error("[CoinMan] open_url link click failed:", err);
+							});
+						}
+					}
+				}, true);
+			})();
+		</script>
 	</head>
 	<body>
 		<div class="desktop-menu-bar">
@@ -31,13 +107,28 @@
 					<div class="dropdown-item dropdown-item-check" id="menu-toggle-cmc" onclick="AppSettings.handleToggleCmc()"> Fetch prices from CoinMarketCap </div>
 				</div>
 			</div>
+			<div class="menu-item" id="menu-item-exchange" onclick="toggleDropdown('exchange-dropdown', event)"> Exchange
+				<div class="dropdown-menu" id="exchange-dropdown">
+					<div class="dropdown-item dropdown-item-wallet" id="menu-exchange-wallet" onclick="AppExchange.handleWalletClick(event)">
+						<span class="wallet-menu-label">Wallet Connect</span>
+						<span class="wallet-menu-status" id="menu-wallet-status"></span>
+					</div>
+					<div class="dropdown-divider"></div>
+					<div class="dropdown-item" id="menu-exchange-lifi" onclick="AppExchange.selectExchangeModule('lifi')">
+						<span>Li-Fi</span>
+					</div>
+					<div class="dropdown-item" id="menu-exchange-cowswap" onclick="AppExchange.selectExchangeModule('cowswap')">
+						<span>CoW Swap</span>
+					</div>
+				</div>
+			</div>
 			<div class="menu-item menu-item-right" onclick="toggleDropdown('about-dropdown', event)"> About
       <div class="dropdown-menu dropdown-menu-right" id="about-dropdown">
 					<div class="dropdown-item" onclick="openAboutModal()"> About CoinMan </div>
 				</div>
 			</div>
 		</div>
-		<div class="container">
+		<div class="container" id="portfolio-view">
 			<!-- HEADER (табличная разметка для Dreamweaver) -->
 			<table id="brand-header-table" class="header-table">
 				<tr>
@@ -350,7 +441,61 @@
 </div>
 <div class="bottom-refresh-container"></div>
 </div>
+		<!-- EXCHANGE VIEW -->
+		<div id="exchange-view" class="container" style="display: none;">
+			<table id="exchange-header-table" class="header-table">
+				<tr>
+					<td class="header-logo-cell">
+						<div class="header-logo-wrap">
+							<img src="images/coinman.dev.webp" alt=""/>
+							<span class="logo-text" id="exchange-header-title">CoinMan Cross-Chain Exchange</span>
+						</div>
+					</td>
+					<td class="header-actions-cell">
+						<button class="add-portfolio-btn" onclick="AppNavigation.switchView('portfolio')"> ← PORTFOLIO </button>
+					</td>
+				</tr>
+			</table>
+			<div id="exchange-widget-root" class="exchange-widget-root">
+				<div id="exchange-lifi-container" style="display: none; width: 100%;"></div>
+				<div id="exchange-cowswap-container" style="display: none; width: 100%;"></div>
+			</div>
+		</div>
 <!-- MODALS -->
+<div id="modal-wallet-connect" class="modal">
+	<div class="modal-content">
+		<div class="modal-header">
+			<span>Wallet Connect</span>
+			<span class="close-btn" onclick="AppExchange.closeWalletModal()">&times;</span>
+		</div>
+		<div class="modal-body">
+			<div id="wallet-modal-connected-view" style="display: none;">
+				<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px;">
+					<span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #22c55e;"></span>
+					<span style="font-weight: bold; color: #f3f4f6; font-size: 13px;">Wallet Connected</span>
+				</div>
+				<div class="form-group">
+					<label class="form-label">Connected Address</label>
+					<input type="text" id="wallet-modal-address" class="form-input" readonly />
+				</div>
+				<div class="form-group">
+					<label class="form-label">Network / Status</label>
+					<input type="text" id="wallet-modal-network" class="form-input" readonly />
+				</div>
+			</div>
+			<div id="wallet-modal-disconnected-view">
+				<p style="color: #d1d5db; line-height: 1.5; margin-bottom: 12px; font-size: 13px;">
+					Connect your hardware wallet (OneKey HD) or mobile/desktop wallet via WalletConnect.
+					Once connected, all exchange modules will automatically use this wallet.
+				</p>
+			</div>
+		</div>
+		<div class="modal-footer modal-footer-right">
+			<button class="btn btn-gray" onclick="AppExchange.closeWalletModal()">CLOSE</button>
+			<button id="wallet-modal-action-btn" class="btn btn-orange" onclick="AppExchange.handleModalWalletAction()">CONNECT</button>
+		</div>
+	</div>
+</div>
 <div id="modal-create-portfolio" class="modal">
 	<div class="modal-content">
 		<div class="modal-header">
@@ -975,5 +1120,6 @@
 </div>
 <script src="coinman-tpl.js"></script>
 <script src="index.js"></script>
+<script src="exchange.js"></script>
 </body>
 </html>

@@ -57,6 +57,9 @@ pub struct AppSettings {
     /// Global: whether to use CMC instead of CoinGecko for prices.
     #[serde(default)]
     pub use_cmc: Option<bool>,
+    /// Global: Exchange settings, connected wallets, session cache
+    #[serde(default)]
+    pub exchange: Option<Value>,
     /// Per-user (per-database) settings keyed by database filename stem.
     #[serde(default)]
     pub users: HashMap<String, UserSettings>,
@@ -75,6 +78,7 @@ pub struct AppSettingsForUser {
     pub column_widths: Option<Value>,
     pub cmc_api_key: Option<String>,
     pub use_cmc: Option<bool>,
+    pub exchange: Option<Value>,
     pub active_portfolio_id: Option<Value>,
     pub portfolio_order: Option<Vec<Value>>,
     pub market_cache: Option<Value>,
@@ -82,7 +86,7 @@ pub struct AppSettingsForUser {
     pub last_update_check: Option<u64>,
 }
 
-// ─── Public API ───────────────────────────────────────────────────────────────
+// ─── Public API ─────────────────────────────────────────────────────────────
 
 /// Load only the global (non-user-specific) settings.
 pub fn load_global<R: Runtime>(app: &AppHandle<R>) -> AppSettings {
@@ -102,6 +106,7 @@ pub fn load_for_user<R: Runtime>(app: &AppHandle<R>, user: &str) -> AppSettingsF
         column_widths: settings.column_widths,
         cmc_api_key: settings.cmc_api_key,
         use_cmc: settings.use_cmc,
+        exchange: settings.exchange,
         active_portfolio_id: u.active_portfolio_id,
         portfolio_order: u.portfolio_order,
         market_cache: u.market_cache,
@@ -197,7 +202,18 @@ pub fn update_portfolio_order<R: Runtime>(app: &AppHandle<R>, user: &str, order:
     save(app, &settings);
 }
 
-// ─── Internal ─────────────────────────────────────────────────────────────────
+pub fn load_exchange_settings<R: Runtime>(app: &AppHandle<R>) -> Value {
+    let settings = load(app);
+    settings.exchange.unwrap_or(Value::Null)
+}
+
+pub fn update_exchange_settings<R: Runtime>(app: &AppHandle<R>, exchange: Value) {
+    let mut settings = load(app);
+    settings.exchange = Some(exchange);
+    save(app, &settings);
+}
+
+// ─── Internal ───────────────────────────────────────────────────────────────
 
 fn load<R: Runtime>(app: &AppHandle<R>) -> AppSettings {
     let path = settings_path(app);
