@@ -121,16 +121,7 @@ export const VaultsTable: React.FC<VaultsTableProps> = ({
 
                 {/* Network */}
                 <td>
-                  <span
-                    style={{
-                      fontSize: 12,
-                      padding: '3px 8px',
-                      background: '#191b26',
-                      borderRadius: 12,
-                      border: '1px solid #232738',
-                      color: '#94a3b8',
-                    }}
-                  >
+                  <span className="yearn-chain-pill">
                     {chain.name}
                   </span>
                 </td>
