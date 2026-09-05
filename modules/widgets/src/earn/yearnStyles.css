@@ -140,6 +140,7 @@
   flex-direction: column;
   gap: 4px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
 }
 
 .yearn-stat-title {
@@ -353,6 +354,12 @@
   flex-direction: column;
 }
 
+.yearn-asset-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .yearn-asset-name {
   font-weight: 600;
   color: #ffffff;
@@ -360,8 +367,35 @@
 }
 
 .yearn-asset-version {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--y-text-muted);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.yearn-asset-tags {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-top: 3px;
+}
+
+.yearn-tag {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--y-bg-input);
+  border: 1px solid var(--y-border);
+  color: var(--y-text-secondary);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.yearn-tag.fees-tag {
+  color: #a0aec0;
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 .yearn-apy-val {
@@ -390,6 +424,65 @@
 .yearn-action-btn:hover {
   background: var(--y-blue-hover);
   box-shadow: 0 0 10px var(--y-blue-glow);
+}
+
+/* Table Pagination */
+.yearn-pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: #151a26;
+  border-top: 1px solid var(--y-border);
+  font-size: 12px;
+  color: var(--y-text-secondary);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.yearn-pagination-info {
+  font-weight: 500;
+}
+
+.yearn-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.yearn-page-btn {
+  background: var(--y-bg-card);
+  border: 1px solid var(--y-border);
+  border-radius: 6px;
+  color: var(--y-text-secondary);
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.yearn-page-btn:hover:not(:disabled) {
+  background: var(--y-bg-card-hover);
+  color: #ffffff;
+  border-color: var(--y-blue-primary);
+}
+
+.yearn-page-btn.active {
+  background: var(--y-blue-primary);
+  border-color: var(--y-blue-primary);
+  color: #ffffff;
+  box-shadow: 0 0 8px var(--y-blue-glow);
+}
+
+.yearn-page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.yearn-page-dots {
+  padding: 0 4px;
+  color: var(--y-text-muted);
 }
 
 /* Table Loading & Empty */

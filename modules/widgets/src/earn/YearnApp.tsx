@@ -24,6 +24,7 @@ export const YearnDashboard: React.FC<EarnMountOptions> = ({
   const [selectedVault, setSelectedVault] = useState<YearnVault | null>(null);
   const [sortField, setSortField] = useState<'apy' | 'tvl' | 'name'>('tvl');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [currentPage, setCurrentPage] = useState<number>(1);
 
   const [vaults, setVaults] = useState<YearnVault[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -59,6 +60,11 @@ export const YearnDashboard: React.FC<EarnMountOptions> = ({
     loadVaults();
   }, [loadVaults]);
 
+  // Reset page when filter or search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedChainId, searchQuery, sortField, sortDirection]);
+
   // Handle wallet connect
   const handleConnectWallet = async () => {
     try {
@@ -72,7 +78,7 @@ export const YearnDashboard: React.FC<EarnMountOptions> = ({
     }
   };
 
-  // Filter & sort vaults
+  // Filter & sort vaults (Default: TVL descending)
   const filteredVaults = useMemo(() => {
     let result = [...vaults];
 
@@ -99,8 +105,8 @@ export const YearnDashboard: React.FC<EarnMountOptions> = ({
         valA = a.apr.netAPR || 0;
         valB = b.apr.netAPR || 0;
       } else if (sortField === 'tvl') {
-        valA = a.tvl.tvl || 0;
-        valB = b.tvl.tvl || 0;
+        valA = a.tvl?.tvl || 0;
+        valB = b.tvl?.tvl || 0;
       } else if (sortField === 'name') {
         valA = a.name.toLowerCase();
         valB = b.name.toLowerCase();
@@ -113,6 +119,15 @@ export const YearnDashboard: React.FC<EarnMountOptions> = ({
 
     return result;
   }, [vaults, searchQuery, sortField, sortDirection]);
+
+  // Pagination (100 vaults per page)
+  const pageSize = 100;
+  const totalVaults = filteredVaults.length;
+  const totalPages = Math.ceil(totalVaults / pageSize) || 1;
+  const paginatedVaults = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return filteredVaults.slice(startIndex, startIndex + pageSize);
+  }, [filteredVaults, currentPage, pageSize]);
 
   // Aggregate stats
   const totalTVL = useMemo(() => {
@@ -215,9 +230,9 @@ export const YearnDashboard: React.FC<EarnMountOptions> = ({
             </div>
             <div className="yearn-stat-card">
               <span className="yearn-stat-title">Wallet Status</span>
-              <span className="yearn-stat-value" style={{ fontSize: 18 }}>
+              <span className="yearn-stat-value" style={{ fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {walletStatus.isConnected ? (
-                  <span className="text-green" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <span className="text-green" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
                     ● Connected ({walletStatus.shortAddress})
                   </span>
                 ) : (
@@ -286,9 +301,13 @@ export const YearnDashboard: React.FC<EarnMountOptions> = ({
             </div>
           </div>
 
-          {/* Vaults Table */}
+          {/* Vaults Table with Pagination */}
           <VaultsTable
-            vaults={filteredVaults}
+            vaults={paginatedVaults}
+            totalVaults={totalVaults}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
             isLoading={isLoading}
             onSelectVault={handleOpenVaultDetail}
             isWalletConnected={walletStatus.isConnected}

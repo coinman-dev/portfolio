@@ -85,13 +85,18 @@ export async function fetchYearnVaults(chainId: number): Promise<YearnVault[]> {
             ? Number(v.apr.forwardAPR.netAPR)
             : 0;
 
+        let computedName = v.name || v.displayName || 'Yearn Vault';
+        if (v.category === 'Curve' && v.displayName && !computedName.endsWith('LP')) {
+          computedName = `${v.displayName} LP`;
+        }
+
         return {
           address: v.address,
           type: v.type || 'Yearn Vault',
           kind: v.kind,
           symbol: v.symbol || v.displaySymbol || 'yVault',
           displaySymbol: v.displaySymbol || v.symbol,
-          name: v.displayName || v.name || 'Yearn Vault',
+          name: computedName,
           displayName: v.displayName || v.name,
           icon: v.icon || v.token?.icon,
           version: v.version || '3.0.0',
