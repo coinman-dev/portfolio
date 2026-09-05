@@ -4,9 +4,8 @@ import {
   waitForTransactionReceipt,
   switchChain,
 } from '@wagmi/core';
-import { formatUnits, parseUnits, maxUint256 } from 'viem';
+import { formatUnits, maxUint256 } from 'viem';
 import { wagmiConfig } from '../wallet/wallet';
-import { YearnVault } from './types';
 
 export const ERC20_ABI = [
   {

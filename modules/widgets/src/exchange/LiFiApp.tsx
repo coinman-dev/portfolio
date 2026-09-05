@@ -4,7 +4,7 @@ import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { EthereumProvider } from '@lifi/widget-provider-ethereum';
 import { ExchangeMountOptions } from '../types';
-import { wagmiConfig, defaultMetadata, PROJECT_ID } from '../wallet/wallet';
+import { wagmiConfig, PROJECT_ID } from '../wallet/wallet';
 
 const queryClient = new QueryClient();
 
@@ -56,10 +56,10 @@ function WidgetEventsHandler({ onSettingsChange }: { onSettingsChange?: (setting
 
 export const LiFiApp: React.FC<ExchangeMountOptions> = ({
   projectId = PROJECT_ID,
-  initialSettings,
+  initialSettings: _initialSettings,
   onSettingsChange,
-  onWalletConnect,
-  onWalletDisconnect,
+  onWalletConnect: _onWalletConnect,
+  onWalletDisconnect: _onWalletDisconnect,
 }) => {
   const widgetConfig: WidgetConfig = useMemo(() => {
     return {
@@ -112,7 +112,7 @@ export const LiFiApp: React.FC<ExchangeMountOptions> = ({
         <div className="coinman-exchange-wrapper">
           <div className="coinman-exchange-card">
             <WidgetEventsHandler onSettingsChange={onSettingsChange} />
-            <LiFiWidget config={widgetConfig} />
+            <LiFiWidget integrator="CoinMan" config={widgetConfig} />
           </div>
         </div>
       </QueryClientProvider>

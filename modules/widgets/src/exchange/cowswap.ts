@@ -2,6 +2,7 @@ import {
   createCowSwapWidget,
   CowSwapWidgetHandler,
   CowSwapWidgetParams,
+  CowSwapWidgetProps,
   TradeType,
 } from '@cowprotocol/widget-lib';
 import { getEthereumProvider, subscribeWalletStatus, WalletStatus } from '../wallet/wallet';
@@ -19,7 +20,7 @@ export interface CowSwapInstance {
 }
 
 export async function mountCowSwap(options: CowSwapMountOptions): Promise<CowSwapInstance> {
-  const { container, initialSettings, onSettingsChange } = options;
+  const { container, initialSettings, onSettingsChange: _onSettingsChange } = options;
 
   let currentProvider: any = undefined;
   try {
@@ -44,49 +45,33 @@ export async function mountCowSwap(options: CowSwapMountOptions): Promise<CowSwa
     },
     width: '100%',
     height: '640px',
-    theme: {
-      baseTheme: 'dark',
-      primary: '#ff8c00',
-      background: '#121318',
-      paper: '#1a1c23',
-      text: '#ffffff',
-    },
+    theme: 'dark',
     tradeType: TradeType.SWAP,
-    provider: currentProvider,
     ...(slippageBps ? { slippageBps } : {}),
   };
 
-  const handler: CowSwapWidgetHandler = createCowSwapWidget(container, params);
+  const widgetProps: CowSwapWidgetProps = {
+    params,
+    provider: currentProvider,
+  };
 
-  // Subscribe to trade/quote events to propagate settings back to CoinMan
-  try {
-    handler.on('tradeParamsChanged', (data: any) => {
-      console.log('[CoinMan CoW Swap] Trade params changed:', data);
-      if (onSettingsChange && data?.slippageBps) {
-        onSettingsChange({
-          slippage: Number(data.slippageBps) / 100,
-        });
-      }
-    });
-  } catch (e) {
-    console.warn('[CoinMan CoW Swap] Could not attach tradeParamsChanged listener:', e);
-  }
+  const handler: CowSwapWidgetHandler = createCowSwapWidget(container, widgetProps);
 
   // Keep CoW Swap provider in sync with OneKey HD / WalletConnect
   const unsubscribeWallet = subscribeWalletStatus((status: WalletStatus) => {
     if (status.isConnected) {
       getEthereumProvider()
         .then((provider) => {
-          if (provider && handler?.updateParams) {
-            handler.updateParams({ provider });
+          if (provider && handler?.updateProvider) {
+            handler.updateProvider(provider);
           }
         })
         .catch((e) => {
           console.warn('[CoinMan CoW Swap] Error updating provider on wallet connect:', e);
         });
     } else {
-      if (handler?.updateParams) {
-        handler.updateParams({ provider: undefined });
+      if (handler?.updateProvider) {
+        handler.updateProvider(undefined);
       }
     }
   });
@@ -97,8 +82,8 @@ export async function mountCowSwap(options: CowSwapMountOptions): Promise<CowSwa
         unsubscribeWallet();
       } catch (e) {}
       try {
-        if (typeof handler?.unmount === 'function') {
-          handler.unmount();
+        if (typeof handler?.destroy === 'function') {
+          handler.destroy();
         } else if (container) {
           container.innerHTML = '';
         }
@@ -107,8 +92,8 @@ export async function mountCowSwap(options: CowSwapMountOptions): Promise<CowSwa
       }
     },
     updateProvider: (provider?: any) => {
-      if (handler?.updateParams) {
-        handler.updateParams({ provider });
+      if (handler?.updateProvider) {
+        handler.updateProvider(provider);
       }
     },
     getHandler: () => handler,

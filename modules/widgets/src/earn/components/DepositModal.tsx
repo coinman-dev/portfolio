@@ -22,7 +22,7 @@ interface DepositModalProps {
 export const DepositModal: React.FC<DepositModalProps> = ({
   vault,
   walletAddress,
-  walletChainId,
+  walletChainId: _walletChainId,
   onClose,
   onSuccess,
 }) => {
@@ -112,7 +112,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({
         stage: 'approving',
         message: 'Please confirm token approval on your OneKey HD / Wallet...',
       });
-      const hash = await approveToken(vault.chainID, vault.token.address, vault.address, maxUint256);
+      await approveToken(vault.chainID, vault.token.address, vault.address, maxUint256);
       setAllowance(maxUint256);
       setStatusState({
         stage: 'idle',

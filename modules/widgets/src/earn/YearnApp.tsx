@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { EarnMountOptions, YearnVault } from './types';
-import { fetchYearnVaults, fetchAllChainsVaults, SUPPORTED_CHAINS } from './yearnApi';
+import { fetchYearnVaults, fetchAllChainsVaults } from './yearnApi';
 import { VaultsTable } from './components/VaultsTable';
 import { NetworkSelector } from './components/NetworkSelector';
 import { DepositModal } from './components/DepositModal';
