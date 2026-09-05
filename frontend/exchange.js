@@ -20,7 +20,7 @@ var AppExchange = (function () {
         if (viewName === 'exchange') {
             currentView = 'exchange';
             if (portfolioEl) portfolioEl.style.display = 'none';
-            if (exchangeEl) exchangeEl.style.display = 'block';
+            if (exchangeEl) exchangeEl.style.display = 'flex';
             if (menuExchangeEl) menuExchangeEl.classList.add('active');
 
             updateExchangeViews();
@@ -68,9 +68,9 @@ var AppExchange = (function () {
 
         bundlePromise = (async function () {
             try {
-                loadCss('exchange/exchange-lifi.bundle.css');
+                loadCss('exchange/exchange.bundle.css');
                 if (!window.CoinmanWallet) {
-                    await loadScript('exchange/exchange-lifi.bundle.js');
+                    await loadScript('exchange/exchange.bundle.js');
                 }
                 setupWalletSubscription();
             } catch (err) {
@@ -287,7 +287,7 @@ var AppExchange = (function () {
         if (activeModule === 'cowswap') {
             if (titleEl) titleEl.textContent = 'CoinMan DEX & Swap (CoW Swap)';
             if (lifiContainer) lifiContainer.style.display = 'none';
-            if (cowswapContainer) cowswapContainer.style.display = 'block';
+            if (cowswapContainer) cowswapContainer.style.display = 'flex';
 
             if (!cowswapInstance && cowswapContainer) {
                 await initCowSwap(cowswapContainer);
@@ -295,7 +295,7 @@ var AppExchange = (function () {
         } else {
             if (titleEl) titleEl.textContent = 'CoinMan Cross-Chain Exchange (Li-Fi)';
             if (cowswapContainer) cowswapContainer.style.display = 'none';
-            if (lifiContainer) lifiContainer.style.display = 'block';
+            if (lifiContainer) lifiContainer.style.display = 'flex';
 
             if (!lifiInstance && lifiContainer) {
                 await initLiFi(lifiContainer);

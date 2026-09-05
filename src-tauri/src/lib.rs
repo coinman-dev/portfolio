@@ -10,7 +10,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 
 // ─── Default window dimensions (logical pixels) ─────────────────────────────
-const DEFAULT_WINDOW_WIDTH: f64 = 1220.0;
+const DEFAULT_WINDOW_WIDTH: f64 = 1200.0;
 const DEFAULT_WINDOW_HEIGHT: f64 = 700.0;
 
 #[derive(Default)]
@@ -610,12 +610,210 @@ fn create_main_window<R: tauri::Runtime>(
     }
 
     let runtime_paths = app.state::<RuntimePaths>();
+    let cowswap_dark_init_script = r##"
+(function() {
+    var observerStarted = false;
+
+    function applyDarkAndTabs() {
+        try {
+            if (!document.location || !document.location.href.includes("cow.fi")) return;
+
+            // 1. Inject Styles
+            var styleId = "coinman-cow-custom-styles";
+            if (!document.getElementById(styleId)) {
+                var style = document.createElement("style");
+                style.id = styleId;
+                style.textContent = `
+                    :root {
+                        color-scheme: dark !important;
+                        --cow-color-background: #121212 !important;
+                    }
+                    html, body, #root, #bodyWrapper {
+                        background-color: #121212 !important;
+                        background: #121212 !important;
+                        min-height: 100% !important;
+                        height: 100% !important;
+                        color-scheme: dark !important;
+                    }
+                    /* Hide dropdown trigger button and full-card select menu */
+                    div[class*="styled__DropdownButton"],
+                    div[class*="sc-f5oezr-1"],
+                    div[class*="sc-f5oezr-3"] {
+                        display: none !important;
+                    }
+                    div[class*="styled__SelectMenu"],
+                    div[class*="sc-f5oezr-4"] {
+                        display: none !important;
+                    }
+                    /* Horizontal Tabs Bar */
+                    .coinman-cow-tabs {
+                        display: inline-flex !important;
+                        align-items: center !important;
+                        gap: 3px !important;
+                        background: rgba(0, 0, 0, 0.3) !important;
+                        padding: 3px !important;
+                        border-radius: 12px !important;
+                        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+                        margin: 0 !important;
+                    }
+                    .coinman-cow-tab {
+                        font-family: inherit !important;
+                        font-size: 13.5px !important;
+                        font-weight: 600 !important;
+                        padding: 5px 14px !important;
+                        border-radius: 9px !important;
+                        cursor: pointer !important;
+                        color: #8e96a8 !important;
+                        background: transparent !important;
+                        transition: all 0.15s ease !important;
+                        user-select: none !important;
+                        border: none !important;
+                        outline: none !important;
+                        line-height: 1.2 !important;
+                        box-shadow: none !important;
+                    }
+                    .coinman-cow-tab:hover {
+                        color: #ffffff !important;
+                        background: rgba(255, 255, 255, 0.08) !important;
+                    }
+                    .coinman-cow-tab.active {
+                        color: #ffffff !important;
+                        background: #232d42 !important;
+                        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35) !important;
+                    }
+                `;
+                var target = document.head || document.documentElement;
+                if (target) {
+                    target.appendChild(style);
+                }
+            }
+
+            // 2. Render Tabs
+            updateTabs();
+            ensureObserver();
+        } catch (e) {}
+    }
+
+    function getActiveMode() {
+        var h = window.location.hash || "";
+        if (h.indexOf("/advanced") !== -1) return "advanced";
+        if (h.indexOf("/limit") !== -1) return "limit";
+        return "swap";
+    }
+
+    function navigateToMode(mode) {
+        try {
+            var hash = window.location.hash || "";
+            var match = hash.match(/^#\/([^\/]+)\/widget\/(swap|limit|advanced)(.*)$/);
+            var newHash;
+            if (match) {
+                newHash = "#/" + match[1] + "/widget/" + mode + match[3];
+            } else {
+                var chainMatch = hash.match(/^#\/([^\/]+)/);
+                var chain = (chainMatch && chainMatch[1]) ? chainMatch[1] : "1";
+                newHash = "#/" + chain + "/widget/" + mode;
+            }
+            if (window.location.hash !== newHash) {
+                window.location.hash = newHash;
+                try { window.dispatchEvent(new Event("hashchange")); } catch (_) {}
+            }
+            updateTabs();
+        } catch (err) {
+            console.warn("[CoinMan CoW] navigateToMode error:", err);
+        }
+    }
+
+    function updateTabs() {
+        try {
+            if (!document.location || !document.location.href.includes("cow.fi")) return;
+
+            var card = document.querySelector("#card");
+            if (!card) return;
+            var header = card.firstElementChild;
+            if (!header) return;
+
+            var activeMode = getActiveMode();
+            var tabsContainer = header.querySelector(".coinman-cow-tabs");
+
+            if (!tabsContainer) {
+                tabsContainer = document.createElement("div");
+                tabsContainer.className = "coinman-cow-tabs";
+
+                var tabs = [
+                    { id: "swap", label: "Swap" },
+                    { id: "limit", label: "Limit" },
+                    { id: "advanced", label: "TWAP" }
+                ];
+
+                tabs.forEach(function(tab) {
+                    var btn = document.createElement("button");
+                    btn.type = "button";
+                    btn.className = "coinman-cow-tab" + (activeMode === tab.id ? " active" : "");
+                    btn.setAttribute("data-mode", tab.id);
+                    btn.textContent = tab.label;
+                    btn.onclick = function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        navigateToMode(tab.id);
+                    };
+                    tabsContainer.appendChild(btn);
+                });
+
+                header.insertBefore(tabsContainer, header.firstElementChild);
+            } else {
+                var buttons = tabsContainer.querySelectorAll(".coinman-cow-tab");
+                buttons.forEach(function(btn) {
+                    var mode = btn.getAttribute("data-mode");
+                    if (mode === activeMode) {
+                        btn.classList.add("active");
+                    } else {
+                        btn.classList.remove("active");
+                    }
+                });
+            }
+        } catch (e) {}
+    }
+
+    function ensureObserver() {
+        if (observerStarted) return;
+        var target = document.body || document.documentElement;
+        if (target) {
+            var observer = new MutationObserver(function() {
+                updateTabs();
+            });
+            observer.observe(target, { childList: true, subtree: true });
+            observerStarted = true;
+        }
+    }
+
+    applyDarkAndTabs();
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", applyDarkAndTabs);
+    }
+
+    window.addEventListener("hashchange", function() {
+        setTimeout(updateTabs, 10);
+    });
+
+    // Continuous light check to ensure tabs are always present on any route/screen
+    setInterval(function() {
+        updateTabs();
+        ensureObserver();
+    }, 250);
+})();
+"##;
+
     let mut builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
         .title("CoinMan Portfolio Tracker")
         .inner_size(width, height)
         .min_inner_size(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT)
         .resizable(true)
         .fullscreen(false)
+        .theme(Some(tauri::Theme::Dark))
+        
+        .background_color(tauri::utils::config::Color(18, 18, 18, 255))
+        .initialization_script(cowswap_dark_init_script)
         .use_https_scheme(true)
         .data_directory(runtime_paths.webview_data_dir.clone());
 

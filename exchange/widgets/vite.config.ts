@@ -16,15 +16,15 @@ export default defineConfig({
     emptyOutDir: false,
     lib: {
       entry: path.resolve(__dirname, 'src/index.tsx'),
-      name: 'CoinmanExchangeLiFi',
-      fileName: () => 'exchange-lifi.bundle.js',
+      name: 'CoinmanExchange',
+      fileName: () => 'exchange.bundle.js',
       formats: ['iife'],
     },
     rollupOptions: {
       output: {
         assetFileNames: (assetInfo) => {
           if (assetInfo.name && assetInfo.name.endsWith('.css')) {
-            return 'exchange-lifi.bundle.css';
+            return 'exchange.bundle.css';
           }
           return assetInfo.name || 'asset-[hash][extname]';
         },
