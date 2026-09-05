@@ -610,14 +610,18 @@ fn create_main_window<R: tauri::Runtime>(
     // Fall back to DB window_state for backward compatibility with older installs.
     let app_settings = settings::load_global(app.handle());
     if let Some(ws) = app_settings.window_state {
-        width = ws.width;
-        height = ws.height;
-        position = Some((ws.x, ws.y));
-    } else if let Ok(db) = storage::load_db(app.handle(), "default", None) {
-        if let Some(ws) = db.window_state {
+        if ws.width >= 500.0 && ws.height >= 400.0 {
             width = ws.width;
             height = ws.height;
             position = Some((ws.x, ws.y));
+        }
+    } else if let Ok(db) = storage::load_db(app.handle(), "default", None) {
+        if let Some(ws) = db.window_state {
+            if ws.width >= 500.0 && ws.height >= 400.0 {
+                width = ws.width;
+                height = ws.height;
+                position = Some((ws.x, ws.y));
+            }
         }
     }
 
@@ -915,46 +919,96 @@ fn create_main_window<R: tauri::Runtime>(
                         *cal.offset.lock().unwrap() = (ow, oh);
                     }
                 }
+
+                // If window is in normal state (not minimized and not maximized), persist size
+                if !w.is_minimized().unwrap_or(false) && !w.is_maximized().unwrap_or(false) {
+                    if let Ok(sf) = w.scale_factor() {
+                        let logical = phys_size.to_logical::<f64>(sf);
+                        let (ow, oh) = *cal.offset.lock().unwrap();
+                        let dpi_mm = *cal.dpi_mismatch.lock().unwrap();
+                        let calc_w = ((logical.width - ow) / dpi_mm).round();
+                        let calc_h = ((logical.height - oh) / dpi_mm).round();
+                        if calc_w >= 500.0 && calc_h >= 400.0 {
+                            let s = settings::load_global(&app_handle);
+                            let cur_pos =
+                                s.window_state.map(|ws| (ws.x, ws.y)).unwrap_or((0.0, 0.0));
+                            let updated = settings::WinState {
+                                width: calc_w,
+                                height: calc_h,
+                                x: cur_pos.0,
+                                y: cur_pos.1,
+                            };
+                            settings::update_window_state(app_handle, updated);
+                        }
+                    }
+                }
+            }
+            tauri::WindowEvent::Moved(phys_pos) => {
+                // If window is in normal state (not minimized and not maximized), persist position
+                if !w.is_minimized().unwrap_or(false) && !w.is_maximized().unwrap_or(false) {
+                    if let Ok(sf) = w.scale_factor() {
+                        let logical = phys_pos.to_logical::<f64>(sf);
+                        if logical.x > -2000.0 && logical.y > -2000.0 {
+                            let app_handle = w.app_handle();
+                            let mut s = settings::load_global(&app_handle);
+                            if let Some(ws) = &mut s.window_state {
+                                ws.x = logical.x;
+                                ws.y = logical.y;
+                                settings::update_window_state(app_handle, ws.clone());
+                            }
+                        }
+                    }
+                }
             }
             tauri::WindowEvent::CloseRequested { .. } => {
                 let app_handle = w.app_handle();
                 let cal = app_handle.state::<WindowSizeCalibration>();
                 let (ow, oh) = *cal.offset.lock().unwrap();
 
-                // Try to preserve previous x and y in case outer_position fails (e.g. on Wayland)
-                let (prev_x, prev_y) = settings::load_global(&app_handle)
-                    .window_state
-                    .map(|ws| (ws.x, ws.y))
-                    .unwrap_or((0.0, 0.0));
+                // Never overwrite with defaults if minimized or maximized!
+                if !w.is_minimized().unwrap_or(false) && !w.is_maximized().unwrap_or(false) {
+                    let prev_state = settings::load_global(&app_handle).window_state;
+                    let (prev_w, prev_h, prev_x, prev_y) = prev_state
+                        .map(|ws| (ws.width, ws.height, ws.x, ws.y))
+                        .unwrap_or((DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT, 0.0, 0.0));
 
-                let mut win_state = settings::WinState {
-                    width: DEFAULT_WINDOW_WIDTH,
-                    height: DEFAULT_WINDOW_HEIGHT,
-                    x: prev_x,
-                    y: prev_y,
-                };
+                    let mut new_w = prev_w;
+                    let mut new_h = prev_h;
+                    let mut new_x = prev_x;
+                    let mut new_y = prev_y;
 
-                let dpi_mm = *cal.dpi_mismatch.lock().unwrap();
-                if let Ok(size) = w.inner_size() {
-                    if let Ok(scale_factor) = w.scale_factor() {
-                        let logical_size = size.to_logical::<f64>(scale_factor);
-                        // Divide by dpi_mismatch to convert back to "app-logical"
-                        // coordinates (the size before X11 DPI compensation).
-                        win_state.width =
-                            ((logical_size.width - ow) / dpi_mm).max(DEFAULT_WINDOW_WIDTH);
-                        win_state.height =
-                            ((logical_size.height - oh) / dpi_mm).max(DEFAULT_WINDOW_HEIGHT);
+                    let dpi_mm = *cal.dpi_mismatch.lock().unwrap();
+                    if let Ok(size) = w.inner_size() {
+                        if let Ok(scale_factor) = w.scale_factor() {
+                            let logical_size = size.to_logical::<f64>(scale_factor);
+                            let calc_w = ((logical_size.width - ow) / dpi_mm).round();
+                            let calc_h = ((logical_size.height - oh) / dpi_mm).round();
+                            if calc_w >= 500.0 && calc_h >= 400.0 {
+                                new_w = calc_w;
+                                new_h = calc_h;
+                            }
+                        }
                     }
-                }
-                if let Ok(pos) = w.outer_position() {
-                    if let Ok(scale_factor) = w.scale_factor() {
-                        let logical_pos = pos.to_logical::<f64>(scale_factor);
-                        win_state.x = logical_pos.x;
-                        win_state.y = logical_pos.y;
+                    if let Ok(pos) = w.outer_position() {
+                        if let Ok(scale_factor) = w.scale_factor() {
+                            let logical_pos = pos.to_logical::<f64>(scale_factor);
+                            if logical_pos.x > -2000.0 && logical_pos.y > -2000.0 {
+                                new_x = logical_pos.x;
+                                new_y = logical_pos.y;
+                            }
+                        }
                     }
-                }
 
-                settings::update_window_state(app_handle, win_state);
+                    settings::update_window_state(
+                        app_handle,
+                        settings::WinState {
+                            width: new_w,
+                            height: new_h,
+                            x: new_x,
+                            y: new_y,
+                        },
+                    );
+                }
             }
             _ => {}
         }

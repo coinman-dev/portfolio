@@ -27,7 +27,14 @@ export const NetworkSelector: React.FC<NetworkSelectorProps> = ({
           className={`yearn-network-pill ${selectedChainId === chain.id ? 'active' : ''}`}
           onClick={() => onSelectChain(chain.id)}
         >
-          <img src={chain.icon} alt={chain.name} onError={(e) => { (e.target as any).style.display = 'none'; }} />
+          <img
+            src={chain.icon}
+            alt={chain.name}
+            className="yearn-network-pill-icon"
+            onError={(e) => {
+              (e.target as any).style.display = 'none';
+            }}
+          />
           <span>{chain.name}</span>
         </button>
       ))}

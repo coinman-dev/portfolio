@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface TokenIconProps {
   src?: string;
@@ -22,11 +22,21 @@ export const TokenIcon: React.FC<TokenIconProps> = ({
   const [candidateIndex, setCandidateIndex] = useState<number>(0);
   const [fallbackTriggered, setFallbackTriggered] = useState<boolean>(false);
 
-  // Build candidate URL list
+  useEffect(() => {
+    setCandidateIndex(0);
+    setFallbackTriggered(false);
+  }, [src, tokenIcon, tokenAddress, chainId]);
+
+  // Build candidate URL list:
+  // 1. Underlying token icon (tokenIcon, which represents the deposit token)
+  // 2. Direct src (if different from tokenIcon)
+  // 3. SmoldApp token logo API by address
   const candidates: string[] = [];
-  if (src && src.trim()) candidates.push(src.trim());
-  if (tokenIcon && tokenIcon.trim() && !candidates.includes(tokenIcon.trim())) {
+  if (tokenIcon && tokenIcon.trim()) {
     candidates.push(tokenIcon.trim());
+  }
+  if (src && src.trim() && !candidates.includes(src.trim())) {
+    candidates.push(src.trim());
   }
   if (chainId && tokenAddress && tokenAddress.trim()) {
     const smoldAppUrl = `https://assets.smold.app/api/token/${chainId}/${tokenAddress.trim()}/logo-128.png`;

@@ -230,7 +230,7 @@ export const YearnDashboard: React.FC<EarnMountOptions> = ({
             </div>
             <div className="yearn-stat-card">
               <span className="yearn-stat-title">Wallet Status</span>
-              <span className="yearn-stat-value" style={{ fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <span className="yearn-stat-value" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {walletStatus.isConnected ? (
                   <span className="text-green" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
                     ● Connected ({walletStatus.shortAddress})

@@ -73,7 +73,7 @@ export const VaultsTable: React.FC<VaultsTableProps> = ({
             </th>
             <th>Network</th>
             <th className="sortable" onClick={() => onSort('apy')}>
-              Net APY {getSortIcon('apy')}
+              Est. APY {getSortIcon('apy')}
             </th>
             <th className="sortable" onClick={() => onSort('tvl')}>
               TVL {getSortIcon('tvl')}

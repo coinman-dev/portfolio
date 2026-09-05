@@ -10,6 +10,7 @@ import {
   fetchUserVaultBalance,
 } from '../yearnContracts';
 import { parseUnits, formatUnits, maxUint256 } from 'viem';
+import { TokenIcon } from './TokenIcon';
 
 interface DepositModalProps {
   vault: YearnVault;
@@ -184,11 +185,13 @@ export const DepositModal: React.FC<DepositModalProps> = ({
         {/* Header */}
         <div className="yearn-modal-header">
           <div className="yearn-modal-title">
-            <img
-              src={vault.icon || vault.token.icon}
-              alt=""
-              style={{ width: 26, height: 26, borderRadius: '50%' }}
-              onError={(e) => { (e.target as any).src = 'https://cdn.jsdelivr.net/gh/yearn/tokenassets@main/tokens/1/0x0000000000000000000000000000000000000000/logo-128.png'; }}
+            <TokenIcon
+              src={vault.token.icon || vault.icon}
+              tokenIcon={vault.token.icon}
+              symbol={vault.token.symbol}
+              chainId={vault.chainID}
+              tokenAddress={vault.token.address}
+              size={26}
             />
             <span>{vault.name}</span>
           </div>
@@ -348,23 +351,17 @@ export const DepositModal: React.FC<DepositModalProps> = ({
 
           {/* Status feedback */}
           {statusState.message && (
-            <div
-              className={`yearn-modal-status ${
-                statusState.stage === 'success' ? 'success' : statusState.stage === 'error' ? 'error' : ''
-              }`}
-            >
-              {statusState.message}
+            <div className={`yearn-modal-status status-${statusState.stage}`}>
+              <span>{statusState.message}</span>
               {statusState.txHash && (
-                <div style={{ marginTop: 4 }}>
-                  <a
-                    href={`${chain.blockExplorer}/tx/${statusState.txHash}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{ color: '#006ae3', textDecoration: 'underline' }}
-                  >
-                    View on {chain.name} Explorer ↗
-                  </a>
-                </div>
+                <a
+                  href={`${chain.blockExplorer}/tx/${statusState.txHash}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="yearn-status-link"
+                >
+                  View on Explorer ↗
+                </a>
               )}
             </div>
           )}
