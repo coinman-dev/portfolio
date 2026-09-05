@@ -60,6 +60,9 @@ pub struct AppSettings {
     /// Global: Exchange settings, connected wallets, session cache
     #[serde(default)]
     pub exchange: Option<Value>,
+    /// Global: Earn settings, connected vaults, network filters
+    #[serde(default)]
+    pub earn: Option<Value>,
     /// Per-user (per-database) settings keyed by database filename stem.
     #[serde(default)]
     pub users: HashMap<String, UserSettings>,
@@ -79,6 +82,7 @@ pub struct AppSettingsForUser {
     pub cmc_api_key: Option<String>,
     pub use_cmc: Option<bool>,
     pub exchange: Option<Value>,
+    pub earn: Option<Value>,
     pub active_portfolio_id: Option<Value>,
     pub portfolio_order: Option<Vec<Value>>,
     pub market_cache: Option<Value>,
@@ -107,6 +111,7 @@ pub fn load_for_user<R: Runtime>(app: &AppHandle<R>, user: &str) -> AppSettingsF
         cmc_api_key: settings.cmc_api_key,
         use_cmc: settings.use_cmc,
         exchange: settings.exchange,
+        earn: settings.earn,
         active_portfolio_id: u.active_portfolio_id,
         portfolio_order: u.portfolio_order,
         market_cache: u.market_cache,
@@ -210,6 +215,17 @@ pub fn load_exchange_settings<R: Runtime>(app: &AppHandle<R>) -> Value {
 pub fn update_exchange_settings<R: Runtime>(app: &AppHandle<R>, exchange: Value) {
     let mut settings = load(app);
     settings.exchange = Some(exchange);
+    save(app, &settings);
+}
+
+pub fn load_earn_settings<R: Runtime>(app: &AppHandle<R>) -> Value {
+    let settings = load(app);
+    settings.earn.unwrap_or(Value::Null)
+}
+
+pub fn update_earn_settings<R: Runtime>(app: &AppHandle<R>, earn: Value) {
+    let mut settings = load(app);
+    settings.earn = Some(earn);
     save(app, &settings);
 }
 

@@ -3,8 +3,8 @@ import { LiFiWidget, WidgetConfig, useWidgetEvents, WidgetEvent } from '@lifi/wi
 import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { EthereumProvider } from '@lifi/widget-provider-ethereum';
-import { ExchangeMountOptions } from './types';
-import { wagmiConfig, defaultMetadata, PROJECT_ID } from './wallet';
+import { ExchangeMountOptions } from '../types';
+import { wagmiConfig, defaultMetadata, PROJECT_ID } from '../wallet/wallet';
 
 const queryClient = new QueryClient();
 
@@ -58,57 +58,61 @@ export const LiFiApp: React.FC<ExchangeMountOptions> = ({
   projectId = PROJECT_ID,
   initialSettings,
   onSettingsChange,
+  onWalletConnect,
+  onWalletDisconnect,
 }) => {
-  const widgetConfig = useMemo<WidgetConfig>(() => {
+  const widgetConfig: WidgetConfig = useMemo(() => {
     return {
-      integrator: 'CoinMan-Portfolio',
-      variant: 'compact',
-      appearance: 'dark',
+      integrator: 'CoinMan',
+      containerStyle: {
+        border: '1px solid rgba(255, 255, 255, 0.08)',
+        borderRadius: '16px',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.35)',
+        width: '100%',
+        maxWidth: '460px',
+      },
       theme: {
         palette: {
-          primary: { main: '#f59e0b' },
+          primary: { main: '#ff8c00' },
+          secondary: { main: '#ffa500' },
           background: {
-            default: '#18181b',
-            paper: '#27272a',
+            default: '#121318',
+            paper: '#1a1c23',
           },
           text: {
-            primary: '#f3f4f6',
-            secondary: '#9ca3af',
+            primary: '#ffffff',
+            secondary: '#a0a5b5',
           },
         },
         shape: {
           borderRadius: 12,
           borderRadiusSecondary: 8,
         },
+        typography: {
+          fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif',
+        },
       },
+      variant: 'compact',
+      subvariant: 'default',
+      appearance: 'dark',
       providers: [
-        EthereumProvider({
-          walletConnect: {
-            projectId,
-            metadata: defaultMetadata,
-            showQrModal: true,
-            qrModalOptions: {
-              themeMode: 'dark',
-              themeVariables: {
-                '--wcm-z-index': '10001',
-              },
-            },
-          },
-        }),
+        EthereumProvider(),
       ],
-      slippage: initialSettings?.slippage !== undefined ? Number(initialSettings.slippage) : undefined,
-      fromChain: initialSettings?.fromChain || undefined,
-      toChain: initialSettings?.toChain || undefined,
+      walletConfig: {
+        async onConnect() {
+          console.log('[CoinMan Exchange] Li-Fi connected wallet');
+        },
+      },
     };
-  }, [projectId, initialSettings]);
+  }, [projectId]);
 
   return (
-    <WagmiProvider config={wagmiConfig} reconnectOnMount={true}>
+    <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
         <div className="coinman-exchange-wrapper">
           <div className="coinman-exchange-card">
             <WidgetEventsHandler onSettingsChange={onSettingsChange} />
-            <LiFiWidget integrator="CoinMan-Portfolio" config={widgetConfig} />
+            <LiFiWidget config={widgetConfig} />
           </div>
         </div>
       </QueryClientProvider>

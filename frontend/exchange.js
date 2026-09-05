@@ -15,20 +15,37 @@ var AppExchange = (function () {
     function switchView(viewName) {
         var portfolioEl = document.getElementById('portfolio-view');
         var exchangeEl = document.getElementById('exchange-view');
+        var earnEl = document.getElementById('earn-view');
         var menuExchangeEl = document.getElementById('menu-item-exchange');
+        var menuEarnEl = document.getElementById('menu-item-earn');
 
         if (viewName === 'exchange') {
             currentView = 'exchange';
             if (portfolioEl) portfolioEl.style.display = 'none';
+            if (earnEl) earnEl.style.display = 'none';
             if (exchangeEl) exchangeEl.style.display = 'flex';
             if (menuExchangeEl) menuExchangeEl.classList.add('active');
+            if (menuEarnEl) menuEarnEl.classList.remove('active');
 
             updateExchangeViews();
+        } else if (viewName === 'earn') {
+            currentView = 'earn';
+            if (portfolioEl) portfolioEl.style.display = 'none';
+            if (exchangeEl) exchangeEl.style.display = 'none';
+            if (earnEl) earnEl.style.display = 'flex';
+            if (menuExchangeEl) menuExchangeEl.classList.remove('active');
+            if (menuEarnEl) menuEarnEl.classList.add('active');
+
+            if (window.AppEarn && typeof window.AppEarn.updateEarnViews === 'function') {
+                window.AppEarn.updateEarnViews();
+            }
         } else {
             currentView = 'portfolio';
             if (exchangeEl) exchangeEl.style.display = 'none';
+            if (earnEl) earnEl.style.display = 'none';
             if (portfolioEl) portfolioEl.style.display = 'block';
             if (menuExchangeEl) menuExchangeEl.classList.remove('active');
+            if (menuEarnEl) menuEarnEl.classList.remove('active');
         }
     }
 
@@ -68,14 +85,23 @@ var AppExchange = (function () {
 
         bundlePromise = (async function () {
             try {
-                loadCss('exchange/exchange.bundle.css');
+                loadCss('modules/modules.bundle.css');
                 if (!window.CoinmanWallet) {
-                    await loadScript('exchange/exchange.bundle.js');
+                    await loadScript('modules/modules.bundle.js');
                 }
                 setupWalletSubscription();
             } catch (err) {
-                console.error('[Exchange] Failed to load exchange bundle:', err);
-                throw err;
+                console.warn('[Exchange] Falling back to exchange bundle:', err);
+                try {
+                    loadCss('exchange/exchange.bundle.css');
+                    if (!window.CoinmanWallet) {
+                        await loadScript('exchange/exchange.bundle.js');
+                    }
+                    setupWalletSubscription();
+                } catch (e) {
+                    console.error('[Exchange] Failed to load exchange bundle:', e);
+                    throw e;
+                }
             }
         })();
 
@@ -117,6 +143,20 @@ var AppExchange = (function () {
             menuWalletEl.classList.toggle('connected', isConnected);
         }
 
+        // Also sync Earn menu wallet indicator
+        var menuEarnStatusEl = document.getElementById('menu-earn-wallet-status');
+        var menuEarnWalletEl = document.getElementById('menu-earn-wallet');
+        if (menuEarnStatusEl) {
+            if (isConnected) {
+                menuEarnStatusEl.innerHTML = '<span class="wallet-check-green" title="' + (status.address || '') + '">✓</span>';
+            } else if (isExplicitDisconnect || (status && !status.isConnected)) {
+                menuEarnStatusEl.innerHTML = '';
+            }
+        }
+        if (menuEarnWalletEl) {
+            menuEarnWalletEl.classList.toggle('connected', isConnected);
+        }
+
         // Persist connected wallet in exchangeSettings and settings-cache.json
         if (isConnected && status.address) {
             exchangeSettings = Object.assign({}, exchangeSettings || {}, {
@@ -151,20 +191,16 @@ var AppExchange = (function () {
         return null;
     }
 
-    async function handleWalletClick(event) {
-        if (event) {
-            event.preventDefault();
-            event.stopPropagation();
+    async function handleWalletClick(e) {
+        if (e && typeof e.stopPropagation === 'function') {
+            e.stopPropagation();
         }
+
         if (typeof window.closeAllDropdowns === 'function') {
             window.closeAllDropdowns();
         }
 
-        try {
-            await ensureBundleLoaded();
-        } catch (e) {
-            console.error('Failed to load wallet module:', e);
-        }
+        await ensureBundleLoaded();
 
         var activeStatus = isWalletConnected();
 
@@ -268,53 +304,66 @@ var AppExchange = (function () {
     }
 
     function selectExchangeModule(moduleName) {
+        activeModule = moduleName || 'lifi';
+
         if (typeof window.closeAllDropdowns === 'function') {
             window.closeAllDropdowns();
         }
-        activeModule = moduleName || 'lifi';
+
+        var itemLiFi = document.getElementById('menu-exchange-lifi');
+        var itemCowSwap = document.getElementById('menu-exchange-cowswap');
+
+        if (itemLiFi) itemLiFi.classList.toggle('active', activeModule === 'lifi');
+        if (itemCowSwap) itemCowSwap.classList.toggle('active', activeModule === 'cowswap');
+
         if (exchangeSettings) {
             exchangeSettings.lastSelectedModule = activeModule;
             saveExchangeSettings(exchangeSettings);
         }
+
         switchView('exchange');
     }
 
-    async function updateExchangeViews() {
+    function updateExchangeViews() {
         var lifiContainer = document.getElementById('exchange-lifi-container');
         var cowswapContainer = document.getElementById('exchange-cowswap-container');
         var titleEl = document.getElementById('exchange-header-title');
 
         if (activeModule === 'cowswap') {
-            if (titleEl) titleEl.textContent = 'CoinMan DEX & Swap (CoW Swap)';
+            if (titleEl) titleEl.textContent = 'CoinMan DEX Exchange • CoW Swap';
             if (lifiContainer) lifiContainer.style.display = 'none';
-            if (cowswapContainer) cowswapContainer.style.display = 'flex';
+            if (cowswapContainer) cowswapContainer.style.display = 'block';
 
-            if (!cowswapInstance && cowswapContainer) {
-                await initCowSwap(cowswapContainer);
-            }
+            ensureBundleLoaded().then(function () {
+                mountCowSwapIfNeeded();
+            }).catch(function (err) {
+                console.error('[Exchange] Failed to mount CoW Swap:', err);
+            });
         } else {
-            if (titleEl) titleEl.textContent = 'CoinMan Cross-Chain Exchange (Li-Fi)';
+            if (titleEl) titleEl.textContent = 'CoinMan Cross-Chain Exchange • LI.FI';
             if (cowswapContainer) cowswapContainer.style.display = 'none';
-            if (lifiContainer) lifiContainer.style.display = 'flex';
+            if (lifiContainer) lifiContainer.style.display = 'block';
 
-            if (!lifiInstance && lifiContainer) {
-                await initLiFi(lifiContainer);
-            }
+            ensureBundleLoaded().then(function () {
+                mountLiFiIfNeeded();
+            }).catch(function (err) {
+                console.error('[Exchange] Failed to mount LI.FI:', err);
+            });
         }
     }
 
-    async function initLiFi(container) {
-        container.innerHTML = '<div style="text-align:center; padding:60px 20px; color:#9ca3af; font-size:14px;"><div style="margin-bottom:12px; font-weight:bold; color:#f59e0b;">Loading Cross-Chain Exchange...</div>Initializing LI.FI engine and wallet connectors...</div>';
+    function mountLiFiIfNeeded() {
+        var lifiContainer = document.getElementById('exchange-lifi-container');
+        if (!lifiContainer) return;
+
+        if (lifiInstance) {
+            return;
+        }
 
         try {
-            await ensureBundleLoaded();
-
-            container.innerHTML = '';
-
             if (window.CoinmanExchangeLiFi && typeof window.CoinmanExchangeLiFi.mount === 'function') {
                 lifiInstance = window.CoinmanExchangeLiFi.mount({
-                    container: container,
-                    projectId: '927c5d6fc3d30f43842ac0b9e0714891',
+                    container: lifiContainer,
                     initialSettings: exchangeSettings || {},
                     onSettingsChange: function (updated) {
                         exchangeSettings = Object.assign({}, exchangeSettings || {}, updated);
@@ -334,25 +383,25 @@ var AppExchange = (function () {
                     },
                 });
             } else {
-                container.innerHTML = '<div style="text-align:center; padding:40px; color:#ef4444;">Failed to initialize LiFi module: widget bundle export not found.</div>';
+                console.warn('[Exchange] CoinmanExchangeLiFi.mount is not available');
             }
         } catch (err) {
-            console.error('[Exchange] Error loading LiFi module:', err);
-            container.innerHTML = '<div style="text-align:center; padding:40px; color:#ef4444;">Error loading LiFi module: ' + (err.message || err) + '</div>';
+            console.error('[Exchange] Error mounting LiFi:', err);
         }
     }
 
-    async function initCowSwap(container) {
-        container.innerHTML = '<div style="text-align:center; padding:60px 20px; color:#9ca3af; font-size:14px;"><div style="margin-bottom:12px; font-weight:bold; color:#f59e0b;">Loading CoW Swap Widget...</div>Initializing CoW Protocol engine and wallet provider...</div>';
+    async function mountCowSwapIfNeeded() {
+        var cowswapContainer = document.getElementById('exchange-cowswap-container');
+        if (!cowswapContainer) return;
+
+        if (cowswapInstance) {
+            return;
+        }
 
         try {
-            await ensureBundleLoaded();
-
-            container.innerHTML = '';
-
             if (window.CoinmanExchangeCowSwap && typeof window.CoinmanExchangeCowSwap.mount === 'function') {
                 cowswapInstance = await window.CoinmanExchangeCowSwap.mount({
-                    container: container,
+                    container: cowswapContainer,
                     initialSettings: exchangeSettings || {},
                     onSettingsChange: function (updated) {
                         exchangeSettings = Object.assign({}, exchangeSettings || {}, updated);
@@ -360,42 +409,64 @@ var AppExchange = (function () {
                     },
                 });
             } else {
-                container.innerHTML = '<div style="text-align:center; padding:40px; color:#ef4444;">Failed to initialize CoW Swap: widget bundle export not found.</div>';
+                console.warn('[Exchange] CoinmanExchangeCowSwap.mount is not available');
             }
         } catch (err) {
-            console.error('[Exchange] Error loading CoW Swap module:', err);
-            container.innerHTML = '<div style="text-align:center; padding:40px; color:#ef4444;">Error loading CoW Swap module: ' + (err.message || err) + '</div>';
+            console.error('[Exchange] Error mounting CoW Swap:', err);
         }
     }
 
-    function saveExchangeSettings(settings) {
-        if (window.AppBridge && window.AppBridge.isTauri()) {
-            window.AppBridge.invoke('save_exchange_settings', {
-                settings: settings,
-            }).catch(function (e) {
-                console.warn('[Exchange] Failed to save exchange settings:', e);
-            });
+    async function loadExchangeSettings() {
+        try {
+            if (window.__TAURI__ && window.__TAURI__.core && typeof window.__TAURI__.core.invoke === 'function') {
+                var loaded = await window.__TAURI__.core.invoke('load_exchange_settings');
+                if (loaded && typeof loaded === 'object') {
+                    exchangeSettings = loaded;
+                    return exchangeSettings;
+                }
+            }
+        } catch (e) {
+            console.warn('[Exchange] Could not load exchange settings from Tauri:', e);
         }
+        try {
+            var local = localStorage.getItem('coinman_exchange_settings');
+            if (local) {
+                exchangeSettings = JSON.parse(local);
+                return exchangeSettings;
+            }
+        } catch (e) {}
+
+        exchangeSettings = {};
+        return exchangeSettings;
+    }
+
+    async function saveExchangeSettings(settings) {
+        if (!settings) return;
+        exchangeSettings = settings;
+
+        try {
+            if (window.__TAURI__ && window.__TAURI__.core && typeof window.__TAURI__.core.invoke === 'function') {
+                await window.__TAURI__.core.invoke('save_exchange_settings', { settings: settings });
+            }
+        } catch (e) {
+            console.warn('[Exchange] Could not save exchange settings to Tauri:', e);
+        }
+        try {
+            localStorage.setItem('coinman_exchange_settings', JSON.stringify(settings));
+        } catch (e) {}
     }
 
     async function initExchangeSettings() {
-        if (window.AppBridge && window.AppBridge.isTauri()) {
-            try {
-                exchangeSettings = await window.AppBridge.invoke('load_exchange_settings');
-                if (exchangeSettings && exchangeSettings.lastSelectedModule) {
-                    activeModule = exchangeSettings.lastSelectedModule;
-                }
-                if (exchangeSettings && exchangeSettings.connectedWallet && exchangeSettings.connectedWallet.address) {
-                    updateWalletUI({
-                        isConnected: true,
-                        address: exchangeSettings.connectedWallet.address,
-                        chainId: exchangeSettings.connectedWallet.chainId,
-                    });
-                }
-            } catch (e) {
-                console.warn('[Exchange] Failed to load exchange settings:', e);
-            }
+        await loadExchangeSettings();
+
+        if (exchangeSettings && exchangeSettings.lastSelectedModule) {
+            activeModule = exchangeSettings.lastSelectedModule;
         }
+
+        var itemLiFi = document.getElementById('menu-exchange-lifi');
+        var itemCowSwap = document.getElementById('menu-exchange-cowswap');
+        if (itemLiFi) itemLiFi.classList.toggle('active', activeModule === 'lifi');
+        if (itemCowSwap) itemCowSwap.classList.toggle('active', activeModule === 'cowswap');
 
         ensureBundleLoaded().then(function () {
             setupWalletSubscription();
@@ -418,7 +489,7 @@ var AppExchange = (function () {
             if (typeof window[fnName] === 'function') {
                 var orig = window[fnName];
                 window[fnName] = function () {
-                    if (currentView === 'exchange') {
+                    if (currentView === 'exchange' || currentView === 'earn') {
                         switchView('portfolio');
                     }
                     return orig.apply(this, arguments);
@@ -435,9 +506,11 @@ var AppExchange = (function () {
         getActiveModule: function () { return activeModule; },
         saveExchangeSettings: saveExchangeSettings,
         handleWalletClick: handleWalletClick,
+        openWalletModal: openWalletModal,
         handleModalWalletAction: handleModalWalletAction,
         closeWalletModal: closeWalletModal,
         selectExchangeModule: selectExchangeModule,
+        updateExchangeViews: updateExchangeViews,
     };
 })();
 

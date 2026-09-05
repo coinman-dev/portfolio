@@ -1,0 +1,612 @@
+/* Yearn Finance Dark Theme (yearn.fi style) */
+:root {
+  --y-bg-main: #08090d;
+  --y-bg-card: #11131a;
+  --y-bg-card-hover: #161822;
+  --y-bg-input: #0b0c12;
+  --y-border: #1f2333;
+  --y-border-focus: #006ae3;
+  --y-blue-primary: #006ae3;
+  --y-blue-hover: #1a7eff;
+  --y-blue-glow: rgba(0, 106, 227, 0.25);
+  --y-green-apy: #22c55e;
+  --y-text-primary: #ffffff;
+  --y-text-secondary: #94a3b8;
+  --y-text-muted: #64748b;
+  --y-danger: #ef4444;
+}
+
+.yearn-dashboard-wrapper {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 16px 20px 40px;
+  box-sizing: border-box;
+  color: var(--y-text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Header & Stat Cards */
+.yearn-header {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.yearn-brand-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.yearn-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.yearn-logo-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--y-blue-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 16px var(--y-blue-glow);
+}
+
+.yearn-title {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: #ffffff;
+}
+
+.yearn-subtitle {
+  font-size: 13px;
+  color: var(--y-text-secondary);
+  margin: 2px 0 0;
+}
+
+/* Header Stats Bar */
+.yearn-stats-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+.yearn-stat-card {
+  background: var(--y-bg-card);
+  border: 1px solid var(--y-border);
+  border-radius: 12px;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: border-color 0.2s;
+}
+
+.yearn-stat-card:hover {
+  border-color: #2e354d;
+}
+
+.yearn-stat-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--y-text-muted);
+}
+
+.yearn-stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--y-text-primary);
+}
+
+.yearn-stat-value.highlight-green {
+  color: var(--y-green-apy);
+}
+
+/* Controls Bar (Chains & Search) */
+.yearn-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.yearn-network-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.yearn-network-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--y-bg-card);
+  border: 1px solid var(--y-border);
+  color: var(--y-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.yearn-network-pill:hover {
+  border-color: var(--y-blue-primary);
+  color: var(--y-text-primary);
+}
+
+.yearn-network-pill.active {
+  background: var(--y-blue-primary);
+  border-color: var(--y-blue-primary);
+  color: #ffffff;
+  box-shadow: 0 0 12px var(--y-blue-glow);
+}
+
+.yearn-network-pill img {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+}
+
+.yearn-filter-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.yearn-search-input-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 260px;
+  max-width: 400px;
+}
+
+.yearn-search-input {
+  width: 100%;
+  padding: 10px 14px 10px 36px;
+  background: var(--y-bg-input);
+  border: 1px solid var(--y-border);
+  border-radius: 10px;
+  color: #ffffff;
+  font-size: 13px;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.yearn-search-input:focus {
+  border-color: var(--y-border-focus);
+}
+
+.yearn-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--y-text-muted);
+  pointer-events: none;
+}
+
+.yearn-tab-buttons {
+  display: flex;
+  background: var(--y-bg-input);
+  border: 1px solid var(--y-border);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 4px;
+}
+
+.yearn-tab-btn {
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  color: var(--y-text-secondary);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.yearn-tab-btn.active {
+  background: var(--y-bg-card);
+  color: #ffffff;
+}
+
+/* Vaults Table */
+.yearn-table-wrap {
+  background: var(--y-bg-card);
+  border: 1px solid var(--y-border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.yearn-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 14px;
+}
+
+.yearn-table th {
+  padding: 14px 16px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--y-text-muted);
+  font-weight: 600;
+  border-bottom: 1px solid var(--y-border);
+  user-select: none;
+}
+
+.yearn-table th.sortable {
+  cursor: pointer;
+}
+
+.yearn-table th.sortable:hover {
+  color: var(--y-text-primary);
+}
+
+.yearn-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--y-border);
+  vertical-align: middle;
+}
+
+.yearn-table tr:last-child td {
+  border-bottom: none;
+}
+
+.yearn-table tr.vault-row {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.yearn-table tr.vault-row:hover {
+  background: var(--y-bg-card-hover);
+}
+
+.yearn-asset-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.yearn-asset-icon-wrap {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.yearn-asset-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #1f2333;
+  object-fit: contain;
+}
+
+.yearn-chain-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--y-bg-card);
+  background: #1e2233;
+}
+
+.yearn-asset-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.yearn-asset-name {
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.yearn-asset-version {
+  font-size: 11px;
+  color: var(--y-text-muted);
+}
+
+.yearn-apy-val {
+  font-weight: 700;
+  color: var(--y-green-apy);
+  font-size: 15px;
+}
+
+.yearn-tvl-val {
+  font-weight: 500;
+  color: var(--y-text-primary);
+}
+
+.yearn-action-btn {
+  padding: 8px 18px;
+  background: var(--y-blue-primary);
+  border: 1px solid var(--y-blue-primary);
+  border-radius: 8px;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.yearn-action-btn:hover {
+  background: var(--y-blue-hover);
+  box-shadow: 0 0 10px var(--y-blue-glow);
+}
+
+.yearn-action-btn.btn-outline {
+  background: transparent;
+  border-color: var(--y-border);
+  color: var(--y-text-secondary);
+}
+
+.yearn-action-btn.btn-outline:hover {
+  border-color: var(--y-blue-primary);
+  color: #ffffff;
+}
+
+/* Empty / Loading states */
+.yearn-state-message {
+  padding: 48px 20px;
+  text-align: center;
+  color: var(--y-text-secondary);
+  font-size: 14px;
+}
+
+.yearn-spinner {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: var(--y-blue-primary);
+  border-radius: 50%;
+  animation: yearn-spin 0.8s linear infinite;
+  margin-bottom: 12px;
+}
+
+@keyframes yearn-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Modal / Drawer */
+.yearn-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(4, 5, 8, 0.75);
+  backdrop-filter: blur(6px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.yearn-modal-card {
+  background: #0f1118;
+  border: 1px solid var(--y-border);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.yearn-modal-header {
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--y-border);
+}
+
+.yearn-modal-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.yearn-modal-close {
+  background: transparent;
+  border: none;
+  color: var(--y-text-muted);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+}
+
+.yearn-modal-close:hover {
+  color: #ffffff;
+}
+
+.yearn-modal-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.yearn-modal-tabs {
+  display: flex;
+  background: var(--y-bg-input);
+  border-radius: 10px;
+  padding: 4px;
+  gap: 4px;
+}
+
+.yearn-modal-tab {
+  flex: 1;
+  padding: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  color: var(--y-text-secondary);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.yearn-modal-tab.active {
+  background: var(--y-bg-card);
+  color: #ffffff;
+}
+
+.yearn-input-box {
+  background: var(--y-bg-input);
+  border: 1px solid var(--y-border);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.yearn-input-top-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--y-text-muted);
+}
+
+.yearn-input-middle-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.yearn-amount-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: 600;
+  outline: none;
+}
+
+.yearn-input-token-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: #ffffff;
+  background: #1c1f2e;
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+
+.yearn-percentage-pills {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.yearn-percent-pill {
+  padding: 3px 8px;
+  background: #181b28;
+  border: 1px solid var(--y-border);
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--y-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.yearn-percent-pill:hover {
+  background: var(--y-blue-primary);
+  color: #ffffff;
+  border-color: var(--y-blue-primary);
+}
+
+.yearn-modal-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #13151f;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 13px;
+}
+
+.yearn-meta-row {
+  display: flex;
+  justify-content: space-between;
+  color: var(--y-text-secondary);
+}
+
+.yearn-meta-row span:last-child {
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.yearn-modal-action-btn {
+  width: 100%;
+  padding: 14px;
+  background: var(--y-blue-primary);
+  border: none;
+  border-radius: 10px;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.yearn-modal-action-btn:hover:not(:disabled) {
+  background: var(--y-blue-hover);
+  box-shadow: 0 0 16px var(--y-blue-glow);
+}
+
+.yearn-modal-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.yearn-modal-status {
+  font-size: 12px;
+  text-align: center;
+  color: var(--y-text-muted);
+  line-height: 1.4;
+}
+
+.yearn-modal-status.success {
+  color: var(--y-green-apy);
+}
+
+.yearn-modal-status.error {
+  color: var(--y-danger);
+}

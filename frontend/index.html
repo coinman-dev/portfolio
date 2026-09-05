@@ -8,9 +8,9 @@
 		<meta property="og:title" content="CoinMan Portfolio Tracker"/>
 		<meta name="description" content="CoinMan Cross-Chain Crypto Exchange & Portfolio Tracker"/>
 		<link rel="stylesheet" href="index.css"/>
-		<link rel="stylesheet" href="exchange/exchange.bundle.css"/>
+		<link rel="stylesheet" href="modules/modules.bundle.css"/>
 		<link rel="icon" type="image/webp" href="images/coinman.dev.webp"/>
-		<script defer src="exchange/exchange.bundle.js"></script>
+		<script defer src="modules/modules.bundle.js"></script>
 		<script>
 			(function () {
 				var originalOpen = window.open;
@@ -119,6 +119,18 @@
 					</div>
 					<div class="dropdown-item" id="menu-exchange-cowswap" onclick="AppExchange.selectExchangeModule('cowswap')">
 						<span>CoW Swap</span>
+					</div>
+				</div>
+			</div>
+			<div class="menu-item" id="menu-item-earn" onclick="toggleDropdown('earn-dropdown', event)"> Earn
+				<div class="dropdown-menu" id="earn-dropdown">
+					<div class="dropdown-item dropdown-item-wallet" id="menu-earn-wallet" onclick="AppEarn.handleWalletClick(event)">
+						<span class="wallet-menu-label">Wallet Connect</span>
+						<span class="wallet-menu-status" id="menu-earn-wallet-status"></span>
+					</div>
+					<div class="dropdown-divider"></div>
+					<div class="dropdown-item" id="menu-earn-yearn" onclick="AppEarn.selectEarnModule('yearn')">
+						<span>Yearn Finance</span>
 					</div>
 				</div>
 			</div>
@@ -459,6 +471,25 @@
 			<div id="exchange-widget-root" class="exchange-widget-root">
 				<div id="exchange-lifi-container" style="display: none; width: 100%;"></div>
 				<div id="exchange-cowswap-container" style="display: none; width: 100%;"></div>
+			</div>
+		</div>
+		<!-- EARN VIEW -->
+		<div id="earn-view" class="container" style="display: none;">
+			<table id="earn-header-table" class="header-table">
+				<tr>
+					<td class="header-logo-cell">
+						<div class="header-logo-wrap">
+							<img src="images/coinman.dev.webp" alt=""/>
+							<span class="logo-text" id="earn-header-title">CoinMan DeFi Earn • Yearn Finance</span>
+						</div>
+					</td>
+					<td class="header-actions-cell">
+						<button class="add-portfolio-btn" onclick="AppNavigation.switchView('portfolio')"> ← PORTFOLIO </button>
+					</td>
+				</tr>
+			</table>
+			<div id="earn-widget-root" class="earn-widget-root">
+				<div id="earn-yearn-container" style="display: none; width: 100%;"></div>
 			</div>
 		</div>
 <!-- MODALS -->
@@ -1121,5 +1152,6 @@
 <script src="coinman-tpl.js"></script>
 <script src="index.js"></script>
 <script src="exchange.js"></script>
+<script src="earn.js"></script>
 </body>
 </html>

@@ -1,12 +1,26 @@
 import ReactDOM from 'react-dom/client';
-import { LiFiApp } from './LiFiApp';
-import { mountCowSwap } from './cowswap';
+import { LiFiApp } from './exchange/LiFiApp';
+import { mountCowSwap } from './exchange/cowswap';
+import { YearnApp } from './earn/YearnApp';
+import { EarnMountOptions, EarnInstance } from './earn/types';
 import { ExchangeMountOptions, ExchangeInstance } from './types';
-import * as wallet from './wallet';
+import * as wallet from './wallet/wallet';
+import './styles.css';
 
-export function mount(options: ExchangeMountOptions): ExchangeInstance {
+export function mountLiFi(options: ExchangeMountOptions): ExchangeInstance {
   const root = ReactDOM.createRoot(options.container);
   root.render(<LiFiApp {...options} />);
+
+  return {
+    unmount: () => {
+      root.unmount();
+    },
+  };
+}
+
+export function mountYearn(options: EarnMountOptions): EarnInstance {
+  const root = ReactDOM.createRoot(options.container);
+  root.render(<YearnApp {...options} />);
 
   return {
     unmount: () => {
@@ -27,10 +41,13 @@ export const CoinmanWallet = {
 declare global {
   interface Window {
     CoinmanExchangeLiFi?: {
-      mount: typeof mount;
+      mount: typeof mountLiFi;
     };
     CoinmanExchangeCowSwap?: {
       mount: typeof mountCowSwap;
+    };
+    CoinmanEarnYearn?: {
+      mount: typeof mountYearn;
     };
     CoinmanWallet?: typeof CoinmanWallet;
   }
@@ -38,10 +55,13 @@ declare global {
 
 if (typeof window !== 'undefined') {
   window.CoinmanExchangeLiFi = {
-    mount,
+    mount: mountLiFi,
   };
   window.CoinmanExchangeCowSwap = {
     mount: mountCowSwap,
+  };
+  window.CoinmanEarnYearn = {
+    mount: mountYearn,
   };
   window.CoinmanWallet = CoinmanWallet;
 }

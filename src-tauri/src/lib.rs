@@ -330,6 +330,16 @@ fn save_exchange_settings(app: tauri::AppHandle, settings: serde_json::Value) {
 }
 
 #[tauri::command]
+fn load_earn_settings(app: tauri::AppHandle) -> serde_json::Value {
+    settings::load_earn_settings(&app)
+}
+
+#[tauri::command]
+fn save_earn_settings(app: tauri::AppHandle, settings: serde_json::Value) {
+    settings::update_earn_settings(&app, settings);
+}
+
+#[tauri::command]
 async fn cmc_fetch_quotes(
     api_key: String,
     ids: String,
@@ -509,7 +519,9 @@ pub fn run() {
             save_use_cmc,
             cmc_fetch_quotes,
             load_exchange_settings,
-            save_exchange_settings
+            save_exchange_settings,
+            load_earn_settings,
+            save_earn_settings
         ])
         .setup(|app| {
             let debug_mode =
