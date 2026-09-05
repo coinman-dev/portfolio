@@ -82,9 +82,12 @@ export const YearnDashboard: React.FC<EarnMountOptions> = ({
         (v) =>
           v.name.toLowerCase().includes(q) ||
           v.symbol.toLowerCase().includes(q) ||
+          (v.displayName && v.displayName.toLowerCase().includes(q)) ||
+          (v.displaySymbol && v.displaySymbol.toLowerCase().includes(q)) ||
           v.token.symbol.toLowerCase().includes(q) ||
           v.token.name.toLowerCase().includes(q) ||
-          v.address.toLowerCase().includes(q)
+          v.address.toLowerCase().includes(q) ||
+          (v.category && v.category.toLowerCase().includes(q))
       );
     }
 
@@ -270,7 +273,7 @@ export const YearnDashboard: React.FC<EarnMountOptions> = ({
               <span className="yearn-search-icon">🔍</span>
               <input
                 type="text"
-                placeholder="Search by token or vault name (e.g. USDC, ETH, WETH)..."
+                placeholder="Search by token or vault name (e.g. USDC, ETH, WETH, BOLD)..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="yearn-search-input"

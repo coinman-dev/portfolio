@@ -54,7 +54,9 @@ const YDAEMON_BASE_URL = 'https://ydaemon.yearn.fi';
  */
 export async function fetchYearnVaults(chainId: number): Promise<YearnVault[]> {
   try {
-    const url = `${YDAEMON_BASE_URL}/${chainId}/vaults/all`;
+    // Note: yDaemon defaults to limit=200 without query param, which truncates active vaults.
+    // Specifying limit=2500 ensures all production vaults (including BOLD, newer v3 vaults) are fetched.
+    const url = `${YDAEMON_BASE_URL}/${chainId}/vaults/all?limit=2500`;
     const res = await fetch(url);
     if (!res.ok) {
       throw new Error(`Failed to fetch Yearn vaults: ${res.statusText}`);
@@ -71,7 +73,7 @@ export async function fetchYearnVaults(chainId: number): Promise<YearnVault[]> {
         if (!v || !v.address || !v.token) return false;
         if (v.details?.isRetired || v.details?.isHidden) return false;
         if (v.emergency_shutdown) return false;
-        // Check TVL or active version
+        // Check TVL or endorsed
         const tvl = Number(v.tvl?.tvl || 0);
         return tvl > 100 || v.endorsed;
       })
