@@ -1294,7 +1294,7 @@ body.show-cur-price .col-cur-price {
     flex-direction: column;
     height: calc(100vh - 50px);
     min-height: calc(100vh - 50px);
-    padding: 10px 10px 30px;
+    padding: 10px 10px 10px;
     margin: 0 auto;
     overflow-x: hidden;
     overflow-y: auto;
@@ -1366,7 +1366,7 @@ body.show-cur-price .col-cur-price {
     flex-direction: column;
     height: calc(100vh - 50px);
     min-height: calc(100vh - 50px);
-    padding: 10px 10px 30px;
+    padding: 10px 10px 10px;
     margin: 0 auto;
     overflow-x: hidden;
     overflow-y: auto;

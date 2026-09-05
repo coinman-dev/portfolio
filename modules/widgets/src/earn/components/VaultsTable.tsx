@@ -1,49 +1,45 @@
 import React from 'react';
 import { YearnVault } from '../types';
-import { SUPPORTED_CHAINS } from '../yearnApi';
+import { getChain } from '../yearnApi';
+import { TokenIcon } from './TokenIcon';
 
 interface VaultsTableProps {
   vaults: YearnVault[];
   isLoading: boolean;
+  onSelectVault: (vault: YearnVault) => void;
+  isWalletConnected: boolean;
   sortField: 'apy' | 'tvl' | 'name';
   sortDirection: 'asc' | 'desc';
   onSort: (field: 'apy' | 'tvl' | 'name') => void;
-  onSelectVault: (vault: YearnVault) => void;
-  isWalletConnected: boolean;
-}
-
-function formatUSD(num: number): string {
-  if (!num || isNaN(num)) return '$0';
-  if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`;
-  if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`;
-  if (num >= 1e3) return `$${(num / 1e3).toFixed(1)}K`;
-  return `$${num.toFixed(2)}`;
 }
 
 export const VaultsTable: React.FC<VaultsTableProps> = ({
   vaults,
   isLoading,
+  onSelectVault,
+  isWalletConnected,
   sortField,
   sortDirection,
   onSort,
-  onSelectVault,
-  isWalletConnected,
 }) => {
-  const getSortIcon = (field: 'apy' | 'tvl' | 'name') => {
-    if (sortField !== field) return '↕';
-    return sortDirection === 'asc' ? '↑' : '↓';
+  const formatUSD = (val: number) => {
+    if (val >= 1_000_000_000) return `$${(val / 1_000_000_000).toFixed(2)}B`;
+    if (val >= 1_000_000) return `$${(val / 1_000_000).toFixed(2)}M`;
+    if (val >= 1_000) return `$${(val / 1_000).toFixed(2)}k`;
+    return `$${val.toFixed(2)}`;
   };
 
-  const getChain = (chainId: number) => {
-    return SUPPORTED_CHAINS.find((c) => c.id === chainId) || SUPPORTED_CHAINS[0];
+  const getSortIcon = (field: 'apy' | 'tvl' | 'name') => {
+    if (sortField !== field) return <span className="sort-hint">↕</span>;
+    return <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>;
   };
 
   if (isLoading) {
     return (
       <div className="yearn-table-wrap">
-        <div className="yearn-state-message">
-          <div className="yearn-spinner" />
-          <div>Loading Yearn Vaults...</div>
+        <div className="yearn-table-loading">
+          <div className="yearn-spinner"></div>
+          <span>Loading live vaults from yDaemon...</span>
         </div>
       </div>
     );
@@ -52,8 +48,8 @@ export const VaultsTable: React.FC<VaultsTableProps> = ({
   if (vaults.length === 0) {
     return (
       <div className="yearn-table-wrap">
-        <div className="yearn-state-message">
-          <div>No vaults match your search or filter.</div>
+        <div className="yearn-table-empty">
+          <p>No vaults found matching your filter criteria.</p>
         </div>
       </div>
     );
@@ -99,14 +95,13 @@ export const VaultsTable: React.FC<VaultsTableProps> = ({
                 <td>
                   <div className="yearn-asset-cell">
                     <div className="yearn-asset-icon-wrap">
-                      <img
-                        className="yearn-asset-icon"
-                        src={vault.icon || vault.token.icon}
-                        alt={vault.token.symbol}
-                        onError={(e) => {
-                          (e.target as any).src =
-                            'https://cdn.jsdelivr.net/gh/yearn/tokenassets@main/tokens/1/0x0000000000000000000000000000000000000000/logo-128.png';
-                        }}
+                      <TokenIcon
+                        src={vault.icon}
+                        tokenIcon={vault.token.icon}
+                        symbol={vault.token.symbol}
+                        chainId={vault.chainID}
+                        tokenAddress={vault.token.address}
+                        size={36}
                       />
                       <img
                         className="yearn-chain-badge"

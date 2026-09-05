@@ -307,3 +307,23 @@ export async function redeemFromVault(
   await waitForTransactionReceipt(wagmiConfig, { hash });
   return hash;
 }
+
+export async function getTokenBalance(
+  chainId: number,
+  tokenAddress: string,
+  userAddress: string
+): Promise<bigint> {
+  const res = await fetchUserTokenBalance(chainId, tokenAddress, userAddress, 18);
+  return res.raw;
+}
+
+export const getTokenAllowance = fetchAllowance;
+
+export async function getUserVaultShares(
+  chainId: number,
+  vaultAddress: string,
+  userAddress: string
+): Promise<{ shares: bigint; assetsUnderlying: bigint }> {
+  const res = await fetchUserVaultBalance(chainId, vaultAddress, userAddress, 18);
+  return { shares: res.shares, assetsUnderlying: res.underlyingAssets };
+}

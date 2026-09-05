@@ -5,9 +5,9 @@ import { EarnMountOptions, YearnVault } from './types';
 import { fetchYearnVaults, fetchAllChainsVaults } from './yearnApi';
 import { VaultsTable } from './components/VaultsTable';
 import { NetworkSelector } from './components/NetworkSelector';
-import { DepositModal } from './components/DepositModal';
-import { fetchUserVaultBalance } from './yearnContracts';
-import { wagmiConfig, subscribeWalletStatus, getWalletStatus, WalletStatus } from '../wallet/wallet';
+import { VaultDetail } from './components/VaultDetail';
+import { PortfolioView } from './components/PortfolioView';
+import { wagmiConfig, subscribeWalletStatus, getWalletStatus, WalletStatus, connectWallet } from '../wallet/wallet';
 import './yearnStyles.css';
 
 const queryClient = new QueryClient();
@@ -20,14 +20,13 @@ export const YearnDashboard: React.FC<EarnMountOptions> = ({
     initialSettings?.selectedChainId || 'all'
   );
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'all' | 'my-deposits'>('all');
+  const [activeView, setActiveView] = useState<'vaults' | 'portfolio' | 'vault-detail'>('vaults');
+  const [selectedVault, setSelectedVault] = useState<YearnVault | null>(null);
   const [sortField, setSortField] = useState<'apy' | 'tvl' | 'name'>('tvl');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   const [vaults, setVaults] = useState<YearnVault[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [selectedVault, setSelectedVault] = useState<YearnVault | null>(null);
-
   const [walletStatus, setWalletStatus] = useState<WalletStatus>(getWalletStatus());
 
   // Subscribe to wallet changes
@@ -60,60 +59,67 @@ export const YearnDashboard: React.FC<EarnMountOptions> = ({
     loadVaults();
   }, [loadVaults]);
 
-  // Load user positions if wallet is connected
-  const refreshUserPositions = useCallback(async () => {
-    if (!walletStatus.isConnected || !walletStatus.address || vaults.length === 0) {
-      return;
-    }
-
-    const updated = await Promise.all(
-      vaults.slice(0, 30).map(async (v) => {
-        try {
-          const res = await fetchUserVaultBalance(
-            v.chainID,
-            v.address,
-            walletStatus.address!,
-            v.token.decimals || 18
-          );
-          if (res.shares > 0n) {
-            return {
-              ...v,
-              userVaultBalance: {
-                raw: res.shares,
-                formatted: res.formattedShares,
-                assetsUnderlying: res.underlyingAssets,
-                formattedAssets: res.formattedAssets,
-                usdValue: Number(res.formattedAssets) * (v.tvl.price || 1),
-              },
-            };
-          }
-        } catch {}
-        return v;
-      })
-    );
-
-    // Merge updated positions back into list
-    setVaults((prev) => {
-      const map = new Map(updated.map((u) => [`${u.chainID}-${u.address}`, u]));
-      return prev.map((item) => map.get(`${item.chainID}-${item.address}`) || item);
-    });
-  }, [walletStatus, vaults.length]);
-
-  useEffect(() => {
-    if (walletStatus.isConnected && walletStatus.address) {
-      refreshUserPositions();
-    }
-  }, [walletStatus.isConnected, walletStatus.address]);
-
-  // Handle Chain change
-  const handleSelectChain = (chainId: number | 'all') => {
-    setSelectedChainId(chainId);
-    if (onSettingsChange) {
-      onSettingsChange({ selectedChainId: chainId });
+  // Handle wallet connect
+  const handleConnectWallet = async () => {
+    try {
+      if (typeof (window as any).CoinmanWallet?.connect === 'function') {
+        await (window as any).CoinmanWallet.connect();
+      } else {
+        await connectWallet();
+      }
+    } catch (err) {
+      console.error('[YearnDashboard] Error connecting wallet:', err);
     }
   };
 
-  // Sorting
+  // Filter & sort vaults
+  const filteredVaults = useMemo(() => {
+    let result = [...vaults];
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      result = result.filter(
+        (v) =>
+          v.name.toLowerCase().includes(q) ||
+          v.symbol.toLowerCase().includes(q) ||
+          v.token.symbol.toLowerCase().includes(q) ||
+          v.token.name.toLowerCase().includes(q) ||
+          v.address.toLowerCase().includes(q)
+      );
+    }
+
+    result.sort((a, b) => {
+      let valA: number | string = 0;
+      let valB: number | string = 0;
+
+      if (sortField === 'apy') {
+        valA = a.apr.netAPR || 0;
+        valB = b.apr.netAPR || 0;
+      } else if (sortField === 'tvl') {
+        valA = a.tvl.tvl || 0;
+        valB = b.tvl.tvl || 0;
+      } else if (sortField === 'name') {
+        valA = a.name.toLowerCase();
+        valB = b.name.toLowerCase();
+      }
+
+      if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+      if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return result;
+  }, [vaults, searchQuery, sortField, sortDirection]);
+
+  // Aggregate stats
+  const totalTVL = useMemo(() => {
+    return vaults.reduce((acc, v) => acc + (v.tvl.tvl || 0), 0);
+  }, [vaults]);
+
+  const maxAPY = useMemo(() => {
+    return vaults.reduce((max, v) => Math.max(max, v.apr.netAPR || 0), 0);
+  }, [vaults]);
+
   const handleSort = (field: 'apy' | 'tvl' | 'name') => {
     if (sortField === field) {
       setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
@@ -123,193 +129,171 @@ export const YearnDashboard: React.FC<EarnMountOptions> = ({
     }
   };
 
-  // Filtered & sorted vaults
-  const filteredVaults = useMemo(() => {
-    return vaults
-      .filter((v) => {
-        if (activeTab === 'my-deposits') {
-          return (v.userVaultBalance?.raw || 0n) > 0n;
-        }
-        return true;
-      })
-      .filter((v) => {
-        if (!searchQuery.trim()) return true;
-        const q = searchQuery.toLowerCase().trim();
-        return (
-          v.name.toLowerCase().includes(q) ||
-          v.token.symbol.toLowerCase().includes(q) ||
-          v.symbol.toLowerCase().includes(q)
-        );
-      })
-      .sort((a, b) => {
-        let cmp = 0;
-        if (sortField === 'apy') {
-          cmp = (a.apr.netAPR || 0) - (b.apr.netAPR || 0);
-        } else if (sortField === 'tvl') {
-          cmp = (a.tvl.tvl || 0) - (b.tvl.tvl || 0);
-        } else {
-          cmp = a.name.localeCompare(b.name);
-        }
-        return sortDirection === 'asc' ? cmp : -cmp;
-      });
-  }, [vaults, activeTab, searchQuery, sortField, sortDirection]);
+  const handleSelectChain = (id: number | 'all') => {
+    setSelectedChainId(id);
+    if (onSettingsChange) {
+      onSettingsChange({ selectedChainId: id });
+    }
+  };
 
-  // Aggregated Stats
-  const totalTVL = useMemo(() => {
-    return vaults.reduce((acc, v) => acc + (v.tvl.tvl || 0), 0);
-  }, [vaults]);
-
-  const maxAPY = useMemo(() => {
-    return vaults.reduce((acc, v) => Math.max(acc, v.apr.netAPR || 0), 0);
-  }, [vaults]);
-
-  const totalUserDeposits = useMemo(() => {
-    return vaults.reduce((acc, v) => acc + (v.userVaultBalance?.usdValue || 0), 0);
-  }, [vaults]);
+  const handleOpenVaultDetail = (vault: YearnVault) => {
+    setSelectedVault(vault);
+    setActiveView('vault-detail');
+  };
 
   return (
     <div className="yearn-dashboard-wrapper">
-      {/* Header */}
+      {/* Top Header & Navigation */}
       <div className="yearn-header">
         <div className="yearn-brand-row">
           <div className="yearn-brand">
             <div className="yearn-logo-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <svg width="22" height="22" viewBox="0 0 32 32" fill="none">
+                <circle cx="16" cy="16" r="15" fill="#006ae3" />
                 <path
-                  d="M12 2L2 7L12 12L22 7L12 2Z"
+                  d="M9 10L16 17L23 10M16 17V24"
                   stroke="#ffffff"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M2 17L12 22L22 17"
-                  stroke="#ffffff"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M2 12L12 17L22 12"
-                  stroke="#ffffff"
-                  strokeWidth="2"
+                  strokeWidth="3.2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
               </svg>
             </div>
             <div>
-              <h2 className="yearn-title">Yearn Finance Vaults</h2>
-              <p className="yearn-subtitle">
-                DeFi yield optimization & auto-compounding on yVaults V3
-              </p>
+              <h2 className="yearn-title">Yearn Finance</h2>
+              <p className="yearn-subtitle">DeFi yield optimization & auto-compounding on yVaults</p>
             </div>
           </div>
 
-          <button
-            type="button"
-            className="yearn-action-btn btn-outline"
-            onClick={loadVaults}
-            title="Refresh Vault Data"
-          >
-            ↻ Refresh
-          </button>
-        </div>
-
-        {/* Stats Bar */}
-        <div className="yearn-stats-bar">
-          <div className="yearn-stat-card">
-            <span className="yearn-stat-label">Total Value Locked</span>
-            <span className="yearn-stat-value">
-              ${(totalTVL / 1e6).toFixed(1)}M
-            </span>
-          </div>
-
-          <div className="yearn-stat-card">
-            <span className="yearn-stat-label">Highest Available APY</span>
-            <span className="yearn-stat-value highlight-green">
-              {(maxAPY * 100).toFixed(2)}%
-            </span>
-          </div>
-
-          <div className="yearn-stat-card">
-            <span className="yearn-stat-label">Active Vaults</span>
-            <span className="yearn-stat-value">{vaults.length}</span>
-          </div>
-
-          <div className="yearn-stat-card">
-            <span className="yearn-stat-label">Your Deposited Balance</span>
-            <span className="yearn-stat-value">
-              {walletStatus.isConnected
-                ? `$${totalUserDeposits.toFixed(2)}`
-                : 'Connect Wallet'}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Controls Bar */}
-      <div className="yearn-controls">
-        {/* Network Selector */}
-        <NetworkSelector
-          selectedChainId={selectedChainId}
-          onSelectChain={handleSelectChain}
-        />
-
-        {/* Filter & Search Row */}
-        <div className="yearn-filter-row">
-          <div className="yearn-search-input-wrap">
-            <span className="yearn-search-icon">🔍</span>
-            <input
-              type="text"
-              className="yearn-search-input"
-              placeholder="Search by token or vault name (e.g. USDC, ETH)..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-
-          <div className="yearn-tab-buttons">
+          {/* Primary Top View Tabs: Vaults & Portfolio */}
+          <div className="yearn-top-nav-tabs">
             <button
-              type="button"
-              className={`yearn-tab-btn ${activeTab === 'all' ? 'active' : ''}`}
-              onClick={() => setActiveTab('all')}
+              className={`yearn-nav-tab ${activeView === 'vaults' || activeView === 'vault-detail' ? 'active' : ''}`}
+              onClick={() => {
+                setActiveView('vaults');
+                setSelectedVault(null);
+              }}
             >
-              All Vaults ({vaults.length})
+              Vaults
             </button>
             <button
-              type="button"
-              className={`yearn-tab-btn ${activeTab === 'my-deposits' ? 'active' : ''}`}
-              onClick={() => setActiveTab('my-deposits')}
+              className={`yearn-nav-tab ${activeView === 'portfolio' ? 'active' : ''}`}
+              onClick={() => {
+                setActiveView('portfolio');
+                setSelectedVault(null);
+              }}
             >
-              My Deposits
+              Portfolio
+            </button>
+            <button className="yearn-refresh-btn" onClick={loadVaults} title="Refresh Vaults">
+              ↻ Refresh
             </button>
           </div>
         </div>
+
+        {/* Global Stat Cards (shown when in vaults view) */}
+        {activeView === 'vaults' && (
+          <div className="yearn-stats-grid">
+            <div className="yearn-stat-card">
+              <span className="yearn-stat-title">Total Value Locked</span>
+              <span className="yearn-stat-value">
+                ${(totalTVL / 1_000_000).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M
+              </span>
+            </div>
+            <div className="yearn-stat-card">
+              <span className="yearn-stat-title">Highest Available APY</span>
+              <span className="yearn-stat-value text-green">
+                {(maxAPY * 100).toFixed(2)}%
+              </span>
+            </div>
+            <div className="yearn-stat-card">
+              <span className="yearn-stat-title">Active Vaults</span>
+              <span className="yearn-stat-value">{vaults.length}</span>
+            </div>
+            <div className="yearn-stat-card">
+              <span className="yearn-stat-title">Wallet Status</span>
+              <span className="yearn-stat-value" style={{ fontSize: 18 }}>
+                {walletStatus.isConnected ? (
+                  <span className="text-green" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    ● Connected ({walletStatus.shortAddress})
+                  </span>
+                ) : (
+                  <span style={{ color: '#94a3b8', cursor: 'pointer', textDecoration: 'underline' }} onClick={handleConnectWallet}>
+                    Connect Wallet
+                  </span>
+                )}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Vaults Table */}
-      <VaultsTable
-        vaults={filteredVaults}
-        isLoading={isLoading}
-        sortField={sortField}
-        sortDirection={sortDirection}
-        onSort={handleSort}
-        onSelectVault={(v) => setSelectedVault(v)}
-        isWalletConnected={walletStatus.isConnected}
-      />
-
-      {/* Deposit / Withdraw Modal */}
-      {selectedVault && (
-        <DepositModal
+      {/* VIEW: Vault Detail Page */}
+      {activeView === 'vault-detail' && selectedVault && (
+        <VaultDetail
           vault={selectedVault}
           walletAddress={walletStatus.address}
           walletChainId={walletStatus.chainId}
-          onClose={() => setSelectedVault(null)}
-          onSuccess={() => {
-            refreshUserPositions();
+          onBack={() => {
+            setActiveView('vaults');
+            setSelectedVault(null);
           }}
+          onConnectWallet={handleConnectWallet}
         />
+      )}
+
+      {/* VIEW: User Portfolio Page */}
+      {activeView === 'portfolio' && (
+        <PortfolioView
+          vaults={vaults}
+          walletAddress={walletStatus.address}
+          onSelectVault={handleOpenVaultDetail}
+          onExploreVaults={() => {
+            setActiveView('vaults');
+            setSelectedVault(null);
+          }}
+          onConnectWallet={handleConnectWallet}
+        />
+      )}
+
+      {/* VIEW: Vaults Explorer / Table Page */}
+      {activeView === 'vaults' && (
+        <>
+          {/* Controls Bar: Network Pills & Search Input */}
+          <div className="yearn-controls-bar">
+            <NetworkSelector
+              selectedChainId={selectedChainId}
+              onSelectChain={handleSelectChain}
+            />
+
+            <div className="yearn-search-box">
+              <span className="yearn-search-icon">🔍</span>
+              <input
+                type="text"
+                placeholder="Search by token or vault name (e.g. USDC, ETH, WETH)..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="yearn-search-input"
+              />
+              {searchQuery && (
+                <button className="yearn-search-clear" onClick={() => setSearchQuery('')}>
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Vaults Table */}
+          <VaultsTable
+            vaults={filteredVaults}
+            isLoading={isLoading}
+            onSelectVault={handleOpenVaultDetail}
+            isWalletConnected={walletStatus.isConnected}
+            sortField={sortField}
+            sortDirection={sortDirection}
+            onSort={handleSort}
+          />
+        </>
       )}
     </div>
   );

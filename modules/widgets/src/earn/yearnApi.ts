@@ -4,59 +4,60 @@ export const SUPPORTED_CHAINS: SupportedChain[] = [
   {
     id: 1,
     name: 'Ethereum',
-    shortName: 'ETH',
-    icon: 'https://cdn.jsdelivr.net/gh/yearn/tokenassets@main/chains/1/logo-128.png',
+    shortName: 'eth',
+    icon: 'https://assets.smold.app/api/token/1/0x0000000000000000000000000000000000000000/logo-128.png',
     nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
     blockExplorer: 'https://etherscan.io',
   },
   {
     id: 42161,
     name: 'Arbitrum',
-    shortName: 'ARB',
-    icon: 'https://cdn.jsdelivr.net/gh/yearn/tokenassets@main/chains/42161/logo-128.png',
+    shortName: 'arb',
+    icon: 'https://assets.smold.app/api/token/42161/0x0000000000000000000000000000000000000000/logo-128.png',
     nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
     blockExplorer: 'https://arbiscan.io',
   },
   {
     id: 8453,
     name: 'Base',
-    shortName: 'BASE',
-    icon: 'https://cdn.jsdelivr.net/gh/yearn/tokenassets@main/chains/8453/logo-128.png',
+    shortName: 'base',
+    icon: 'https://assets.smold.app/api/token/8453/0x0000000000000000000000000000000000000000/logo-128.png',
     nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
     blockExplorer: 'https://basescan.org',
   },
   {
     id: 10,
     name: 'Optimism',
-    shortName: 'OP',
-    icon: 'https://cdn.jsdelivr.net/gh/yearn/tokenassets@main/chains/10/logo-128.png',
+    shortName: 'opt',
+    icon: 'https://assets.smold.app/api/token/10/0x0000000000000000000000000000000000000000/logo-128.png',
     nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
     blockExplorer: 'https://optimistic.etherscan.io',
   },
   {
     id: 137,
     name: 'Polygon',
-    shortName: 'POL',
-    icon: 'https://cdn.jsdelivr.net/gh/yearn/tokenassets@main/chains/137/logo-128.png',
+    shortName: 'pol',
+    icon: 'https://assets.smold.app/api/token/137/0x0000000000000000000000000000000000000000/logo-128.png',
     nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 },
     blockExplorer: 'https://polygonscan.com',
   },
 ];
 
-const vaultCache: Record<number, { data: YearnVault[]; timestamp: number }> = {};
-const CACHE_TTL_MS = 60 * 1000; // 1 minute cache
+export function getChain(chainId: number): SupportedChain {
+  return SUPPORTED_CHAINS.find((c) => c.id === chainId) || SUPPORTED_CHAINS[0];
+}
 
+const YDAEMON_BASE_URL = 'https://ydaemon.yearn.fi';
+
+/**
+ * Fetch all production vaults for a specific chain from Yearn's yDaemon
+ */
 export async function fetchYearnVaults(chainId: number): Promise<YearnVault[]> {
-  const cached = vaultCache[chainId];
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-    return cached.data;
-  }
-
-  const url = `https://ydaemon.yearn.fi/${chainId}/vaults/all`;
   try {
+    const url = `${YDAEMON_BASE_URL}/${chainId}/vaults/all`;
     const res = await fetch(url);
     if (!res.ok) {
-      throw new Error(`yDaemon request failed with status: ${res.status}`);
+      throw new Error(`Failed to fetch Yearn vaults: ${res.statusText}`);
     }
 
     const rawVaults: any[] = await res.json();
@@ -119,32 +120,18 @@ export async function fetchYearnVaults(chainId: number): Promise<YearnVault[]> {
         };
       });
 
-    // Sort by TVL descending initially
-    filtered.sort((a, b) => (b.tvl.tvl || 0) - (a.tvl.tvl || 0));
-
-    vaultCache[chainId] = {
-      data: filtered,
-      timestamp: Date.now(),
-    };
-
     return filtered;
   } catch (err) {
-    console.error(`[YearnApi] Error loading vaults for chain ${chainId}:`, err);
+    console.error(`[YearnApi] Error fetching vaults for chain ${chainId}:`, err);
     return [];
   }
 }
 
+/**
+ * Fetch vaults across all supported chains concurrently
+ */
 export async function fetchAllChainsVaults(): Promise<YearnVault[]> {
   const promises = SUPPORTED_CHAINS.map((c) => fetchYearnVaults(c.id));
-  const results = await Promise.allSettled(promises);
-
-  const all: YearnVault[] = [];
-  for (const r of results) {
-    if (r.status === 'fulfilled' && Array.isArray(r.value)) {
-      all.push(...r.value);
-    }
-  }
-
-  all.sort((a, b) => (b.tvl.tvl || 0) - (a.tvl.tvl || 0));
-  return all;
+  const results = await Promise.all(promises);
+  return results.flat();
 }
