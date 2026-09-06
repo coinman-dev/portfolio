@@ -69,9 +69,15 @@ export const LiFiApp: React.FC<ExchangeMountOptions> = ({
         borderRadius: '16px',
         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.35)',
         width: '100%',
-        maxWidth: '460px',
+        maxWidth: '580px',
       },
       theme: {
+        // `containerStyle` only sizes the outer box; the compact variant caps its
+        // own root at 416px, so the widget itself has to be widened here too.
+        container: {
+          width: '100%',
+          maxWidth: '580px',
+        },
         palette: {
           primary: { main: '#ff8c00' },
           secondary: { main: '#ffa500' },

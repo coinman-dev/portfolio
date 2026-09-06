@@ -1285,8 +1285,15 @@ body.show-cur-price .col-cur-price {
     background: #555555;
 }
 
-/* --- EXCHANGE VIEW --- */
-#exchange-view.container {
+/* --- MODULE VIEWS (Exchange, Earn) ---
+   Both modules share the same shell: a full-width flex column that fills the
+   window below the menu bar, a 1200px header card and a widget area that takes
+   the rest. Only what actually differs is declared per module. */
+
+.container.module-view {
+    /* `.container` caps the portfolio view at 1200px; the widgets need the
+       full window (CoW Swap renders its overlays across the whole iframe).
+       margin/padding/overflow-x come from `.container`. */
     max-width: 100%;
     width: 100%;
     box-sizing: border-box;
@@ -1294,18 +1301,23 @@ body.show-cur-price .col-cur-price {
     flex-direction: column;
     height: calc(100vh - 50px);
     min-height: calc(100vh - 50px);
-    padding: 10px 10px 10px;
-    margin: 0 auto;
-    overflow-x: hidden;
     overflow-y: auto;
 }
 
-#exchange-header-table {
-    flex-shrink: 0;
+/* yearn.fi app background (soft-dark theme) */
+#earn-view.module-view {
+    background: #0f0f0f;
 }
 
-#exchange-header-table + #exchange-widget-root,
-.exchange-widget-root {
+.header-table {
+    flex-shrink: 0;
+    /* Keeps the module header cards the same width as the portfolio one,
+       which gets 1200px from `.container`. */
+    max-width: 1200px;
+    margin-inline: auto;
+}
+
+.module-widget-root {
     margin-top: 10px;
     margin-bottom: 0;
     padding-bottom: 0;
@@ -1321,15 +1333,20 @@ body.show-cur-price .col-cur-price {
     overflow-y: visible;
 }
 
-#exchange-lifi-container {
+.module-widget-body {
     width: 100%;
-    height: 100%;
     flex: 1;
     display: flex;
     justify-content: center;
     background: transparent;
 }
 
+#exchange-lifi-container {
+    height: 100%;
+}
+
+/* CoW Swap keeps its own surface: the iframe must fill the area so the token
+   picker, network list and history can render across it. */
 #exchange-cowswap-container {
     width: 100%;
     height: 100% !important;
@@ -1355,50 +1372,4 @@ body.show-cur-price .col-cur-price {
     color-scheme: dark;
     display: block;
     overflow-y: auto !important;
-}
-
-/* --- EARN VIEW --- */
-#earn-view.container {
-    max-width: 100%;
-    width: 100%;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    height: calc(100vh - 50px);
-    min-height: calc(100vh - 50px);
-    padding: 10px 10px 10px;
-    margin: 0 auto;
-    overflow-x: hidden;
-    overflow-y: auto;
-    /* yearn.fi app background (soft-dark theme) */
-    background: #0f0f0f;
-}
-
-#earn-header-table {
-    flex-shrink: 0;
-}
-
-#earn-header-table + #earn-widget-root,
-.earn-widget-root {
-    margin-top: 10px;
-    margin-bottom: 0;
-    padding-bottom: 0;
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    min-height: 0;
-    justify-content: flex-start;
-    align-items: stretch;
-    width: 100%;
-    position: relative;
-    overflow-x: hidden;
-    overflow-y: visible;
-}
-
-#earn-yearn-container {
-    width: 100%;
-    flex: 1;
-    display: flex;
-    justify-content: center;
-    background: transparent;
 }

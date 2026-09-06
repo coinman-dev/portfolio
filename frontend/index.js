@@ -109,6 +109,13 @@ var AppBridge = {
     },
 
     invoke: function (command, args) {
+        // Reject rather than throw: callers chain .then().catch() on this, and a
+        // synchronous throw would escape the promise chain entirely.
+        if (!AppBridge.isTauri()) {
+            return window.Promise.reject(
+                new Error("Tauri bridge unavailable, cannot invoke " + command),
+            );
+        }
         return window.__TAURI__.core.invoke(command, args || {});
     },
 
@@ -776,8 +783,11 @@ var Utils = {
     // fillTokens removed — replaced by CoinmanTpl.render()
 };
 
+/**
+ * Portfolio database access. `user` is the database file name, which the
+ * database selector switches at runtime.
+ */
 var ServerSync = {
-    apiUrl: "index.php?api=1",
     user: "default",
     saveInProgress: false,
     saveQueued: false,
@@ -785,60 +795,24 @@ var ServerSync = {
 
     init: function () {
         if (!window.SERVER_CONFIG) return;
-        if (!AppBridge.isTauri() && window.SERVER_CONFIG.apiUrl) {
-            ServerSync.apiUrl = String(window.SERVER_CONFIG.apiUrl);
-        }
         if (window.SERVER_CONFIG.user) {
             ServerSync.user = String(window.SERVER_CONFIG.user);
         }
     },
 
-    buildUrl: function (action) {
-        var separator = ServerSync.apiUrl.indexOf("?") === -1 ? "?" : "&";
-        return (
-            ServerSync.apiUrl +
-            separator +
-            "action=" +
-            encodeURIComponent(action) +
-            "&user=" +
-            encodeURIComponent(ServerSync.user)
-        );
-    },
-
     loadPortfolios: function (password) {
-        if (AppBridge.isTauri()) {
-            var args = { user: ServerSync.user };
-            if (password) args.password = password;
-            return AppBridge.invoke("load_portfolios", args).then(
-                function (payload) {
-                    if (!payload || payload.ok !== true || !payload.data) {
-                        throw new Error("Invalid DB payload");
-                    }
+        var args = { user: ServerSync.user };
+        if (password) args.password = password;
 
-                    var list = Array.isArray(payload.data.portfolios)
-                        ? payload.data.portfolios
-                        : [];
-                    portfolios = list;
-                },
-            );
-        }
+        return AppBridge.invoke("load_portfolios", args).then(function (payload) {
+            if (!payload || payload.ok !== true || !payload.data) {
+                throw new Error("Invalid DB payload");
+            }
 
-        return window
-            .fetch(ServerSync.buildUrl("load"), { cache: "no-store" })
-            .then(function (response) {
-                if (!response.ok) throw new Error("DB load failed");
-                return response.json();
-            })
-            .then(function (payload) {
-                if (!payload || payload.ok !== true || !payload.data) {
-                    throw new Error("Invalid DB payload");
-                }
-
-                var list = Array.isArray(payload.data.portfolios)
-                    ? payload.data.portfolios
-                    : [];
-                portfolios = list;
-            });
+            portfolios = Array.isArray(payload.data.portfolios)
+                ? payload.data.portfolios
+                : [];
+        });
     },
 
     savePortfolios: function () {
@@ -848,53 +822,13 @@ var ServerSync = {
         }
 
         ServerSync.saveInProgress = true;
-        var body = JSON.stringify({
-            portfolios: portfolios,
-        });
 
-        if (AppBridge.isTauri()) {
-            AppBridge.invoke("save_portfolios", {
-                user: ServerSync.user,
-                data: {
-                    portfolios: portfolios,
-                },
-            })
-                .then(function (payload) {
-                    if (!payload || payload.ok !== true) {
-                        throw new Error("DB save returned error");
-                    }
-                    ServerSync.saveErrorShown = false;
-                })
-                .catch(function (e) {
-                    console.error("Save failed:", e);
-                    if (!ServerSync.saveErrorShown) {
-                        window.alert(
-                            "Cannot save data to the local portfolio file.",
-                        );
-                        ServerSync.saveErrorShown = true;
-                    }
-                })
-                .finally(function () {
-                    ServerSync.saveInProgress = false;
-                    if (ServerSync.saveQueued) {
-                        ServerSync.saveQueued = false;
-                        ServerSync.savePortfolios();
-                    }
-                });
-            return;
-        }
-
-        window
-            .fetch(ServerSync.buildUrl("save"), {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: body,
-                keepalive: true,
-            })
-            .then(function (response) {
-                if (!response.ok) throw new Error("DB save failed");
-                return response.json();
-            })
+        AppBridge.invoke("save_portfolios", {
+            user: ServerSync.user,
+            data: {
+                portfolios: portfolios,
+            },
+        })
             .then(function (payload) {
                 if (!payload || payload.ok !== true) {
                     throw new Error("DB save returned error");
@@ -904,9 +838,7 @@ var ServerSync = {
             .catch(function (e) {
                 console.error("Save failed:", e);
                 if (!ServerSync.saveErrorShown) {
-                    window.alert(
-                        "Cannot save data to the local portfolio file.",
-                    );
+                    window.alert("Cannot save data to the local portfolio file.");
                     ServerSync.saveErrorShown = true;
                 }
             })
@@ -920,32 +852,13 @@ var ServerSync = {
     },
 
     clearDatabase: function () {
-        if (AppBridge.isTauri()) {
-            return AppBridge.invoke("clear_portfolios", {
-                user: ServerSync.user,
-            }).then(function (payload) {
-                if (!payload || payload.ok !== true) {
-                    throw new Error("DB clear returned error");
-                }
-            });
-        }
-
-        return window
-            .fetch(ServerSync.buildUrl("clear"), {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({}),
-                keepalive: true,
-            })
-            .then(function (response) {
-                if (!response.ok) throw new Error("DB clear failed");
-                return response.json();
-            })
-            .then(function (payload) {
-                if (!payload || payload.ok !== true) {
-                    throw new Error("DB clear returned error");
-                }
-            });
+        return AppBridge.invoke("clear_portfolios", {
+            user: ServerSync.user,
+        }).then(function (payload) {
+            if (!payload || payload.ok !== true) {
+                throw new Error("DB clear returned error");
+            }
+        });
     },
 };
 
@@ -4145,19 +4058,21 @@ function switchView(view) {
     renderApp();
 }
 
+function renderCollapseButtons() {
+    var label = state.isCollapsed ? "EXPAND" : "COLLAPSE";
+    var btn = document.getElementById("btn-collapse");
+    if (btn)
+        btn.innerHTML = CoinmanTpl.render("COLLAPSE", { COLLAPSE_LABEL: label });
+    var footerBtn = document.getElementById("btn-collapse-footer");
+    if (footerBtn)
+        footerBtn.innerHTML = CoinmanTpl.render("COLLAPSE_FOOTER", {
+            COLLAPSE_LABEL_FOOTER: label,
+        });
+}
+
 function toggleCollapse() {
     state.isCollapsed = !state.isCollapsed;
-    var collapseLabel = state.isCollapsed ? "EXPAND" : "COLLAPSE";
-    var collapseBtn = document.getElementById("btn-collapse");
-    if (collapseBtn)
-        collapseBtn.innerHTML = CoinmanTpl.render("COLLAPSE", {
-            COLLAPSE_LABEL: collapseLabel,
-        });
-    var collapseFooterBtn = document.getElementById("btn-collapse-footer");
-    if (collapseFooterBtn)
-        collapseFooterBtn.innerHTML = CoinmanTpl.render("COLLAPSE_FOOTER", {
-            COLLAPSE_LABEL_FOOTER: collapseLabel,
-        });
+    /* The buttons are redrawn by renderApp() below, from the same state. */
     if (AppBridge.isTauri()) {
         AppBridge.invoke("save_is_collapsed", {
             collapsed: state.isCollapsed,
@@ -4332,17 +4247,7 @@ function renderApp() {
     renderTable(renderPortfolio);
     UI.updateSortArrows();
 
-    var collapseLabel = state.isCollapsed ? "EXPAND" : "COLLAPSE";
-    var collapseBtn2 = document.getElementById("btn-collapse");
-    if (collapseBtn2)
-        collapseBtn2.innerHTML = CoinmanTpl.render("COLLAPSE", {
-            COLLAPSE_LABEL: collapseLabel,
-        });
-    var collapseFooterBtn2 = document.getElementById("btn-collapse-footer");
-    if (collapseFooterBtn2)
-        collapseFooterBtn2.innerHTML = CoinmanTpl.render("COLLAPSE_FOOTER", {
-            COLLAPSE_LABEL_FOOTER: collapseLabel,
-        });
+    renderCollapseButtons();
 
     if (state.needsAutoAlign && AppSettings.get("autoAlignColumns", false)) {
         setTimeout(function () {
@@ -5072,7 +4977,7 @@ var DbSelector = {
                 : "";
             div.innerHTML =
                 '<span class="db-item-name">' +
-                item.name +
+                Utils.escapeHtml(item.name) +
                 lockHtml +
                 '</span><span class="db-item-coins">' +
                 (item.encrypted

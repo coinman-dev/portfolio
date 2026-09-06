@@ -412,9 +412,16 @@ fn open_url(url: String) {
         };
         let code = res as usize;
         if code <= 32 {
-            log::warn!("[open_url] ShellExecuteW failed for '{}' with code: {}", url, code);
+            log::warn!(
+                "[open_url] ShellExecuteW failed for '{}' with code: {}",
+                url,
+                code
+            );
         } else {
-            log::info!("[open_url] ShellExecuteW successfully launched for '{}'", url);
+            log::info!(
+                "[open_url] ShellExecuteW successfully launched for '{}'",
+                url
+            );
         }
     }
     #[cfg(target_os = "macos")]
@@ -651,6 +658,17 @@ fn create_main_window<R: tauri::Runtime>(
                         height: 100% !important;
                         color-scheme: dark !important;
                     }
+                    /* Trade card width, to match the LI.FI widget.
+                       #card has no width of its own — it is capped by two
+                       ancestors that both carry max-width: 470px, so those are
+                       what has to be widened. The token picker, network list
+                       and history render position:fixed outside #card, so they
+                       keep using the full iframe. */
+                    [class*="TradePageLayout__PrimaryWrapper"],
+                    div:has(> #card) {
+                        width: 100% !important;
+                        max-width: 580px !important;
+                    }
                     /* Hide dropdown trigger button and full-card select menu */
                     div[class*="styled__DropdownButton"],
                     div[class*="sc-f5oezr-1"],
@@ -794,8 +812,16 @@ fn create_main_window<R: tauri::Runtime>(
         if (observerStarted) return;
         var target = document.body || document.documentElement;
         if (target) {
+            // CoW re-renders constantly (live prices), so a subtree observer
+            // fires in bursts. Coalesce them into one update per frame.
+            var scheduled = false;
             var observer = new MutationObserver(function() {
-                updateTabs();
+                if (scheduled) return;
+                scheduled = true;
+                requestAnimationFrame(function() {
+                    scheduled = false;
+                    updateTabs();
+                });
             });
             observer.observe(target, { childList: true, subtree: true });
             observerStarted = true;
@@ -812,8 +838,16 @@ fn create_main_window<R: tauri::Runtime>(
         setTimeout(updateTabs, 10);
     });
 
-    // Continuous light check to ensure tabs are always present on any route/screen
-    setInterval(function() {
+    // Safety net for routes the observer misses. This script is injected into
+    // every frame, so in the app's own window it would otherwise poll forever
+    // for a CoW card that will never exist — give up there after a few seconds.
+    var idleTicks = 0;
+    var timer = setInterval(function() {
+        if (!document.location || document.location.href.indexOf("cow.fi") === -1) {
+            if (++idleTicks > 20) clearInterval(timer);
+            return;
+        }
+        idleTicks = 0;
         updateTabs();
         ensureObserver();
     }, 250);
@@ -827,7 +861,6 @@ fn create_main_window<R: tauri::Runtime>(
         .resizable(true)
         .fullscreen(false)
         .theme(Some(tauri::Theme::Dark))
-        
         .background_color(tauri::utils::config::Color(18, 18, 18, 255))
         .initialization_script(cowswap_dark_init_script)
         .use_https_scheme(true)
@@ -847,7 +880,10 @@ fn create_main_window<R: tauri::Runtime>(
 
     let builder = builder.on_new_window(|url, _features| {
         let url_str = url.as_str();
-        log::info!("[on_new_window] Intercepted new window request: {}", url_str);
+        log::info!(
+            "[on_new_window] Intercepted new window request: {}",
+            url_str
+        );
         if !url_str.is_empty()
             && url_str != "about:blank"
             && !url_str.starts_with("javascript:")

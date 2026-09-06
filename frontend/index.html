@@ -454,7 +454,7 @@
 <div class="bottom-refresh-container"></div>
 </div>
 		<!-- EXCHANGE VIEW -->
-		<div id="exchange-view" class="container" style="display: none;">
+		<div id="exchange-view" class="container module-view" style="display: none;">
 			<table id="exchange-header-table" class="header-table">
 				<tr>
 					<td class="header-logo-cell">
@@ -468,13 +468,13 @@
 					</td>
 				</tr>
 			</table>
-			<div id="exchange-widget-root" class="exchange-widget-root">
-				<div id="exchange-lifi-container" style="display: none; width: 100%;"></div>
+			<div id="exchange-widget-root" class="module-widget-root">
+				<div id="exchange-lifi-container" class="module-widget-body" style="display: none; width: 100%;"></div>
 				<div id="exchange-cowswap-container" style="display: none; width: 100%;"></div>
 			</div>
 		</div>
 		<!-- EARN VIEW -->
-		<div id="earn-view" class="container" style="display: none;">
+		<div id="earn-view" class="container module-view" style="display: none;">
 			<table id="earn-header-table" class="header-table">
 				<tr>
 					<td class="header-logo-cell">
@@ -488,8 +488,8 @@
 					</td>
 				</tr>
 			</table>
-			<div id="earn-widget-root" class="earn-widget-root">
-				<div id="earn-yearn-container" style="display: none; width: 100%;"></div>
+			<div id="earn-widget-root" class="module-widget-root">
+				<div id="earn-yearn-container" class="module-widget-body" style="display: none; width: 100%;"></div>
 			</div>
 		</div>
 <!-- MODALS -->
@@ -1151,6 +1151,7 @@
 </div>
 <script src="coinman-tpl.js"></script>
 <script src="index.js"></script>
+<script src="modules-common.js"></script>
 <script src="exchange.js"></script>
 <script src="earn.js"></script>
 </body>
