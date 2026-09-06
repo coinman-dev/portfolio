@@ -1,0 +1,113 @@
+/* Recharts styling copied from yearn.fi (`charts.md`). */
+
+.y-chart {
+  position: relative;
+  width: 100%;
+  font-size: 12px;
+}
+
+.y-chart .recharts-surface {
+  overflow: visible;
+}
+
+.y-chart-loading {
+  width: 100%;
+  border-radius: var(--y-r-lg);
+  background: var(--y-surface-2);
+  animation: y-pulse 1.6s ease-in-out infinite;
+}
+
+.y-chart-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 1px solid var(--y-border);
+  border-radius: var(--y-r-lg);
+  background: var(--y-surface);
+  text-align: center;
+}
+
+.y-chart-empty p {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  color: var(--y-text);
+}
+
+.y-chart-empty span {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--y-text-2);
+}
+
+.y-chart-tooltip {
+  min-width: 160px;
+  padding: 12px;
+  background: var(--y-chart-tooltip-bg);
+  border: 1px solid var(--y-chart-tooltip-border);
+  border-radius: var(--y-chart-tooltip-radius);
+  box-shadow: var(--y-chart-tooltip-shadow);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--y-text-2);
+}
+
+.y-chart-tooltip__title {
+  margin-bottom: 6px;
+  font-weight: 500;
+  color: var(--y-text);
+}
+
+.y-chart-tooltip__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.y-chart-tooltip__swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.y-chart-tooltip__label {
+  flex: 1;
+}
+
+.y-chart-tooltip__value {
+  font-weight: 600;
+  color: var(--y-text);
+}
+
+.y-chart-legend {
+  position: relative;
+  top: -6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--y-text-2);
+}
+
+.y-chart-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.y-chart-legend__line {
+  display: inline-block;
+  width: 24px;
+  border-top-width: 2px;
+  border-top-style: solid;
+}
+
+.y-chart-legend__line.is-dashed {
+  border-top-style: dashed;
+}

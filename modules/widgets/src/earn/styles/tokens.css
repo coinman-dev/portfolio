@@ -1,0 +1,75 @@
+/* Design tokens measured from yearn.fi in the `soft-dark` theme.
+   Source: .ai/yearn-research/design-tokens.md */
+
+.yearn-root {
+  color-scheme: dark;
+
+  /* surfaces */
+  --y-app: #0f0f0f;
+  --y-surface: #1a1a1a;
+  --y-surface-2: #262626;
+  --y-surface-3: #404040;
+  --y-input-bg: #1a1a1a;
+  --y-row-hover: #262626;
+
+  /* text */
+  --y-text: #f5f5f5;
+  --y-text-2: #a3a3a3;
+  --y-text-3: #666666;
+  /* Label colour on the light/filled button (`yearn--button` filled). */
+  --y-text-on-light: #00051f;
+
+  /* borders */
+  --y-border: #333333;
+  --y-border-hover: #474747;
+  --y-border-focus: #f5f5f5;
+
+  /* interactive */
+  --y-primary: #0657f9;
+  --y-primary-hover: #1a66ff;
+  --y-success: #21c45d;
+  --y-warning: #e64c0f;
+  --y-error: #dd2727;
+
+  /* charts */
+  --y-chart-1: #2578ff;
+  --y-chart-2: #46a2ff;
+  --y-chart-3: #94adf2;
+  --y-chart-4: #b0b5bf;
+  --y-chart-grid: #333333;
+  --y-chart-axis: #666666;
+  --y-chart-tooltip-bg: #1a1a1a;
+  --y-chart-tooltip-border: hsl(0 0% 0% / 0.08);
+  --y-chart-tooltip-radius: 12px;
+  --y-chart-tooltip-shadow: 0 25px 50px -12px hsl(0 0% 0% / 0.25);
+  --y-chart-cursor-line: #0a1243;
+  --y-chart-cursor-fill: #000833;
+  --y-color-unlocked: #2578ff;
+  --y-color-locked: #46a2ff;
+
+  /* donut palette (DARK_MODE_COLORS) */
+  --y-pink-1: #ff6ba5;
+  --y-pink-2: #ffb3d1;
+  --y-pink-3: #ff8fbb;
+  --y-pink-4: #ffd6e7;
+  --y-pink-5: #d21162;
+  --y-pink-6: #ff4d94;
+
+  /* list row hover overlay */
+  --y-row-hover-gradient: linear-gradient(80deg, #2c3da6, #d21162);
+
+  /* layout */
+  --y-header-h: 68px;
+  --y-content-max: 1232px;
+
+  /* radii */
+  --y-r-sm: 4px;
+  --y-r-md: 6px;
+  --y-r-lg: 8px;
+  --y-r-tooltip: 12px;
+  --y-r-full: 9999px;
+
+  /* type */
+  --y-font: aeonik, 'aeonik Fallback', Helvetica, Arial, system-ui, sans-serif;
+  --y-font-mono: aeonikMono, 'aeonikMono Fallback', Menlo, Consolas, 'Liberation Mono', monospace;
+}

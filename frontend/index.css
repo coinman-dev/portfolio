@@ -1370,6 +1370,8 @@ body.show-cur-price .col-cur-price {
     margin: 0 auto;
     overflow-x: hidden;
     overflow-y: auto;
+    /* yearn.fi app background (soft-dark theme) */
+    background: #0f0f0f;
 }
 
 #earn-header-table {

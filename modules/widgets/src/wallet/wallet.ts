@@ -1,6 +1,6 @@
 import { createConfig, http } from 'wagmi';
 import { walletConnect } from 'wagmi/connectors';
-import { mainnet, arbitrum, optimism, polygon, bsc, base, avalanche } from 'viem/chains';
+import { mainnet, arbitrum, optimism, polygon, bsc, base, avalanche, katana } from 'viem/chains';
 import { connect, disconnect, getAccount, reconnect, watchAccount } from '@wagmi/core';
 
 export const PROJECT_ID = '927c5d6fc3d30f43842ac0b9e0714891';
@@ -25,7 +25,7 @@ export const wcConnector = walletConnect({
 });
 
 export const wagmiConfig = createConfig({
-  chains: [mainnet, arbitrum, optimism, polygon, bsc, base, avalanche],
+  chains: [mainnet, arbitrum, optimism, polygon, bsc, base, avalanche, katana],
   connectors: [wcConnector],
   transports: {
     [mainnet.id]: http(),
@@ -35,6 +35,7 @@ export const wagmiConfig = createConfig({
     [bsc.id]: http(),
     [base.id]: http(),
     [avalanche.id]: http(),
+    [katana.id]: http(),
   },
 });
 

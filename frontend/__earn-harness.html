@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Earn harness</title>
+<link rel="stylesheet" href="modules/modules.bundle.css"/>
+<style>
+  html, body { margin: 0; padding: 0; background: #0f0f0f; }
+  #earn-view { max-width: 100%; width: 100%; box-sizing: border-box; display: flex;
+    flex-direction: column; height: 100vh; padding: 10px; overflow-y: auto; background: #0f0f0f; }
+  #earn-yearn-container { width: 100%; flex: 1; }
+</style>
+</head>
+<body>
+<div id="earn-view">
+  <div id="earn-yearn-container"></div>
+</div>
+<script src="modules/modules.bundle.js"></script>
+<script>
+  window.CoinmanModules.mountYearn({ container: document.getElementById('earn-yearn-container') });
+</script>
+</body>
+</html>

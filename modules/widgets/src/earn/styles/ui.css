@@ -1,0 +1,372 @@
+/* Shared primitives. All classes are scoped under .yearn-root to avoid
+   collisions with the CoinMan app shell and the Exchange widget. */
+
+.yearn-root {
+  font-family: var(--y-font);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+  color: var(--y-text);
+  background: var(--y-app);
+  min-height: 100%;
+  -webkit-font-smoothing: antialiased;
+}
+
+.yearn-root *,
+.yearn-root *::before,
+.yearn-root *::after {
+  box-sizing: border-box;
+}
+
+:where(.yearn-root) button {
+  font-family: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+:where(.yearn-root) input {
+  font-family: inherit;
+  color: inherit;
+}
+
+:where(.yearn-root) a {
+  color: inherit;
+  text-decoration: none;
+}
+
+:where(.yearn-root) :is(p, h1, h2, h3, h4, ul, ol) {
+  margin: 0;
+  padding: 0;
+}
+
+:where(.yearn-root) :is(ul, ol) {
+  list-style: none;
+}
+
+.yearn-root :focus-visible {
+  outline: 2px solid var(--y-border-focus);
+  outline-offset: 2px;
+}
+
+.y-font-number {
+  font-family: var(--y-font-mono);
+}
+
+.y-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- buttons ---------- */
+
+.y-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 20px;
+  border-radius: var(--y-r-lg);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+  transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.y-btn--primary {
+  background: var(--y-primary);
+  color: var(--y-text);
+}
+
+.y-btn--primary:hover:not(:disabled) {
+  background: var(--y-primary-hover);
+}
+
+.y-btn--light {
+  background: var(--y-text);
+  color: var(--y-text-on-light);
+}
+
+.y-btn--light:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.y-btn--ghost {
+  background: transparent;
+  border: 1px solid var(--y-border);
+  color: var(--y-text);
+}
+
+.y-btn--ghost:hover:not(:disabled) {
+  border-color: var(--y-border-hover);
+}
+
+.y-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.y-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--y-r-full);
+  color: var(--y-text-2);
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.y-icon-btn:hover {
+  color: var(--y-text);
+}
+
+/* ---------- chips / tags ---------- */
+
+.y-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 2px 4px;
+  border: 1px solid var(--y-border);
+  border-radius: var(--y-r-lg);
+  background: var(--y-surface-2);
+  color: rgba(245, 245, 245, 0.7);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.y-chip--btn {
+  cursor: pointer;
+}
+
+.y-chip--btn:hover {
+  background: rgba(64, 64, 64, 0.8);
+  color: var(--y-text);
+}
+
+.y-chip.is-active {
+  border-color: rgba(6, 87, 249, 0.8);
+  background: rgba(64, 64, 64, 0.8);
+  color: var(--y-text);
+}
+
+/* ---------- segmented tabs (filter bar groups) ----------
+   Measured: container h=40 with 1px border, radius 8, transparent bg;
+   items h=38, no own radius, separated by 1px right borders;
+   active bg #1a1a1a + weight 600, inactive transparent #a3a3a3 weight 500. */
+
+.y-segmented {
+  display: flex;
+  align-items: stretch;
+  height: 40px;
+  border: 1px solid var(--y-border);
+  border-radius: var(--y-r-lg);
+  background: var(--y-surface-2);
+  overflow: hidden;
+}
+
+.y-segmented__item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 100%;
+  padding: 0 16px;
+  border-right: 1px solid var(--y-border);
+  color: var(--y-text-2);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.y-segmented__item:last-child {
+  border-right: none;
+}
+
+.y-segmented__item:hover {
+  background: rgba(26, 26, 26, 0.3);
+  color: var(--y-text);
+}
+
+.y-segmented__item.is-active {
+  background: var(--y-surface);
+  color: var(--y-text);
+  font-weight: 600;
+}
+
+.y-segmented__item--icon {
+  flex: 1;
+  min-width: 36px;
+  padding: 0 8px;
+}
+
+/* Chain buttons are icon-only until selected, then they show their name. */
+.y-segmented__item-label {
+  display: none;
+  white-space: nowrap;
+}
+
+.y-segmented__item--icon.is-active {
+  flex: 0 0 auto;
+}
+
+.y-segmented__item--icon.is-active .y-segmented__item-label {
+  display: inline;
+}
+
+.y-segmented__item--icon:hover {
+  background: rgba(26, 26, 26, 0.3);
+}
+
+/* bar buttons (Filters, Compare) */
+.y-bar-btn {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--y-border);
+  border-radius: var(--y-r-lg);
+  background: var(--y-surface);
+  color: var(--y-text-2);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.y-bar-btn:hover {
+  color: var(--y-text);
+  border-color: var(--y-border-hover);
+}
+
+.y-bar-btn.is-active {
+  border-color: rgba(6, 87, 249, 0.5);
+  color: var(--y-primary);
+}
+
+/* ---------- surfaces ---------- */
+
+.y-card {
+  background: var(--y-surface);
+  border: 1px solid var(--y-border);
+  border-radius: var(--y-r-lg);
+}
+
+.y-panel {
+  border: 1px solid var(--y-border);
+  border-radius: var(--y-r-lg);
+  background: transparent;
+}
+
+/* ---------- popover / tooltip ---------- */
+
+.y-popover {
+  position: absolute;
+  z-index: 60;
+  background: var(--y-surface);
+  border: 1px solid var(--y-border);
+  border-radius: var(--y-r-lg);
+  box-shadow: var(--y-chart-tooltip-shadow);
+}
+
+.y-tooltip {
+  position: absolute;
+  z-index: 70;
+  min-width: 160px;
+  padding: 12px;
+  background: var(--y-surface);
+  border: 1px solid var(--y-border);
+  border-radius: var(--y-r-lg);
+  box-shadow: var(--y-chart-tooltip-shadow);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--y-text-2);
+  pointer-events: none;
+}
+
+.y-link-dots {
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  cursor: help;
+}
+
+/* ---------- skeleton ---------- */
+
+.y-skeleton {
+  background: var(--y-surface-2);
+  border-radius: var(--y-r-sm);
+  animation: y-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes y-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* The Filters button drops to a 40px square icon below 1075px
+   (`hidden min-[1075px]:inline` on the site); Compare keeps its label
+   at every width, so it opts out with `--wide`. */
+.y-bar-btn {
+  width: 40px;
+  padding: 8px 0;
+}
+
+.y-bar-btn__label {
+  display: none;
+}
+
+.y-bar-btn--wide {
+  width: auto;
+  padding: 0 16px;
+}
+
+.y-bar-btn--wide .y-bar-btn__label {
+  display: inline;
+}
+
+@media (min-width: 1075px) {
+  .y-bar-btn {
+    width: auto;
+    padding: 0 16px;
+  }
+
+  .y-bar-btn__label {
+    display: inline;
+  }
+}
+
+.y-btn--small {
+  height: 36px;
+  padding: 0 16px;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.y-btn--pill {
+  border-radius: var(--y-r-full);
+}

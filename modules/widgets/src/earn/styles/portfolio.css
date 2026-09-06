@@ -1,0 +1,273 @@
+/* Portfolio page. Measured from yearn.fi `/portfolio` in soft-dark:
+   h1 30/40 900, tab strip 1200x40 (#262626 shell, active cell #1a1a1a),
+   empty card `bg-surface` with 64px/24px padding and a 16px gap.
+   Source: .ai/yearn-research/html/portfolio-*.html + computed-styles.json. */
+
+.y-pf {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 64px;
+}
+
+.y-pf__title {
+  margin: 0;
+  padding: 0 4px;
+  font-size: 30px;
+  line-height: 40px;
+  font-weight: 900;
+  color: var(--y-text);
+}
+
+.y-pf__tabs-wrap {
+  position: sticky;
+  top: var(--y-header-h);
+  z-index: 30;
+  padding-bottom: 8px;
+  background: var(--y-app);
+}
+
+.y-pf__content {
+  padding-top: 16px;
+}
+
+/* ---------- tab strip ---------- */
+
+.y-pf-tabs {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  width: 100%;
+  height: 40px;
+  border: 1px solid var(--y-border);
+  border-radius: var(--y-r-lg);
+  background: var(--y-surface-2);
+  overflow: hidden;
+}
+
+.y-pf-tab {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 0 16px;
+  border-right: 1px solid var(--y-border);
+  background: transparent;
+  color: var(--y-text-2);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.y-pf-tab:last-child {
+  border-right: none;
+}
+
+.y-pf-tab:hover {
+  background: rgba(26, 26, 26, 0.3);
+  color: var(--y-text);
+}
+
+.y-pf-tab.is-active {
+  background: var(--y-surface);
+  color: var(--y-text);
+  font-weight: 600;
+}
+
+/* ---------- sections ---------- */
+
+.y-pf-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.y-pf-section__title {
+  margin: 0;
+  font-size: 18px;
+  line-height: 28px;
+  font-weight: 600;
+  color: var(--y-text);
+}
+
+.y-pf-section__heading {
+  margin: 0;
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 600;
+  color: var(--y-text);
+}
+
+.y-pf-section__subheading {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--y-text-2);
+}
+
+.y-pf-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ---------- empty state card ---------- */
+
+.y-pf-empty {
+  background: var(--y-surface);
+  border: 1px solid var(--y-border);
+  border-radius: var(--y-r-lg);
+}
+
+.y-pf-empty__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 16px;
+  padding: 64px 24px;
+  text-align: center;
+}
+
+.y-pf-empty__title {
+  font-size: 18px;
+  line-height: 28px;
+  font-weight: 600;
+  color: var(--y-text);
+}
+
+.y-pf-empty__desc {
+  max-width: 448px;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--y-text-2);
+}
+
+.y-pf-empty__actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* `Explore Vaults` uses a text-coloured outline, not the neutral border. */
+.y-pf-empty__secondary {
+  padding: 0 24px;
+  border: 1px solid var(--y-text);
+  background: var(--y-surface);
+  color: var(--y-text);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+
+.y-pf-empty__secondary:hover {
+  background: var(--y-surface-2);
+}
+
+/* ---------- metrics ---------- */
+
+.y-pf-metrics {
+  display: flex;
+  align-items: stretch;
+  background: var(--y-surface);
+  border: 1px solid var(--y-border);
+  border-radius: var(--y-r-lg);
+  overflow: hidden;
+}
+
+.y-pf-metric {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border-right: 1px solid var(--y-border);
+  min-width: 0;
+}
+
+.y-pf-metric:last-child {
+  border-right: none;
+}
+
+.y-pf-metric__label {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 400;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+  color: var(--y-text-2);
+}
+
+.y-pf-metric__value {
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 600;
+  color: var(--y-text);
+}
+
+.y-pf-metric__skeleton {
+  display: inline-block;
+  width: 80px;
+  height: 22px;
+}
+
+/* ---------- loading ---------- */
+
+.y-pf-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 320px;
+  padding: 64px 24px;
+  border: 1px solid var(--y-border);
+  border-radius: var(--y-r-lg);
+  background: var(--y-surface);
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--y-text-2);
+}
+
+.y-pf-loading__spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--y-border);
+  border-top-color: var(--y-text-2);
+  border-radius: var(--y-r-full);
+  animation: y-pf-spin 0.8s linear infinite;
+}
+
+@keyframes y-pf-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 767px) {
+  .y-pf__title {
+    font-size: 18px;
+    line-height: 28px;
+  }
+
+  /* `px-2` below `md`, so all three labels still fit on one line. */
+  .y-pf-tab {
+    padding: 0 8px;
+  }
+
+  .y-pf-metrics {
+    flex-wrap: wrap;
+  }
+
+  .y-pf-metric {
+    flex: 1 1 50%;
+    min-width: 50%;
+  }
+
+  .y-pf-empty__inner {
+    padding: 48px 16px;
+  }
+}

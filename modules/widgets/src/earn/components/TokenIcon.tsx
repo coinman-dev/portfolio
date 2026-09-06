@@ -28,15 +28,17 @@ export const TokenIcon: React.FC<TokenIconProps> = ({
   }, [src, tokenIcon, tokenAddress, chainId]);
 
   // Build candidate URL list:
-  // 1. Underlying token icon (tokenIcon, which represents the deposit token)
-  // 2. Direct src (if different from tokenIcon)
+  // 1. `src` — the explicit icon for this entry (a vault's own artwork)
+  // 2. `tokenIcon` — the underlying deposit token's icon
   // 3. SmoldApp token logo API by address
+  // These are normally the same URL; they differ only for vaults Yearn ships
+  // dedicated artwork for, and there the explicit one has to win.
   const candidates: string[] = [];
-  if (tokenIcon && tokenIcon.trim()) {
-    candidates.push(tokenIcon.trim());
-  }
-  if (src && src.trim() && !candidates.includes(src.trim())) {
+  if (src && src.trim()) {
     candidates.push(src.trim());
+  }
+  if (tokenIcon && tokenIcon.trim() && !candidates.includes(tokenIcon.trim())) {
+    candidates.push(tokenIcon.trim());
   }
   if (chainId && tokenAddress && tokenAddress.trim()) {
     const smoldAppUrl = `https://assets.smold.app/api/token/${chainId}/${tokenAddress.trim()}/logo-128.png`;
@@ -66,9 +68,9 @@ export const TokenIcon: React.FC<TokenIconProps> = ({
           minWidth: size,
           minHeight: size,
           borderRadius: '50%',
-          backgroundColor: '#1a2233',
-          border: '1px solid rgba(255, 255, 255, 0.12)',
-          color: '#ffffff',
+          backgroundColor: '#262626',
+          border: '1px solid #333333',
+          color: '#f5f5f5',
           display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -98,7 +100,7 @@ export const TokenIcon: React.FC<TokenIconProps> = ({
         borderRadius: '50%',
         objectFit: 'cover',
         display: 'block',
-        backgroundColor: '#121622',
+        backgroundColor: '#1a1a1a',
       }}
       loading="lazy"
     />
