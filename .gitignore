@@ -4,8 +4,11 @@ target/
 # Tauri generated schemas (auto-regenerated on build)
 src-tauri/gen/
 
-# Database files (user data, not source)
+# Runtime user data (databases, settings, cache) — not source
+data/
+# Legacy layout, kept ignored so old checkouts stay clean
 database/
+settings-cache.json
 
 # Claude Code settings (local only)
 .claude/

@@ -5091,7 +5091,7 @@ var DbSelector = {
                 }
                 renderApp();
                 MarketCache.clear();
-                // Restore settings from settings-cache.json, then schedule refresh
+                // Restore settings from data/settings.json, then schedule refresh
                 if (AppBridge.isTauri()) {
                     AppBridge.invoke("load_app_settings", {
                         user: ServerSync.user,

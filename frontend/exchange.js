@@ -1,7 +1,7 @@
 /**
  * CoinMan Exchange Module Integration
  * Handles view switching, unified wallet connection (OneKey HD / WalletConnect),
- * multi-DEX modules (Li-Fi, CoW Swap), lazy bundle loading, and settings-cache.json synchronization.
+ * multi-DEX modules (Li-Fi, CoW Swap), lazy bundle loading, and data/settings.json synchronization.
  */
 var AppExchange = (function () {
     var kit = window.AppModuleKit;
@@ -63,7 +63,7 @@ var AppExchange = (function () {
     function updateWalletUI(status, isExplicitDisconnect) {
         kit.updateWalletBadges(status, isExplicitDisconnect);
 
-        // Persist the connected wallet in exchangeSettings / settings-cache.json
+        // Persist the connected wallet in exchangeSettings / data/settings.json
         var isConnected = !!(status && status.isConnected && status.address);
         if (isConnected) {
             exchangeSettings = Object.assign({}, exchangeSettings || {}, {

@@ -318,7 +318,7 @@ pub fn save_db<R: Runtime>(
     }
 
     // Always store portfolios sorted by id so the file has a stable, predictable order.
-    // Display order is kept separately in settings-cache.json (portfolioOrder).
+    // Display order is kept separately in data/settings.json (portfolioOrder).
     data.portfolios.sort_by(|a, b| {
         match (a.get("id").and_then(|v| v.as_i64()), b.get("id").and_then(|v| v.as_i64())) {
             (Some(x), Some(y)) => x.cmp(&y),
@@ -559,11 +559,53 @@ fn resolve_db_file_path<R: Runtime>(app: &AppHandle<R>, user: &str) -> Result<Pa
 }
 
 fn database_dir<R: Runtime>(_app: &AppHandle<R>) -> Result<PathBuf, String> {
-    if let Some(exe_dir) = current_exe_dir() {
-        return Ok(exe_dir.join("database"));
+    let base = current_exe_dir().unwrap_or_else(project_root);
+    let dir = base.join("data").join("base");
+    static DONE: std::sync::OnceLock<()> = std::sync::OnceLock::new();
+    DONE.get_or_init(|| migrate_legacy_database_dir(&base, &dir));
+    Ok(dir)
+}
+
+/// Moves the pre-0.7 `database/` folder to `data/base/`.
+///
+/// Runs at most once per process and is a no-op once `data/base` exists.
+/// Falls back to copying when the rename fails (different volume, open file
+/// handle); the originals are left alone in that case, so a partial migration
+/// can never lose a database.
+fn migrate_legacy_database_dir(base: &Path, target: &Path) {
+    if target.exists() {
+        return;
     }
 
-    Ok(project_root().join("database"))
+    let legacy = base.join("database");
+    if !legacy.is_dir() {
+        return;
+    }
+
+    let Some(parent) = target.parent() else {
+        return;
+    };
+    if fs::create_dir_all(parent).is_err() {
+        return;
+    }
+
+    if fs::rename(&legacy, target).is_ok() {
+        return;
+    }
+
+    if fs::create_dir_all(target).is_err() {
+        return;
+    }
+    if let Ok(entries) = fs::read_dir(&legacy) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_file() {
+                if let Some(name) = path.file_name() {
+                    let _ = fs::copy(&path, target.join(name));
+                }
+            }
+        }
+    }
 }
 
 fn current_exe_dir() -> Option<PathBuf> {
@@ -629,4 +671,33 @@ fn count_coins_in_file(path: &Path) -> usize {
         }
     }
     symbols.len()
+}
+
+
+#[cfg(test)]
+mod migration_tests {
+    use super::*;
+
+    #[test]
+    fn moves_legacy_database_dir() {
+        let base = std::env::temp_dir().join(format!("coinman-db-mig-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&base);
+        fs::create_dir_all(base.join("database")).unwrap();
+        fs::write(base.join("database/vova.json"), b"{\"portfolios\":[]}").unwrap();
+
+        let target = base.join("data").join("base");
+        migrate_legacy_database_dir(&base, &target);
+
+        assert!(target.join("vova.json").is_file(), "database moved to data/base");
+
+        // Already migrated: a second run must not touch anything.
+        fs::write(target.join("vova.json"), b"{\"portfolios\":[1]}").unwrap();
+        migrate_legacy_database_dir(&base, &target);
+        assert_eq!(
+            fs::read(target.join("vova.json")).unwrap(),
+            b"{\"portfolios\":[1]}"
+        );
+
+        let _ = fs::remove_dir_all(&base);
+    }
 }

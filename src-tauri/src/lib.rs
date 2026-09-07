@@ -613,7 +613,7 @@ fn create_main_window<R: tauri::Runtime>(
     let mut height = DEFAULT_WINDOW_HEIGHT;
     let mut position = None;
 
-    // Prefer settings-cache.json for window state (works even when DB is encrypted).
+    // Prefer data/settings.json for window state (works even when DB is encrypted).
     // Fall back to DB window_state for backward compatibility with older installs.
     let app_settings = settings::load_global(app.handle());
     if let Some(ws) = app_settings.window_state {
@@ -636,6 +636,27 @@ fn create_main_window<R: tauri::Runtime>(
     let cowswap_dark_init_script = r##"
 (function() {
     var observerStarted = false;
+
+    // CoW decides whether the orders/history panel is a side column or a modal
+    // with matchMedia("(max-width: 1280px)"). The app window is at least 1200px
+    // wide, so the iframe lands just under that and always got the modal.
+    // Serve that one query from a lower threshold; every other query, and the
+    // live `change` events, keep coming from the real MediaQueryList.
+    (function() {
+        var PANEL_QUERY = "(max-width: 1280px)";
+        var PANEL_QUERY_OVERRIDE = "(max-width: 900px)";
+        try {
+            if (!window.matchMedia) return;
+            var native = window.matchMedia.bind(window);
+            window.matchMedia = function(query) {
+                return native(
+                    String(query).replace(/\s+/g, " ").trim() === PANEL_QUERY
+                        ? PANEL_QUERY_OVERRIDE
+                        : query
+                );
+            };
+        } catch (e) {}
+    })();
 
     function applyDarkAndTabs() {
         try {
@@ -668,6 +689,30 @@ fn create_main_window<R: tauri::Runtime>(
                     div:has(> #card) {
                         width: 100% !important;
                         max-width: 580px !important;
+                    }
+                    /* Companion to the matchMedia override above: that makes
+                       CoW render the orders panel, this lays it out beside the
+                       card. CoW's own two-column rule sits behind a CSS media
+                       query, which JS cannot reach.
+                       A second grid child means the panel is there; Swap mode
+                       has none and keeps CoW's own single-column layout. */
+                    @media (min-width: 901px) {
+                        [class*="TradePageLayout__PageWrapper"]:has(> :nth-child(2)) {
+                            grid-template-areas: "primary secondary" !important;
+                            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+                        }
+                        /* Equal halves: the card drops its 580px cap and fills its side. */
+                        [class*="TradePageLayout__PageWrapper"]:has(> :nth-child(2))
+                            [class*="TradePageLayout__PrimaryWrapper"],
+                        [class*="TradePageLayout__PageWrapper"]:has(> :nth-child(2))
+                            div:has(> #card) {
+                            max-width: none !important;
+                        }
+                        /* Alone in the row, the card is centred rather than pinned left. */
+                        [class*="TradePageLayout__PageWrapper"]:not(:has(> :nth-child(2)))
+                            [class*="TradePageLayout__PrimaryWrapper"] {
+                            margin-inline: auto !important;
+                        }
                     }
                     /* Hide dropdown trigger button and full-card select menu */
                     div[class*="styled__DropdownButton"],

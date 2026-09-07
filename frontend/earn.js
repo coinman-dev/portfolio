@@ -2,7 +2,7 @@
  * CoinMan Earn Module Integration
  * Handles view switching, Yearn Finance widget mounting,
  * unified wallet connection (OneKey HD / WalletConnect via CoinmanWallet),
- * and persistence in settings-cache.json.
+ * and persistence in data/settings.json.
  */
 var AppEarn = (function () {
     var kit = window.AppModuleKit;
