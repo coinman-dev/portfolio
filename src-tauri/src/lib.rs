@@ -687,15 +687,12 @@ fn create_main_window<R: tauri::Runtime>(
                        A second grid child means the panel is there; Swap mode
                        has none and keeps CoW's own single-column layout. */
                     @media (min-width: 901px) {
+                        /* The card gets a fixed 500px column; the orders panel
+                           takes the rest of the iframe, past CoW's own 1500px
+                           page cap. */
                         [class*="TradePageLayout__PageWrapper"]:has(> :nth-child(2)) {
                             grid-template-areas: "primary secondary" !important;
-                            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
-                        }
-                        /* Equal halves: the card drops its 580px cap and fills its side. */
-                        [class*="TradePageLayout__PageWrapper"]:has(> :nth-child(2))
-                            [class*="TradePageLayout__PrimaryWrapper"],
-                        [class*="TradePageLayout__PageWrapper"]:has(> :nth-child(2))
-                            div:has(> #card) {
+                            grid-template-columns: minmax(0, 500px) minmax(0, 1fr) !important;
                             max-width: none !important;
                         }
                         /* Alone in the row, the card is centred rather than pinned left. */
