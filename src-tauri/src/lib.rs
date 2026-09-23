@@ -1,9 +1,8 @@
 mod settings;
 mod storage;
+mod webview_profile;
 
 use serde::Serialize;
-use std::fs;
-use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -41,11 +40,6 @@ impl Default for WindowSizeCalibration {
             dpi_mismatch: Mutex::new(1.0),
         }
     }
-}
-
-#[derive(Clone)]
-struct RuntimePaths {
-    webview_data_dir: PathBuf,
 }
 
 #[derive(Serialize)]
@@ -481,15 +475,11 @@ fn now_unix_ms() -> u64 {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let webview_data_dir = prepare_webview_data_dir();
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(StorageLock::default())
         .manage(SessionPassword::default())
         .manage(WindowSizeCalibration::default())
-        .manage(RuntimePaths {
-            webview_data_dir: webview_data_dir.clone(),
-        })
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.unminimize();
@@ -558,6 +548,7 @@ pub fn run() {
         .expect("error while building tauri application");
 
     let exit_code = app.run_return(|_, _| {});
+    webview_profile::remove();
     if exit_code != 0 {
         std::process::exit(exit_code);
     }
@@ -632,7 +623,6 @@ fn create_main_window<R: tauri::Runtime>(
         }
     }
 
-    let runtime_paths = app.state::<RuntimePaths>();
     let cowswap_dark_init_script = r##"
 (function() {
     var observerStarted = false;
@@ -909,7 +899,10 @@ fn create_main_window<R: tauri::Runtime>(
         .background_color(tauri::utils::config::Color(18, 18, 18, 255))
         .initialization_script(cowswap_dark_init_script)
         .use_https_scheme(true)
-        .data_directory(runtime_paths.webview_data_dir.clone());
+        .incognito(true);
+    if let Some(dir) = webview_profile::prepare()? {
+        builder = builder.data_directory(dir);
+    }
 
     if let Some((x, y)) = position {
         builder = builder.position(x, y);
@@ -1096,38 +1089,4 @@ fn create_main_window<R: tauri::Runtime>(
     });
 
     Ok(())
-}
-
-fn prepare_webview_data_dir() -> PathBuf {
-    #[cfg(target_os = "windows")]
-    {
-        if let Some(local_app_data) = std::env::var_os("LOCALAPPDATA") {
-            let dir = PathBuf::from(local_app_data)
-                .join("coinman-portfolio")
-                .join("webview-data");
-            let _ = fs::create_dir_all(&dir);
-            return dir;
-        }
-    }
-    #[cfg(not(target_os = "windows"))]
-    {
-        if let Some(data_home) = std::env::var_os("XDG_DATA_HOME") {
-            let dir = PathBuf::from(data_home)
-                .join("coinman-portfolio")
-                .join("webview-data");
-            let _ = fs::create_dir_all(&dir);
-            return dir;
-        } else if let Some(home) = std::env::var_os("HOME") {
-            let dir = PathBuf::from(home)
-                .join(".local")
-                .join("share")
-                .join("coinman-portfolio")
-                .join("webview-data");
-            let _ = fs::create_dir_all(&dir);
-            return dir;
-        }
-    }
-    let dir = std::env::temp_dir().join("coinman-portfolio-webview-data");
-    let _ = fs::create_dir_all(&dir);
-    dir
 }
