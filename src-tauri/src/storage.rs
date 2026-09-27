@@ -585,26 +585,47 @@ fn migrate_legacy_database_dir(base: &Path, target: &Path) {
     let Some(parent) = target.parent() else {
         return;
     };
-    if fs::create_dir_all(parent).is_err() {
+    if let Err(e) = fs::create_dir_all(parent) {
+        log::error!(
+            "Database migration: cannot create {}: {e}",
+            parent.display()
+        );
         return;
     }
 
-    if fs::rename(&legacy, target).is_ok() {
-        return;
+    match fs::rename(&legacy, target) {
+        Ok(()) => {
+            log::info!(
+                "Database migration: moved {} to {}",
+                legacy.display(),
+                target.display()
+            );
+            return;
+        }
+        Err(e) => log::warn!("Database migration: rename failed ({e}), copying instead"),
     }
 
-    if fs::create_dir_all(target).is_err() {
+    if let Err(e) = fs::create_dir_all(target) {
+        log::error!(
+            "Database migration: cannot create {}: {e}",
+            target.display()
+        );
         return;
     }
-    if let Ok(entries) = fs::read_dir(&legacy) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if path.is_file() {
-                if let Some(name) = path.file_name() {
-                    let _ = fs::copy(&path, target.join(name));
+    match fs::read_dir(&legacy) {
+        Ok(entries) => {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_file() {
+                    if let Some(name) = path.file_name() {
+                        if let Err(e) = fs::copy(&path, target.join(name)) {
+                            log::error!("Database migration: cannot copy {}: {e}", path.display());
+                        }
+                    }
                 }
             }
         }
+        Err(e) => log::error!("Database migration: cannot read {}: {e}", legacy.display()),
     }
 }
 

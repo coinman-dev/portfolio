@@ -126,10 +126,11 @@ var AppBridge = {
 
         return AppBridge.invoke("bootstrap_app").then(function (config) {
             window.SERVER_CONFIG = config || {};
-            window.DEBUG_MODE = !!(config && config.debugMode);
             if (config && config.appVersion) {
                 CONFIG.APP_VERSION = String(config.appVersion).replace(/^v/, "");
             }
+            DebugLog.setEnabled(!!(config && config.debugMode));
+            AppSettings.applyDebugMode();
             return window.SERVER_CONFIG;
         });
     },
@@ -149,58 +150,239 @@ function renderAboutVersion() {
 }
 
 // ─── DEBUG LOGGER ────────────────────────────────────────────────────────────
+// Diagnostic log (Settings → Debug mode). Lines go through the debug_log
+// command into Logs/coinman-YYYY-MM-DD.log next to the executable; while debug
+// mode is off nothing is sent. Levels: "debug" | "info" | "warn" | "error".
 var DebugLog = {
-    _send: function (line) {
+    // Debug mode is only known once bootstrap_app answers. Until then lines are
+    // sent anyway and the Rust side drops them if logging is off, so errors
+    // during startup are not lost.
+    _known: false,
+
+    // Invoke arguments with these names never reach the log.
+    _SECRET_ARG: /pass(word)?|secret|token|mnemonic|seed|private|api_?key|^key$/i,
+
+    isActive: function () {
+        return window.DEBUG_MODE || !DebugLog._known;
+    },
+
+    setEnabled: function (enabled) {
+        window.DEBUG_MODE = !!enabled;
+        DebugLog._known = true;
+        if (enabled) DebugLog.logEnvironment();
+    },
+
+    _send: function (level, line) {
         if (
             window.__TAURI__ &&
             window.__TAURI__.core &&
             typeof window.__TAURI__.core.invoke === "function"
         ) {
             window.__TAURI__.core
-                .invoke("debug_log", { message: line })
+                .invoke("debug_log", { level: level, message: line })
                 .catch(function () {});
         }
     },
 
-    log: function (category, message, data) {
-        if (!window.DEBUG_MODE) return;
+    write: function (level, category, message, data) {
+        if (!DebugLog.isActive()) return;
         var line = "[" + category + "] " + message;
         if (data !== undefined) {
-            try {
-                var s = JSON.stringify(data);
-                if (s && s !== "{}") line += " | " + s;
-            } catch (e) {
-                line += " | [non-serializable]";
-            }
+            var s = DebugLog.stringify(data, 2000);
+            if (s && s !== "{}") line += " | " + s;
         }
-        console.log(line);
-        DebugLog._send(line);
+        // Captured console output is already in DevTools.
+        if (category !== "CONSOLE") console.log(line);
+        DebugLog._send(level, line);
+    },
+
+    log: function (category, message, data) {
+        DebugLog.write("info", category, message, data);
     },
 
     error: function (message, err) {
-        var stack = err && err.stack ? "\n" + err.stack : "";
-        DebugLog.log("ERROR", message + stack);
+        DebugLog.write("error", "ERROR", message + DebugLog.describeError(err));
+    },
+
+    describeError: function (err) {
+        if (!err) return "";
+        if (err.stack) return "\n" + err.stack;
+        return ": " + (err.message || DebugLog.stringify(err, 1000));
+    },
+
+    // JSON that survives what the app actually logs: BigInt amounts, Errors,
+    // circular objects. Cut to `max` characters.
+    stringify: function (value, max) {
+        var seen = new WeakSet();
+        var s;
+        try {
+            s = JSON.stringify(value, function (key, v) {
+                if (typeof v === "bigint") return v.toString();
+                if (v instanceof Error) return { name: v.name, message: v.message };
+                if (v && typeof v === "object") {
+                    if (seen.has(v)) return "[circular]";
+                    seen.add(v);
+                }
+                return v;
+            });
+        } catch (e) {
+            s = "[non-serializable]";
+        }
+        if (s === undefined) s = String(value);
+        return s.length > max ? s.slice(0, max) + "…[" + s.length + " chars]" : s;
+    },
+
+    // Invoke arguments with secrets masked and bulky payloads (portfolios,
+    // market cache) reduced to their size.
+    redactArgs: function (args) {
+        if (!args || typeof args !== "object") return args;
+        var out = {};
+        Object.keys(args).forEach(function (key) {
+            var v = args[key];
+            if (DebugLog._SECRET_ARG.test(key)) {
+                out[key] = v ? "[redacted]" : v;
+            } else if (key === "data" && v && Array.isArray(v.portfolios)) {
+                out[key] = "[" + v.portfolios.length + " portfolios]";
+            } else {
+                var s = DebugLog.stringify(v, Infinity);
+                out[key] = s.length > 300 ? "[" + s.length + " chars]" : v;
+            }
+        });
+        return out;
+    },
+
+    formatConsoleArgs: function (args) {
+        var text = Array.prototype.map
+            .call(args, function (a) {
+                if (a instanceof Error) return a.stack || a.message;
+                if (typeof a === "string") return a;
+                return DebugLog.stringify(a, 1000);
+            })
+            .join(" ");
+        return text.length > 4000 ? text.slice(0, 4000) + "…" : text;
+    },
+
+    // Without the query string: it can be long and is not needed to see
+    // which endpoint failed.
+    describeUrl: function (input) {
+        var url = input && input.url ? input.url : String(input);
+        return url.split("?")[0];
+    },
+
+    logEnvironment: function () {
+        var nav = window.navigator || {};
+        var tz = "";
+        try {
+            tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        } catch (e) {}
+        DebugLog.write("info", "ENV", "UA: " + nav.userAgent);
+        DebugLog.write(
+            "info",
+            "ENV",
+            "App v" + CONFIG.APP_VERSION +
+                " | lang " + nav.language +
+                " | TZ " + tz +
+                " | screen " + screen.width + "x" + screen.height +
+                " @" + window.devicePixelRatio +
+                " | window " + window.innerWidth + "x" + window.innerHeight,
+        );
+        // The user agent says "Windows NT 10.0" on both Windows 10 and 11; the
+        // client hints tell them apart (platformVersion 13+ is Windows 11).
+        if (nav.userAgentData && nav.userAgentData.getHighEntropyValues) {
+            nav.userAgentData
+                .getHighEntropyValues(["platformVersion", "architecture", "bitness", "uaFullVersion"])
+                .then(function (ua) {
+                    var name = ua.platform;
+                    if (ua.platform === "Windows") {
+                        name = parseInt(ua.platformVersion, 10) >= 13 ? "Windows 11" : "Windows 10";
+                    }
+                    DebugLog.write(
+                        "info",
+                        "ENV",
+                        name + " (platformVersion " + ua.platformVersion + ", " +
+                            ua.architecture + " " + ua.bitness + "-bit) | engine " + ua.uaFullVersion,
+                    );
+                })
+                .catch(function () {});
+        }
     },
 };
 
-// Перехват всех AppBridge.invoke — логирует каждый вызов и каждую ошибку
+// Every AppBridge.invoke: arguments (secrets masked), duration, failures.
 (function () {
     var _orig = AppBridge.invoke;
     AppBridge.invoke = function (command, args) {
-        if (command !== "debug_log") {
-            DebugLog.log("INVOKE →", command, args);
+        if (command === "debug_log" || !DebugLog.isActive()) {
+            return _orig(command, args);
         }
-        return _orig(command, args)
-            .then(function (result) {
-                if (command !== "debug_log") {
-                    DebugLog.log("INVOKE ✓", command);
-                }
+        var started = Date.now();
+        DebugLog.write("debug", "INVOKE →", command, DebugLog.redactArgs(args));
+        return _orig(command, args).then(
+            function (result) {
+                DebugLog.write("debug", "INVOKE ✓", command + " (" + (Date.now() - started) + " ms)");
                 return result;
-            })
-            .catch(function (err) {
-                DebugLog.log("INVOKE ✗", command + " FAILED: " + String(err));
+            },
+            function (err) {
+                DebugLog.write(
+                    "warn",
+                    "INVOKE ✗",
+                    command + " (" + (Date.now() - started) + " ms): " + String(err),
+                );
                 throw err;
-            });
+            },
+        );
+    };
+})();
+
+// console.warn / console.error from the whole app, the Exchange/Earn bundle
+// (wagmi, WalletConnect, LI.FI, CoW) included.
+(function () {
+    ["warn", "error"].forEach(function (method) {
+        var original = console[method];
+        if (typeof original !== "function") return;
+        console[method] = function () {
+            original.apply(console, arguments);
+            if (DebugLog.isActive()) {
+                DebugLog.write(method, "CONSOLE", DebugLog.formatConsoleArgs(arguments));
+            }
+        };
+    });
+})();
+
+// HTTP requests that fail or answer with an error status (CoinGecko, RPC
+// nodes, Yearn, LI.FI…). Successful ones are not logged.
+(function () {
+    if (typeof window.fetch !== "function") return;
+    var originalFetch = window.fetch;
+    window.fetch = function (input, init) {
+        var promise = originalFetch.apply(window, arguments);
+        if (!DebugLog.isActive()) return promise;
+        var started = Date.now();
+        var method = (init && init.method) || (input && input.method) || "GET";
+        var what = method + " " + DebugLog.describeUrl(input);
+        return promise.then(
+            function (resp) {
+                if (!resp.ok && resp.type !== "opaque") {
+                    DebugLog.write(
+                        "warn",
+                        "HTTP",
+                        what + " → " + resp.status + " " + resp.statusText +
+                            " (" + (Date.now() - started) + " ms)",
+                    );
+                }
+                return resp;
+            },
+            function (err) {
+                var aborted = err && err.name === "AbortError";
+                DebugLog.write(
+                    aborted ? "debug" : "error",
+                    "HTTP",
+                    what + (aborted ? " aborted" : " failed: " + (err && err.message ? err.message : String(err))) +
+                        " (" + (Date.now() - started) + " ms)",
+                );
+                throw err;
+            },
+        );
     };
 })();
 
@@ -220,7 +402,7 @@ document.addEventListener(
             tag === "BUTTON" ||
             cls.indexOf("btn") !== -1
         ) {
-            DebugLog.log("CLICK", '"' + text + '" ' + tag + id + " ." + cls);
+            DebugLog.write("debug", "CLICK", '"' + text + '" ' + tag + id + " ." + cls);
         }
     },
     true,
@@ -228,9 +410,9 @@ document.addEventListener(
 
 // Глобальный перехват JS-ошибок
 window.onerror = function (message, source, lineno, colno, error) {
-    if (!window.DEBUG_MODE) return false;
     var stack = error && error.stack ? error.stack : "";
-    DebugLog.log(
+    DebugLog.write(
+        "error",
         "JS_ERROR",
         message + " at " + source + ":" + lineno + ":" + colno + "\n" + stack,
     );
@@ -238,7 +420,6 @@ window.onerror = function (message, source, lineno, colno, error) {
 };
 
 window.addEventListener("unhandledrejection", function (event) {
-    if (!window.DEBUG_MODE) return;
     var reason = event.reason;
     var msg = reason
         ? reason.message
@@ -246,8 +427,20 @@ window.addEventListener("unhandledrejection", function (event) {
             : String(reason)
         : "unknown rejection";
     var stack = reason && reason.stack ? "\n" + reason.stack : "";
-    DebugLog.log("PROMISE_ERROR", msg + stack);
+    DebugLog.write("error", "PROMISE_ERROR", msg + stack);
 });
+
+// Scripts and stylesheets that fail to load (e.g. the Exchange/Earn bundle).
+// Runtime errors bubble here too; window.onerror already has those.
+window.addEventListener(
+    "error",
+    function (event) {
+        var el = event.target;
+        if (!el || el === window || (el.tagName !== "SCRIPT" && el.tagName !== "LINK")) return;
+        DebugLog.write("error", "RESOURCE", "Failed to load " + (el.src || el.href));
+    },
+    true,
+);
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ─── APP SETTINGS ─────────────────────────────────────────────────────────────
@@ -529,6 +722,38 @@ var AppSettings = {
             .finally(function () {
                 if (btn) btn.disabled = false;
             });
+    },
+
+    applyDebugMode: function () {
+        var menuItem = document.getElementById("menu-toggle-debug");
+        if (menuItem) {
+            if (window.DEBUG_MODE) {
+                menuItem.classList.add("checked");
+            } else {
+                menuItem.classList.remove("checked");
+            }
+        }
+    },
+
+    // Stored in data/settings.json by the Rust side, not here: logging has to
+    // start before the page loads.
+    handleToggleDebugMode: function () {
+        var enabled = !window.DEBUG_MODE;
+        AppBridge.invoke("set_debug_mode", { enabled: enabled })
+            .then(function () {
+                DebugLog.setEnabled(enabled);
+                AppSettings.applyDebugMode();
+            })
+            .catch(function (e) {
+                console.error("Cannot switch debug mode:", e);
+            });
+    },
+
+    handleOpenLogsFolder: function () {
+        window.closeAllDropdowns();
+        AppBridge.invoke("open_logs_folder").catch(function (e) {
+            console.error("Cannot open the logs folder:", e);
+        });
     },
 
     init: function () {

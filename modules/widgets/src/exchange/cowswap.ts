@@ -6,6 +6,7 @@ import {
   TradeType,
 } from '@cowprotocol/widget-lib';
 import { getEthereumProvider, subscribeWalletStatus, WalletStatus } from '../wallet/wallet';
+import { diag } from '../diag';
 
 export interface CowSwapMountOptions {
   container: HTMLElement;
@@ -28,18 +29,61 @@ export interface CowSwapInstance {
 // JSON-RPC id, so sharing the in-flight promise per id leaves exactly one prompt.
 const dedupedProviders = new WeakMap<object, any>();
 
+/** Requests that put a prompt in front of the user in the wallet. */
+const WALLET_PROMPT_METHODS = new Set([
+  'eth_requestAccounts',
+  'eth_sendTransaction',
+  'eth_sign',
+  'personal_sign',
+  'eth_signTypedData',
+  'eth_signTypedData_v3',
+  'eth_signTypedData_v4',
+  'wallet_switchEthereumChain',
+  'wallet_addEthereumChain',
+  'wallet_watchAsset',
+  'wallet_sendCalls',
+]);
+
+type RpcArgs = { id?: unknown; method?: string };
+
+/** Diagnostic log: wallet prompts both ways, other calls only when they fail. */
+function traceRpc(args: RpcArgs, call: Promise<unknown>): Promise<unknown> {
+  const prompt = WALLET_PROMPT_METHODS.has(args.method ?? '');
+  const what = `RPC ${args.method} id=${args.id}`;
+  const started = Date.now();
+  if (prompt) diag('info', 'COW', `${what} → wallet`);
+  return call.then(
+    (result) => {
+      if (prompt) diag('info', 'COW', `${what} ok (${Date.now() - started} ms)`);
+      return result;
+    },
+    (err) => {
+      const ms = Date.now() - started;
+      if (err?.code === 4001) {
+        diag('info', 'COW', `${what} rejected by user (${ms} ms)`);
+      } else {
+        diag('warn', 'COW', `${what} failed (${ms} ms): ${err?.code ?? ''} ${err?.message ?? err}`);
+      }
+      throw err;
+    },
+  );
+}
+
 function withDedupedRequests(provider: any): any {
   if (!provider) return undefined;
   let wrapped = dedupedProviders.get(provider);
   if (wrapped) return wrapped;
 
   const inFlight = new Map<unknown, Promise<unknown>>();
-  const request = (args: { id?: unknown }) => {
+  const request = (args: RpcArgs) => {
     const id = args?.id;
     if (id === undefined || id === null) return provider.request(args);
     let pending = inFlight.get(id);
-    if (!pending) {
-      pending = new Promise((resolve) => resolve(provider.request(args))).finally(() => {
+    if (pending) {
+      diag('debug', 'COW', `RPC ${args.method} id=${id} duplicate dropped`);
+    } else {
+      const call = new Promise((resolve) => resolve(provider.request(args)));
+      pending = traceRpc(args, call).finally(() => {
         inFlight.delete(id);
       });
       inFlight.set(id, pending);
@@ -91,11 +135,27 @@ export async function mountCowSwap(options: CowSwapMountOptions): Promise<CowSwa
 
   let widgetProvider = withDedupedRequests(currentProvider);
 
+  // Toasts cover the order lifecycle (created, signing error, filled, expired,
+  // on-chain tx failed) and are the only view into errors inside the iframe.
+  const listeners = [
+    {
+      event: 'ON_TOAST_MESSAGE',
+      handler: (toast: { messageType: string; message: string; data?: unknown }) => {
+        const failed =
+          toast.messageType === 'SWAP_SIGNING_ERROR' ||
+          toast.messageType === 'ONCHAIN_TRANSACTION_FAILED';
+        diag(failed ? 'warn' : 'info', 'COW', `${toast.messageType}: ${toast.message}`, toast.data);
+      },
+    },
+  ] as CowSwapWidgetProps['listeners'];
+
   const widgetProps: CowSwapWidgetProps = {
     params,
     provider: widgetProvider,
+    listeners,
   };
 
+  diag('info', 'COW', `mount, wallet provider ${widgetProvider ? 'present' : 'missing'}`);
   const handler: CowSwapWidgetHandler = createCowSwapWidget(container, widgetProps);
 
   // Each updateProvider() leaks a forwarder (see withDedupedRequests), so only call
@@ -105,6 +165,7 @@ export async function mountCowSwap(options: CowSwapMountOptions): Promise<CowSwa
   const setWidgetProvider = (provider?: any) => {
     const next = withDedupedRequests(provider);
     if (next === widgetProvider) return;
+    diag('info', 'COW', next ? 'wallet provider set' : 'wallet provider cleared');
     widgetProvider = next;
     handler.updateProvider(next);
   };
@@ -128,6 +189,7 @@ export async function mountCowSwap(options: CowSwapMountOptions): Promise<CowSwa
 
   return {
     unmount: () => {
+      diag('info', 'COW', 'unmount');
       try {
         unsubscribeWallet();
       } catch (e) {}

@@ -2,6 +2,7 @@ import { createConfig, http } from 'wagmi';
 import { walletConnect } from 'wagmi/connectors';
 import { mainnet, arbitrum, optimism, polygon, bsc, base, avalanche, katana } from 'viem/chains';
 import { connect, disconnect, getAccount, reconnect, watchAccount } from '@wagmi/core';
+import { diag } from '../diag';
 
 export const PROJECT_ID = '927c5d6fc3d30f43842ac0b9e0714891';
 
@@ -97,6 +98,11 @@ export function subscribeWalletStatus(fn: WalletStatusListener): () => void {
 
 watchAccount(wagmiConfig, {
   onChange(account) {
+    diag(
+      'info',
+      'WALLET',
+      `${account.status} ${formatShortAddress(account.address) || '-'} chain=${account.chainId ?? '-'} via ${account.connector?.name ?? '-'}`,
+    );
     const status: WalletStatus = {
       isConnected: !!account.isConnected && !!account.address,
       address: account.address,
@@ -121,7 +127,11 @@ export async function connectWallet(): Promise<WalletStatus> {
   const connector = wagmiConfig.connectors[0];
   if (!connector) throw new Error('No connector configured');
 
-  const res = await connect(wagmiConfig, { connector });
+  diag('info', 'WALLET', `connect via ${connector.name}`);
+  const res = await connect(wagmiConfig, { connector }).catch((e) => {
+    diag('warn', 'WALLET', `connect failed: ${e?.message ?? e}`);
+    throw e;
+  });
   const address = res.accounts?.[0];
   const status: WalletStatus = {
     isConnected: true,
@@ -138,6 +148,7 @@ export async function connectWallet(): Promise<WalletStatus> {
 }
 
 export async function disconnectWallet(): Promise<void> {
+  diag('info', 'WALLET', 'disconnect');
   await disconnect(wagmiConfig);
   const status: WalletStatus = {
     isConnected: false,

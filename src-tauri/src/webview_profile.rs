@@ -109,13 +109,20 @@ mod windows {
         drop(profile.lock);
         // WebView2's helper processes let go of their files a moment after the
         // window closes. Whatever is still held gets swept on the next start.
+        let mut last_err = None;
         for delay_ms in [0_u64, 100, 250, 500, 1000, 2000] {
             thread::sleep(Duration::from_millis(delay_ms));
             match fs::remove_dir_all(&profile.dir) {
                 Ok(()) => return,
                 Err(err) if err.kind() == ErrorKind::NotFound => return,
-                Err(_) => {}
+                Err(err) => last_err = Some(err),
             }
+        }
+        if let Some(err) = last_err {
+            log::warn!(
+                "Webview profile {} not removed, next start sweeps it: {err}",
+                profile.dir.display()
+            );
         }
     }
 

@@ -29,8 +29,8 @@ incremental = false
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
 tauri = { version = "2.11.1", features = ["devtools"] }
-tauri-plugin-log = "2.8.0"
 tauri-plugin-single-instance = "2.4.2"
 tauri-plugin-dialog = "2.7.1"
 aes-gcm = "0.10"

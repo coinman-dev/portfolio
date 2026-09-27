@@ -1,3 +1,4 @@
+mod diag_log;
 mod settings;
 mod storage;
 mod webview_profile;
@@ -62,8 +63,7 @@ struct WriteResponse {
 
 #[tauri::command]
 fn bootstrap_app(app: tauri::AppHandle) -> Result<storage::BootstrapConfig, String> {
-    let debug_mode = std::env::args().any(|a| a == "--debug" || a == "-debug" || a == "/debug");
-    storage::load_bootstrap(&app, debug_mode)
+    storage::load_bootstrap(&app, diag_log::is_enabled())
 }
 
 /// Load portfolios from disk.
@@ -365,9 +365,37 @@ async fn cmc_fetch_quotes(
         .map_err(|e| format!("Parse error: {}", e))
 }
 
+/// Frontend side of the diagnostic log; a no-op while debug mode is off.
 #[tauri::command]
-fn debug_log(message: String) {
-    log::info!("{}", message);
+fn debug_log(level: Option<String>, message: String) {
+    let level = match level.as_deref() {
+        Some("error") => log::Level::Error,
+        Some("warn") => log::Level::Warn,
+        Some("debug") => log::Level::Debug,
+        _ => log::Level::Info,
+    };
+    log::log!(target: diag_log::UI_TARGET, level, "{message}");
+}
+
+/// Settings → Debug mode. Takes effect at once and is remembered for the next start.
+#[tauri::command]
+fn set_debug_mode(app: tauri::AppHandle, enabled: bool) {
+    settings::update_debug_mode(&app, enabled);
+    if enabled && !diag_log::is_enabled() {
+        diag_log::set_enabled(true);
+        diag_log::write_session_header(&app, "turned on in Settings");
+    } else if !enabled && diag_log::is_enabled() {
+        log::info!("===== debug log off (turned off in Settings) =====");
+        diag_log::set_enabled(false);
+    }
+}
+
+#[tauri::command]
+fn open_logs_folder(app: tauri::AppHandle) -> Result<(), String> {
+    let dir = settings::logs_dir(&app);
+    std::fs::create_dir_all(&dir).map_err(|e| format!("Cannot create `{}`: {e}", dir.display()))?;
+    open_url(dir.to_string_lossy().into_owned());
+    Ok(())
 }
 
 #[tauri::command]
@@ -406,7 +434,7 @@ fn open_url(url: String) {
         };
         let code = res as usize;
         if code <= 32 {
-            log::warn!(
+            log::error!(
                 "[open_url] ShellExecuteW failed for '{}' with code: {}",
                 url,
                 code
@@ -418,10 +446,17 @@ fn open_url(url: String) {
             );
         }
     }
-    #[cfg(target_os = "macos")]
-    let _ = std::process::Command::new("open").arg(&url).spawn();
-    #[cfg(target_os = "linux")]
-    let _ = std::process::Command::new("xdg-open").arg(&url).spawn();
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    {
+        let opener = if cfg!(target_os = "macos") {
+            "open"
+        } else {
+            "xdg-open"
+        };
+        if let Err(e) = std::process::Command::new(opener).arg(&url).spawn() {
+            log::error!("[open_url] {opener} failed for '{url}': {e}");
+        }
+    }
 }
 
 #[tauri::command]
@@ -463,6 +498,11 @@ async fn open_file_dialog(app: tauri::AppHandle) -> Result<Option<String>, Strin
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
+
+/// `--debug` turns the diagnostic log on for one session and opens DevTools.
+fn cli_debug_flag() -> bool {
+    std::env::args().any(|a| a == "--debug" || a == "-debug" || a == "/debug")
+}
 
 fn now_unix_ms() -> u64 {
     SystemTime::now()
@@ -506,6 +546,8 @@ pub fn run() {
             save_show_table_footer,
             save_is_collapsed,
             debug_log,
+            set_debug_mode,
+            open_logs_folder,
             exit_app,
             open_url,
             open_file_dialog,
@@ -521,33 +563,33 @@ pub fn run() {
             save_earn_settings
         ])
         .setup(|app| {
-            let debug_mode =
-                std::env::args().any(|a| a == "--debug" || a == "-debug" || a == "/debug");
-            if debug_mode {
-                let log_dir = std::env::current_exe()
-                    .ok()
-                    .and_then(|p| p.parent().map(|d| d.to_path_buf()))
-                    .unwrap_or_else(|| std::path::PathBuf::from("."));
-                app.handle().plugin(
-                    tauri_plugin_log::Builder::new()
-                        .target(tauri_plugin_log::Target::new(
-                            tauri_plugin_log::TargetKind::Folder {
-                                path: log_dir,
-                                file_name: Some("portfolio.debug.log".to_string()),
-                            },
-                        ))
-                        .level(log::LevelFilter::Info)
-                        .build(),
-                )?;
-                log::info!("=== CoinMan Portfolio Tracker started ===");
+            let cli_debug = cli_debug_flag();
+            diag_log::init(settings::logs_dir(app.handle()));
+            let saved_debug = settings::load_global(app.handle())
+                .debug_mode
+                .unwrap_or(false);
+            if cli_debug || saved_debug {
+                diag_log::set_enabled(true);
+                diag_log::write_session_header(
+                    app.handle(),
+                    if cli_debug {
+                        "--debug flag"
+                    } else {
+                        "Settings"
+                    },
+                );
             }
-            create_main_window(app, debug_mode)?;
+            if let Err(e) = create_main_window(app, cli_debug) {
+                log::error!("Cannot create the main window: {e}");
+                return Err(e.into());
+            }
             Ok(())
         })
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
 
     let exit_code = app.run_return(|_, _| {});
+    log::info!("Exit, code {exit_code}");
     webview_profile::remove();
     if exit_code != 0 {
         std::process::exit(exit_code);
@@ -897,7 +939,11 @@ fn create_main_window<R: tauri::Runtime>(
         .initialization_script(cowswap_dark_init_script)
         .use_https_scheme(true)
         .incognito(true);
-    if let Some(dir) = webview_profile::prepare()? {
+    let profile = webview_profile::prepare().inspect_err(|e| {
+        log::error!("Cannot prepare the webview profile folder: {e}");
+    })?;
+    if let Some(dir) = profile {
+        log::debug!("Webview profile: {}", dir.display());
         builder = builder.data_directory(dir);
     }
 
@@ -929,7 +975,18 @@ fn create_main_window<R: tauri::Runtime>(
         tauri::webview::NewWindowResponse::Deny
     });
 
+    let builder = builder.on_page_load(|_, payload| {
+        log::debug!("[page] {:?} {}", payload.event(), payload.url());
+    });
+
     let window = builder.build()?;
+    log::info!(
+        "Main window {}x{} at {:?}, scale {}",
+        width,
+        height,
+        position,
+        window.scale_factor().unwrap_or(1.0)
+    );
 
     if debug_mode {
         window.open_devtools();
@@ -1032,6 +1089,7 @@ fn create_main_window<R: tauri::Runtime>(
                 }
             }
             tauri::WindowEvent::CloseRequested { .. } => {
+                log::info!("Main window close requested");
                 let app_handle = w.app_handle();
                 let cal = app_handle.state::<WindowSizeCalibration>();
                 let (ow, oh) = *cal.offset.lock().unwrap();

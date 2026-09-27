@@ -1,3 +1,4 @@
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -78,6 +79,9 @@ pub struct AppSettings {
     /// Global: Earn settings, connected vaults, network filters
     #[serde(default)]
     pub earn: Option<Value>,
+    /// Global: write the diagnostic log to Logs/ (Settings → Debug mode).
+    #[serde(default)]
+    pub debug_mode: Option<bool>,
     /// Per-user (per-database) settings keyed by database filename stem.
     #[serde(default)]
     pub users: HashMap<String, UserSettings>,
@@ -234,6 +238,16 @@ pub fn update_exchange_settings<R: Runtime>(app: &AppHandle<R>, exchange: Value)
     save(app, &settings);
 }
 
+pub fn update_debug_mode<R: Runtime>(app: &AppHandle<R>, enabled: bool) {
+    let mut settings = load(app);
+    settings.debug_mode = Some(enabled);
+    save(app, &settings);
+}
+
+pub fn logs_dir<R: Runtime>(app: &AppHandle<R>) -> PathBuf {
+    base_dir(app).join("Logs")
+}
+
 pub fn load_earn_settings<R: Runtime>(app: &AppHandle<R>) -> Value {
     let settings = load(app);
     settings.earn.unwrap_or(Value::Null)
@@ -250,36 +264,51 @@ pub fn update_earn_settings<R: Runtime>(app: &AppHandle<R>, earn: Value) {
 fn load<R: Runtime>(app: &AppHandle<R>) -> AppSettings {
     migrate_legacy_layout(app);
 
-    let bytes = match fs::read(settings_path(app)) {
-        Ok(b) => b,
-        Err(_) => return AppSettings::default(),
-    };
-    serde_json::from_slice(&bytes).unwrap_or_default()
+    read_json(&settings_path(app))
 }
 
 fn save<R: Runtime>(app: &AppHandle<R>, settings: &AppSettings) {
-    let path = settings_path(app);
-    let _ = fs::create_dir_all(data_dir(app));
-    if let Ok(json) = serde_json::to_vec_pretty(settings) {
-        let _ = fs::write(&path, json);
-    }
+    write_json(&data_dir(app), &settings_path(app), settings);
 }
 
 fn load_cache<R: Runtime>(app: &AppHandle<R>) -> AppCache {
     migrate_legacy_layout(app);
 
-    let bytes = match fs::read(cache_path(app)) {
-        Ok(b) => b,
-        Err(_) => return AppCache::default(),
-    };
-    serde_json::from_slice(&bytes).unwrap_or_default()
+    read_json(&cache_path(app))
 }
 
 fn save_cache<R: Runtime>(app: &AppHandle<R>, cache: &AppCache) {
-    let path = cache_path(app);
-    let _ = fs::create_dir_all(data_dir(app));
-    if let Ok(json) = serde_json::to_vec_pretty(cache) {
-        let _ = fs::write(&path, json);
+    write_json(&data_dir(app), &cache_path(app), cache);
+}
+
+/// A missing file is the normal first run; an unreadable or corrupt one falls
+/// back to defaults too, but is logged, since the user's settings just vanished.
+fn read_json<T: DeserializeOwned + Default>(path: &Path) -> T {
+    let bytes = match fs::read(path) {
+        Ok(b) => b,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return T::default(),
+        Err(e) => {
+            log::error!("Cannot read {}: {e}", path.display());
+            return T::default();
+        }
+    };
+    serde_json::from_slice(&bytes).unwrap_or_else(|e| {
+        log::error!("{} is not valid JSON, using defaults: {e}", path.display());
+        T::default()
+    })
+}
+
+fn write_json<T: Serialize>(dir: &Path, path: &Path, value: &T) {
+    if let Err(e) = fs::create_dir_all(dir) {
+        log::error!("Cannot create {}: {e}", dir.display());
+    }
+    match serde_json::to_vec_pretty(value) {
+        Ok(json) => {
+            if let Err(e) = fs::write(path, json) {
+                log::error!("Cannot write {}: {e}", path.display());
+            }
+        }
+        Err(e) => log::error!("Cannot serialize {}: {e}", path.display()),
     }
 }
 

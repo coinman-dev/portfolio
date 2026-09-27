@@ -5,8 +5,17 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { EthereumProvider } from '@lifi/widget-provider-ethereum';
 import { ExchangeMountOptions } from '../types';
 import { wagmiConfig, PROJECT_ID } from '../wallet/wallet';
+import { diag } from '../diag';
 
 const queryClient = new QueryClient();
+
+/** One line per route for the diagnostic log: `12.5$ USDC (1) → DAI (42161) id=…`. */
+function describeRoute(route: any): string {
+  return (
+    `${route?.fromAmountUSD ?? '?'}$ ${route?.fromToken?.symbol} (${route?.fromChainId}) → ` +
+    `${route?.toToken?.symbol} (${route?.toChainId}) id=${route?.id}`
+  );
+}
 
 function WidgetEventsHandler({ onSettingsChange }: { onSettingsChange?: (settings: any) => void }) {
   const widgetEvents = useWidgetEvents();
@@ -14,10 +23,21 @@ function WidgetEventsHandler({ onSettingsChange }: { onSettingsChange?: (setting
   useEffect(() => {
     const onExecutionStarted = (route: any) => {
       console.log('[CoinMan Exchange] Route execution started:', route);
+      diag('info', 'LIFI', `route started: ${describeRoute(route)}`);
+    };
+
+    const onExecutionFailed = ({ route, action }: any) => {
+      diag(
+        'error',
+        'LIFI',
+        `route failed: ${describeRoute(route)} at ${action?.type} ${action?.status}` +
+          ` tx=${action?.txHash ?? '-'}: ${action?.error?.code ?? ''} ${action?.error?.message ?? ''}`,
+      );
     };
 
     const onExecutionCompleted = (route: any) => {
       console.log('[CoinMan Exchange] Route execution completed:', route);
+      diag('info', 'LIFI', `route completed: ${describeRoute(route)}`);
       if (onSettingsChange && route?.fromToken && route?.toToken) {
         onSettingsChange({
           lastSwap: {
@@ -41,11 +61,13 @@ function WidgetEventsHandler({ onSettingsChange }: { onSettingsChange?: (setting
     };
 
     widgetEvents.on(WidgetEvent.RouteExecutionStarted, onExecutionStarted);
+    widgetEvents.on(WidgetEvent.RouteExecutionFailed, onExecutionFailed);
     widgetEvents.on(WidgetEvent.RouteExecutionCompleted, onExecutionCompleted);
     widgetEvents.on(WidgetEvent.SettingUpdated, onSettingUpdated);
 
     return () => {
       widgetEvents.off(WidgetEvent.RouteExecutionStarted, onExecutionStarted);
+      widgetEvents.off(WidgetEvent.RouteExecutionFailed, onExecutionFailed);
       widgetEvents.off(WidgetEvent.RouteExecutionCompleted, onExecutionCompleted);
       widgetEvents.off(WidgetEvent.SettingUpdated, onSettingUpdated);
     };
