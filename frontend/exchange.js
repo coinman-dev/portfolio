@@ -26,6 +26,7 @@ var AppExchange = (function () {
         bundlePromise = (async function () {
             try {
                 kit.loadCss('modules/modules.bundle.css');
+                await kit.loadWalletStore();
                 if (!window.CoinmanWallet || !window.CoinmanExchangeLiFi ||
                     !window.CoinmanExchangeCowSwap) {
                     await kit.loadScript('modules/modules.bundle.js');
@@ -62,36 +63,7 @@ var AppExchange = (function () {
 
     function updateWalletUI(status, isExplicitDisconnect) {
         kit.updateWalletBadges(status, isExplicitDisconnect);
-
-        // Persist the connected wallet in exchangeSettings / data/settings.json
-        var isConnected = !!(status && status.isConnected && status.address);
-        if (isConnected) {
-            exchangeSettings = Object.assign({}, exchangeSettings || {}, {
-                connectedWallet: {
-                    address: status.address,
-                    chainId: status.chainId,
-                    connectedAt: Date.now(),
-                },
-            });
-            saveExchangeSettings(exchangeSettings);
-        } else if (isExplicitDisconnect && exchangeSettings && exchangeSettings.connectedWallet) {
-            delete exchangeSettings.connectedWallet;
-            saveExchangeSettings(exchangeSettings);
-        }
-    }
-
-    function isWalletConnected() {
-        var status = kit.getWalletStatus();
-        if (status) return status;
-        if (exchangeSettings && exchangeSettings.connectedWallet && exchangeSettings.connectedWallet.address) {
-            return {
-                isConnected: true,
-                address: exchangeSettings.connectedWallet.address,
-                chainId: exchangeSettings.connectedWallet.chainId,
-                shortAddress: exchangeSettings.connectedWallet.address.slice(0, 6) + '...' + exchangeSettings.connectedWallet.address.slice(-4),
-            };
-        }
-        return null;
+        if (isWalletModalOpen()) renderWalletModal();
     }
 
     async function handleWalletClick(e) {
@@ -105,61 +77,111 @@ var AppExchange = (function () {
 
         await ensureBundleLoaded();
 
-        var activeStatus = isWalletConnected();
-
-        if (activeStatus && activeStatus.isConnected) {
-            openWalletModal(activeStatus);
-        } else {
-            if (!window.CoinmanWallet) {
-                alert('Wallet connection module is initializing, please try again in a moment.');
-                return;
-            }
-            try {
-                console.log('[Exchange] Opening WalletConnect modal...');
-                var res = await window.CoinmanWallet.connect();
-                if (res && res.isConnected) {
-                    updateWalletUI(res);
-                }
-            } catch (err) {
-                console.warn('[Exchange] Connect aborted or failed:', err);
-            }
+        if (!window.CoinmanWallet) {
+            alert('Wallet connection module is initializing, please try again in a moment.');
+            return;
+        }
+        // The first wallet goes straight to the QR code; after that, the list.
+        if (window.CoinmanWallet.listWallets().length) {
+            openWalletModal();
+            return;
+        }
+        try {
+            await window.CoinmanWallet.addWallet();
+        } catch (err) {
+            console.warn('[Exchange] Connect aborted or failed:', err);
         }
     }
 
-    function openWalletModal(status) {
+    /* ── wallet list modal ──────────────────────────────────────────────── */
+
+    var walletActionBusy = false;
+
+    function isWalletModalOpen() {
         var modal = document.getElementById('modal-wallet-connect');
-        if (!modal) return;
+        return !!(modal && modal.classList.contains('open'));
+    }
 
-        var connectedView = document.getElementById('wallet-modal-connected-view');
-        var disconnectedView = document.getElementById('wallet-modal-disconnected-view');
-        var addressInput = document.getElementById('wallet-modal-address');
-        var networkInput = document.getElementById('wallet-modal-network');
-        var actionBtn = document.getElementById('wallet-modal-action-btn');
+    function renderWalletRow(w) {
+        var esc = window.Utils.escapeHtml;
+        var network = w.chainName || (w.chainId ? 'Chain ' + w.chainId : '');
+        var state = w.connected ? 'Connected' : 'Offline, click to reconnect';
+        return '<div class="wallet-row' + (w.selected ? ' selected' : '') +
+            (walletActionBusy ? ' busy' : '') + '" data-wallet-id="' + esc(w.id) + '"' +
+            ' onclick="AppExchange.handleSelectWallet(this.dataset.walletId)">' +
+            '<span class="wallet-row-dot' + (w.connected ? ' connected' : '') + '"></span>' +
+            '<div class="wallet-row-main">' +
+            '<div class="wallet-row-name">' + esc(w.name) + '</div>' +
+            '<div class="wallet-row-address">' + esc(w.address || '—') + '</div>' +
+            '</div>' +
+            '<div class="wallet-row-meta">' +
+            '<div>' + esc(network) + '</div>' +
+            '<div class="wallet-row-state">' + esc(state) + '</div>' +
+            '</div>' +
+            '</div>';
+    }
 
-        var isConnected = !!(status && status.isConnected);
+    function renderWalletModal() {
+        var list = document.getElementById('wallet-modal-list');
+        if (!list || !window.CoinmanWallet) return;
 
-        if (isConnected) {
-            if (connectedView) connectedView.style.display = 'block';
-            if (disconnectedView) disconnectedView.style.display = 'none';
-            if (addressInput) addressInput.value = status.address || '';
-            if (networkInput) networkInput.value = status.chainId ? 'EVM (Chain ID ' + status.chainId + ')' : 'Connected';
-            if (actionBtn) {
-                actionBtn.textContent = 'DISCONNECT';
-                actionBtn.className = 'btn btn-red';
-            }
-        } else {
-            if (connectedView) connectedView.style.display = 'none';
-            if (disconnectedView) disconnectedView.style.display = 'block';
-            if (actionBtn) {
-                actionBtn.textContent = 'CONNECT';
-                actionBtn.className = 'btn btn-orange';
-            }
+        var wallets = window.CoinmanWallet.listWallets();
+        list.innerHTML = wallets.length
+            ? wallets.map(renderWalletRow).join('')
+            : '<div class="wallet-list-empty">No wallets connected yet.</div>';
+
+        var addBtn = document.getElementById('wallet-modal-add-btn');
+        if (addBtn) {
+            addBtn.textContent = wallets.length ? 'CONNECT ANOTHER WALLET' : 'CONNECT WALLET';
+            addBtn.disabled = walletActionBusy;
         }
+        var removeBtn = document.getElementById('wallet-modal-remove-btn');
+        if (removeBtn) {
+            removeBtn.disabled = walletActionBusy || !wallets.some(function (w) { return w.selected; });
+        }
+    }
 
+    function showWalletModalError(message) {
+        var el = document.getElementById('wallet-modal-error');
+        if (!el) return;
+        el.textContent = message || '';
+        el.classList.toggle('hidden', !message);
+    }
+
+    // Closing the QR code or declining in the wallet app is the user's choice,
+    // not something to report.
+    function isUserRejection(err) {
+        var text = String((err && (err.shortMessage || err.message)) || err);
+        return !!(err && err.code === 4001) || /reject|request reset|cancel/i.test(text);
+    }
+
+    /** Runs one wallet action at a time, with the list locked while it runs. */
+    async function runWalletAction(action) {
+        if (walletActionBusy) return;
+        walletActionBusy = true;
+        showWalletModalError('');
+        renderWalletModal();
+        try {
+            await action();
+        } catch (err) {
+            if (!isUserRejection(err)) {
+                console.warn('[Exchange] Wallet action failed:', err);
+                showWalletModalError((err && (err.shortMessage || err.message)) || String(err));
+            }
+        } finally {
+            walletActionBusy = false;
+            renderWalletModal();
+        }
+    }
+
+    function openWalletModal() {
+        showWalletModalError('');
+        renderWalletModal();
         if (window.UI && typeof window.UI.openModal === 'function') {
             window.UI.openModal('modal-wallet-connect');
         } else {
-            modal.classList.add('open');
+            var modal = document.getElementById('modal-wallet-connect');
+            if (modal) modal.classList.add('open');
         }
     }
 
@@ -173,37 +195,37 @@ var AppExchange = (function () {
         if (modal) modal.classList.remove('open');
     }
 
-    async function handleModalWalletAction() {
-        closeWalletModal();
+    function handleAddWallet() {
+        runWalletAction(function () {
+            return window.CoinmanWallet.addWallet();
+        });
+    }
 
-        var activeStatus = isWalletConnected();
+    function handleSelectWallet(id) {
+        var wallet = window.CoinmanWallet.listWallets().filter(function (w) {
+            return w.id === id;
+        })[0];
+        if (!wallet || (wallet.selected && wallet.connected)) return;
+        runWalletAction(function () {
+            return window.CoinmanWallet.selectWallet(id);
+        });
+    }
 
-        if (activeStatus && activeStatus.isConnected) {
-            if (window.CoinmanWallet) {
-                try {
-                    await window.CoinmanWallet.disconnect();
-                } catch (e) {
-                    console.warn('[Exchange] Disconnect error:', e);
-                }
-            }
-            if (exchangeSettings && exchangeSettings.connectedWallet) {
-                delete exchangeSettings.connectedWallet;
-                saveExchangeSettings(exchangeSettings);
-            }
-            updateWalletUI({ isConnected: false }, true);
-        } else {
-            try {
-                await ensureBundleLoaded();
-                if (window.CoinmanWallet) {
-                    var res = await window.CoinmanWallet.connect();
-                    if (res && res.isConnected) {
-                        updateWalletUI(res);
-                    }
-                }
-            } catch (err) {
-                console.warn('[Exchange] Connect failed:', err);
-            }
-        }
+    function handleRemoveSelectedWallet() {
+        var wallet = window.CoinmanWallet.listWallets().filter(function (w) {
+            return w.selected;
+        })[0];
+        if (!wallet || walletActionBusy) return;
+        var label = wallet.name + (wallet.shortAddress ? ' ' + wallet.shortAddress : '');
+        window.Utils.confirm(
+            'Remove ' + label + '?\n\nThe WalletConnect session is ended in the wallet app too. ' +
+            'To use this wallet again you will have to scan the QR code.',
+        ).then(function (ok) {
+            if (!ok) return;
+            runWalletAction(function () {
+                return window.CoinmanWallet.removeWallet(wallet.id);
+            });
+        });
     }
 
     function selectExchangeModule(moduleName) {
@@ -382,8 +404,10 @@ var AppExchange = (function () {
         saveExchangeSettings: saveExchangeSettings,
         handleWalletClick: handleWalletClick,
         openWalletModal: openWalletModal,
-        handleModalWalletAction: handleModalWalletAction,
         closeWalletModal: closeWalletModal,
+        handleAddWallet: handleAddWallet,
+        handleSelectWallet: handleSelectWallet,
+        handleRemoveSelectedWallet: handleRemoveSelectedWallet,
         selectExchangeModule: selectExchangeModule,
         updateExchangeViews: updateExchangeViews,
     };

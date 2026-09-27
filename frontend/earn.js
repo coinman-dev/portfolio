@@ -26,6 +26,7 @@ var AppEarn = (function () {
         bundlePromise = (async function () {
             try {
                 kit.loadCss('modules/modules.bundle.css');
+                await kit.loadWalletStore();
                 if (!window.CoinmanWallet || !window.CoinmanEarnYearn) {
                     await kit.loadScript('modules/modules.bundle.js');
                 }

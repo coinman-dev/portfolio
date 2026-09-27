@@ -35,6 +35,10 @@ export const CoinmanWallet = {
   getStatus: wallet.getWalletStatus,
   subscribe: wallet.subscribeWalletStatus,
   getEthereumProvider: wallet.getEthereumProvider,
+  listWallets: wallet.listWallets,
+  addWallet: wallet.addWallet,
+  selectWallet: wallet.selectWallet,
+  removeWallet: wallet.removeWallet,
 };
 
 // Global hooks for easy dynamic loading in vanilla JS frontend

@@ -320,7 +320,7 @@ fn cache_path<R: Runtime>(app: &AppHandle<R>) -> PathBuf {
     data_dir(app).join("cache.json")
 }
 
-fn data_dir<R: Runtime>(app: &AppHandle<R>) -> PathBuf {
+pub fn data_dir<R: Runtime>(app: &AppHandle<R>) -> PathBuf {
     base_dir(app).join("data")
 }
 

@@ -13,20 +13,27 @@ var AppModuleKit = (function () {
 
     /* ── lazy asset loading ─────────────────────────────────────────────── */
 
+    var scriptLoads = {};
+
+    /**
+     * Loads a script once. Callers that come while it is still loading get the
+     * same promise, so nobody proceeds before it has run; a failed load is
+     * forgotten so the next call retries.
+     */
     function loadScript(src) {
-        return new Promise(function (resolve, reject) {
-            if (document.querySelector('script[src="' + src + '"]')) {
-                resolve();
-                return;
-            }
-            var s = document.createElement('script');
-            s.src = src;
-            s.onload = resolve;
-            s.onerror = function () {
-                reject(new Error('Failed to load script ' + src));
-            };
-            document.head.appendChild(s);
-        });
+        if (!scriptLoads[src]) {
+            scriptLoads[src] = new Promise(function (resolve, reject) {
+                var s = document.createElement('script');
+                s.src = src;
+                s.onload = resolve;
+                s.onerror = function () {
+                    delete scriptLoads[src];
+                    reject(new Error('Failed to load script ' + src));
+                };
+                document.head.appendChild(s);
+            });
+        }
+        return scriptLoads[src];
     }
 
     function loadCss(href) {
@@ -36,6 +43,34 @@ var AppModuleKit = (function () {
             link.href = href;
             document.head.appendChild(link);
         }
+    }
+
+    /* ── wallet store ───────────────────────────────────────────────────── */
+
+    var walletStorePromise = null;
+
+    /**
+     * Reads data/wallets.json (saved wallets and their WalletConnect sessions)
+     * into window.__COINMAN_WALLET_STORE__. Must finish before the modules
+     * bundle runs: it builds one connector per saved wallet at load time.
+     * Without Tauri, or if the read fails, wallets simply start empty.
+     */
+    function loadWalletStore() {
+        if (!walletStorePromise) {
+            var tauri = window.__TAURI__;
+            var read = tauri && tauri.core && typeof tauri.core.invoke === 'function'
+                ? tauri.core.invoke('load_wallet_store')
+                : Promise.resolve({});
+            walletStorePromise = read
+                .catch(function (e) {
+                    console.error('[Wallet] Could not load saved wallets:', e);
+                    return {};
+                })
+                .then(function (store) {
+                    window.__COINMAN_WALLET_STORE__ = store || {};
+                });
+        }
+        return walletStorePromise;
     }
 
     /* ── view switching ─────────────────────────────────────────────────── */
@@ -180,6 +215,7 @@ var AppModuleKit = (function () {
     return {
         loadScript: loadScript,
         loadCss: loadCss,
+        loadWalletStore: loadWalletStore,
         switchView: switchView,
         getCurrentView: getCurrentView,
         updateWalletBadges: updateWalletBadges,

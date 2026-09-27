@@ -1,6 +1,7 @@
 mod diag_log;
 mod settings;
 mod storage;
+mod wallet_store;
 mod webview_profile;
 
 use serde::Serialize;
@@ -324,6 +325,19 @@ fn save_exchange_settings(app: tauri::AppHandle, settings: serde_json::Value) {
 }
 
 #[tauri::command]
+fn load_wallet_store(app: tauri::AppHandle) -> serde_json::Map<String, serde_json::Value> {
+    wallet_store::load(&app)
+}
+
+#[tauri::command]
+fn save_wallet_store(
+    app: tauri::AppHandle,
+    items: serde_json::Map<String, serde_json::Value>,
+) -> Result<(), String> {
+    wallet_store::save_items(&app, items)
+}
+
+#[tauri::command]
 fn load_earn_settings(app: tauri::AppHandle) -> serde_json::Value {
     settings::load_earn_settings(&app)
 }
@@ -560,7 +574,9 @@ pub fn run() {
             load_exchange_settings,
             save_exchange_settings,
             load_earn_settings,
-            save_earn_settings
+            save_earn_settings,
+            load_wallet_store,
+            save_wallet_store
         ])
         .setup(|app| {
             let cli_debug = cli_debug_flag();

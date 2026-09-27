@@ -5,7 +5,12 @@ import {
   CowSwapWidgetProps,
   TradeType,
 } from '@cowprotocol/widget-lib';
-import { getEthereumProvider, subscribeWalletStatus, WalletStatus } from '../wallet/wallet';
+import {
+  getEthereumProvider,
+  getWalletStatus,
+  subscribeWalletStatus,
+  WalletStatus,
+} from '../wallet/wallet';
 import { diag } from '../diag';
 
 export interface CowSwapMountOptions {
@@ -130,6 +135,9 @@ export async function mountCowSwap(options: CowSwapMountOptions): Promise<CowSwa
     height: '640px',
     theme: 'dark',
     tradeType: TradeType.SWAP,
+    // The wallet comes from the app (Wallet Connect menu), never from a connect
+    // button inside the widget, even while no wallet is connected.
+    standaloneMode: false,
     ...(slippageBps ? { slippageBps } : {}),
   };
 
@@ -156,18 +164,20 @@ export async function mountCowSwap(options: CowSwapMountOptions): Promise<CowSwa
   };
 
   diag('info', 'COW', `mount, wallet provider ${widgetProvider ? 'present' : 'missing'}`);
-  const handler: CowSwapWidgetHandler = createCowSwapWidget(container, widgetProps);
+  let handler: CowSwapWidgetHandler = createCowSwapWidget(container, widgetProps);
 
-  // Each updateProvider() leaks a forwarder (see withDedupedRequests), so only call
-  // it when the provider really changes. The WalletConnect connector hands out the
-  // same provider object every time; account and chain changes reach the widget
-  // through that provider's own events.
+  // Each wallet has its own provider object; account and chain changes within a
+  // wallet reach the widget through that provider's events. Another wallet, or
+  // none, means a fresh widget: the iframe only learns whether it has a provider
+  // when it loads, and handler.updateProvider() leaks a forwarder each time
+  // (see withDedupedRequests).
   const setWidgetProvider = (provider?: any) => {
     const next = withDedupedRequests(provider);
     if (next === widgetProvider) return;
-    diag('info', 'COW', next ? 'wallet provider set' : 'wallet provider cleared');
+    diag('info', 'COW', `wallet ${next ? 'changed' : 'disconnected'}, reloading the widget`);
     widgetProvider = next;
-    handler.updateProvider(next);
+    handler.destroy();
+    handler = createCowSwapWidget(container, { ...widgetProps, provider: next });
   };
 
   // Keep CoW Swap provider in sync with OneKey HD / WalletConnect
@@ -175,7 +185,8 @@ export async function mountCowSwap(options: CowSwapMountOptions): Promise<CowSwa
     if (status.isConnected) {
       getEthereumProvider()
         .then((provider) => {
-          if (provider) {
+          // Skip an answer that arrives after the wallet already disconnected.
+          if (provider && getWalletStatus().isConnected) {
             setWidgetProvider(provider);
           }
         })

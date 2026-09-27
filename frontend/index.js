@@ -243,6 +243,9 @@ var DebugLog = {
                 out[key] = v ? "[redacted]" : v;
             } else if (key === "data" && v && Array.isArray(v.portfolios)) {
                 out[key] = "[" + v.portfolios.length + " portfolios]";
+            } else if (key === "items" && v && typeof v === "object") {
+                // save_wallet_store: WalletConnect session keys.
+                out[key] = "[" + Object.keys(v).length + " entries]";
             } else {
                 var s = DebugLog.stringify(v, Infinity);
                 out[key] = s.length > 300 ? "[" + s.length + " chars]" : v;
