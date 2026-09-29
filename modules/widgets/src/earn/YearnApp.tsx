@@ -151,6 +151,8 @@ export const YearnDashboard: React.FC<EarnMountOptions> = ({
             position={holdings.positions.find((p) => p.key === getVaultKey(selectedVault))}
             onConnectWallet={handleConnectWallet}
             onBalancesChanged={holdings.refresh}
+            vaults={vaults}
+            onSelectVault={handleOpenVaultDetail}
             onOpenActivity={() => {
               setActiveView('portfolio');
               setSelectedVault(null);

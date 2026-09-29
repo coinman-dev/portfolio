@@ -30,6 +30,8 @@ interface VaultDetailPageProps {
   onOpenActivity: () => void;
   /** A deposit or withdrawal went through; positions need a rescan. */
   onBalancesChanged: () => void;
+  vaults: YearnVault[];
+  onSelectVault: (vault: YearnVault) => void;
 }
 
 export const VaultDetailPage: React.FC<VaultDetailPageProps> = ({
@@ -40,12 +42,23 @@ export const VaultDetailPage: React.FC<VaultDetailPageProps> = ({
   onConnectWallet,
   onOpenActivity,
   onBalancesChanged,
+  vaults,
+  onSelectVault,
 }) => {
   const [activeSection, setActiveSection] = useState<DetailSection>('performance');
   // Retired and shut-down vaults lose the Deposit tab, as on yearn.fi.
   const depositClosed = isDepositClosed(vault);
-  const widgetTabs = depositClosed ? WIDGET_TABS.filter((tab) => tab.id !== 'deposit') : WIDGET_TABS;
+  // A migratable vault the wallet holds opens on Migrate: [Migrate, Withdraw, My Info].
+  const canMigrate = Boolean(vault.migration?.available) && (position?.shares ?? 0n) > 0n;
+  const widgetTabs: { id: WidgetTab; label: string }[] = canMigrate
+    ? [{ id: 'migrate', label: 'Migrate' }, ...WIDGET_TABS.filter((tab) => tab.id !== 'deposit')]
+    : depositClosed
+      ? WIDGET_TABS.filter((tab) => tab.id !== 'deposit')
+      : WIDGET_TABS;
   const [widgetTab, setWidgetTab] = useState<WidgetTab>(depositClosed ? 'withdraw' : 'deposit');
+  useEffect(() => {
+    if (canMigrate) setWidgetTab('migrate');
+  }, [canMigrate]);
   const [isCompact, setIsCompact] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const deposits = walletAddress ? (position?.usdValue ?? 0) : 0;
@@ -179,6 +192,8 @@ export const VaultDetailPage: React.FC<VaultDetailPageProps> = ({
             onConnectWallet={onConnectWallet}
             onOpenActivity={onOpenActivity}
             onBalancesChanged={onBalancesChanged}
+            vaults={vaults}
+            onSelectVault={onSelectVault}
           />
         </aside>
       </div>

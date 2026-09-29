@@ -204,7 +204,13 @@ export function mapKongVault(source: KongListVault, ctx: KongMapContext): YearnV
   }
 
   const stakingAddress = isYBold ? YBOLD_STAKING_ADDRESS : kong.staking?.address;
-  const migration = typeof kong.migration === 'object' && kong.migration ? kong.migration : undefined;
+  // The list only flags it; the target and migrator come from the snapshot.
+  const migration: { available?: boolean; target?: string; contract?: string } | undefined =
+    kong.migration === true
+      ? { available: true }
+      : typeof kong.migration === 'object' && kong.migration
+        ? kong.migration
+        : undefined;
   const rawName = kong.name || yd?.name || 'Yearn Vault';
 
   return {

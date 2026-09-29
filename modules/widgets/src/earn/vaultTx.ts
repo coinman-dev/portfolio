@@ -24,15 +24,22 @@
 
 import { parseAbi } from 'viem';
 import {
+  call as simulateCall,
+  estimateGas,
   readContracts,
+  sendTransaction,
   simulateContract,
   waitForTransactionReceipt,
   writeContract,
 } from '@wagmi/core';
 import { wagmiConfig } from '../wallet/wallet';
 import { YearnVault } from './types';
+import { EnsoRoute, isNativeToken } from './ensoApi';
 import {
   MAX_LOSS_BPS,
+  MIGRATION_SLIPPAGE_BPS,
+  VAULT_MIGRATORS,
+  YEARN_4626_ROUTER,
   YBOLD_VAULT_ADDRESS,
   YBOLD_ZAPPER_ADDRESS,
   YVUSD_ZAP_ADDRESS,
@@ -77,6 +84,12 @@ export const STAKING_REWARDS_ABI = parseAbi([
   'function withdraw(uint256 amount)',
   'function balanceOf(address account) view returns (uint256)',
 ]);
+
+/** Staking entry points (yearn.fi `stakingAdapter`): VeYFI gauges take
+ *  `deposit(uint256)`, StakingRewards contracts `stake(uint256)`; st-yBOLD is
+ *  ERC-4626 and uses `V3_VAULT_ABI.deposit`. */
+export const GAUGE_STAKE_ABI = parseAbi(['function deposit(uint256 assets) returns (uint256)']);
+export const STAKING_REWARDS_STAKE_ABI = parseAbi(['function stake(uint256 amount)']);
 
 export const YBOLD_ZAPPER_ABI = parseAbi([
   'function zapIn(uint256 assets, address receiver) returns (uint256)',
@@ -144,6 +157,8 @@ export interface VaultPosition {
   stakingPricePerShare: bigint | null;
   /** Staking shares approved to the yBOLD Zapper. */
   stakingZapAllowance: bigint;
+  /** Vault shares approved to the staking contract (for staking them). */
+  stakeAllowance: bigint;
 }
 
 /** Spenders the deposit asset may need to be approved to for this vault. */
@@ -184,6 +199,13 @@ export async function readVaultPosition(vault: YearnVault, user: string): Promis
   const stakingStart = calls.length;
   if (staking) {
     calls.push({ chainId, address: staking.address, abi: GAUGE_ABI, functionName: 'balanceOf', args: [owner] });
+    calls.push({
+      chainId,
+      address: vaultAddress,
+      abi: ERC20_TX_ABI,
+      functionName: 'allowance',
+      args: [owner, staking.address],
+    });
     if (staking.kind !== 'rewards') {
       calls.push({ chainId, address: staking.address, abi: GAUGE_ABI, functionName: 'maxRedeem', args: [owner] });
     }
@@ -226,11 +248,13 @@ export async function readVaultPosition(vault: YearnVault, user: string): Promis
     stakingMaxRedeem: null,
     stakingPricePerShare: null,
     stakingZapAllowance: 0n,
+    stakeAllowance: 0n,
   };
 
   if (staking) {
     let index = stakingStart;
     position.stakingShares = value(index++) ?? 0n;
+    position.stakeAllowance = value(index++) ?? 0n;
     if (staking.kind !== 'rewards') position.stakingMaxRedeem = value(index++);
     if (staking.kind === 'ybold') {
       position.stakingPricePerShare = value(index++);
@@ -312,11 +336,21 @@ export interface ContractCall {
   args: readonly unknown[];
 }
 
+/** Prebuilt calldata — an Enso route. */
+export interface RawCall {
+  chainId: number;
+  to: Address;
+  data: `0x${string}`;
+  value: bigint;
+}
+
+const isRawCall = (call: ContractCall | RawCall): call is RawCall => 'data' in call;
+
 export interface TxStep {
   label: string;
   /** A function is resolved right before the step runs — for amounts only
    *  known once the previous step has landed. Returning null skips it. */
-  call: ContractCall | (() => Promise<ContractCall | null>);
+  call: ContractCall | RawCall | (() => Promise<ContractCall | RawCall | null>);
 }
 
 /**
@@ -392,6 +426,44 @@ export function planDeposit(
         args: [amount, receiver],
       },
     },
+  ];
+}
+
+/**
+ * Stakes vault shares the wallet already holds (yearn.fi's DIRECT_STAKE):
+ * approve the vault token to the staking contract, then stake.
+ */
+export function planStake(
+  vault: YearnVault,
+  position: VaultPosition,
+  shares: bigint,
+  allowance: bigint,
+  user: string
+): TxStep[] {
+  const staking = getStaking(vault);
+  if (!staking || shares === 0n) return [];
+  const chainId = vault.chainID;
+  const stake: ContractCall =
+    staking.kind === 'ybold'
+      ? {
+          chainId,
+          address: staking.address,
+          abi: V3_VAULT_ABI,
+          functionName: 'deposit',
+          args: [shares, user as Address],
+        }
+      : staking.kind === 'gauge'
+        ? { chainId, address: staking.address, abi: GAUGE_STAKE_ABI, functionName: 'deposit', args: [shares] }
+        : {
+            chainId,
+            address: staking.address,
+            abi: STAKING_REWARDS_STAKE_ABI,
+            functionName: 'stake',
+            args: [shares],
+          };
+  return [
+    ...approvalSteps(chainId, vault.address, staking.address, minBig(shares, position.vaultShares), allowance, vault.symbol),
+    { label: 'Stake', call: stake },
   ];
 }
 
@@ -567,6 +639,100 @@ export async function planWithdraw(
 
 const minBig = (a: bigint, b: bigint) => (a < b ? a : b);
 
+/**
+ * An Enso route: approve the input token to the router for exactly `amountIn`
+ * (native ETH travels as the transaction value instead), then send the route.
+ */
+export function planZap(
+  chainId: number,
+  tokenIn: string,
+  tokenSymbol: string,
+  amountIn: bigint,
+  allowance: bigint,
+  route: EnsoRoute,
+  label: string
+): TxStep[] {
+  return [
+    ...(isNativeToken(tokenIn)
+      ? []
+      : approvalSteps(chainId, tokenIn, route.to, amountIn, allowance, tokenSymbol)),
+    { label, call: { chainId, to: route.to, data: route.data, value: route.value } },
+  ];
+}
+
+export const MIGRATOR_ABI = parseAbi([
+  'function migrateShares(address vaultFrom, address vaultTo, uint256 shares)',
+]);
+export const ROUTER_MIGRATE_ABI = parseAbi([
+  'function migrate(address fromVault, address toVault, uint256 shares, uint256 minSharesOut) returns (uint256)',
+  'function migrateFromV2(address fromVault, address toVault, uint256 shares, uint256 minSharesOut) returns (uint256)',
+]);
+export const VECRV_ZAP_ABI = parseAbi([
+  'function zap(address inputToken, address outputToken, uint256 amountIn, uint256 minOut, address recipient) returns (uint256)',
+]);
+
+/** The contract that moves the shares, and the one they are approved to. */
+export function migrationSpender(contract?: string): Address {
+  return (contract && VAULT_MIGRATORS[contract.toLowerCase()] ? contract : YEARN_4626_ROUTER) as Address;
+}
+
+/**
+ * Moves every unstaked share into the successor vault (yearn.fi's "Migrate
+ * All"). The site passes a minimum of 0; here the minimum comes from a dry
+ * run of the very same call, less 0.5%.
+ */
+export function planMigration(
+  vault: YearnVault,
+  target: string,
+  contract: string | undefined,
+  shares: bigint,
+  allowance: bigint,
+  user: string
+): TxStep[] {
+  const chainId = vault.chainID;
+  const from = vault.address as Address;
+  const to = target as Address;
+  const owner = user as Address;
+  const spender = migrationSpender(contract);
+  const kind = contract ? VAULT_MIGRATORS[contract.toLowerCase()] : undefined;
+
+  const build = (minOut: bigint): ContractCall => {
+    if (kind === 'vault-migrator') {
+      return { chainId, address: spender, abi: MIGRATOR_ABI, functionName: 'migrateShares', args: [from, to, shares] };
+    }
+    if (kind === 'vecrv-zap') {
+      return {
+        chainId,
+        address: spender,
+        abi: VECRV_ZAP_ABI,
+        functionName: 'zap',
+        args: [from, to, shares, minOut, owner],
+      };
+    }
+    return {
+      chainId,
+      address: spender,
+      abi: ROUTER_MIGRATE_ABI,
+      functionName: isV3Vault(vault) ? 'migrate' : 'migrateFromV2',
+      args: [from, to, shares, minOut],
+    };
+  };
+
+  return [
+    ...approvalSteps(chainId, vault.address, spender, shares, allowance, vault.symbol),
+    {
+      label: 'Migrate',
+      call: async () => {
+        // `migrateShares` takes no minimum; the others get one from a dry run.
+        if (kind === 'vault-migrator') return build(0n);
+        const { result } = await simulateContract(wagmiConfig, { ...(build(0n) as any), account: owner });
+        const out = BigInt(result as bigint);
+        return build((out * (10000n - MIGRATION_SLIPPAGE_BPS)) / 10000n);
+      },
+    },
+  ];
+}
+
 export interface PlanProgress {
   index: number;
   total: number;
@@ -590,12 +756,27 @@ export async function runPlan(
     onProgress({ index, total: steps.length, label: step.label });
     const call = typeof step.call === 'function' ? await step.call() : step.call;
     if (!call) continue;
-    const { request } = await simulateContract(wagmiConfig, {
-      ...(call as any),
-      chainId: call.chainId as any,
-      account: user as Address,
-    });
-    const hash = await writeContract(wagmiConfig, request as any);
+    let hash: `0x${string}`;
+    if (isRawCall(call)) {
+      // As yearn.fi sends Enso routes: dry-run, then estimate gas with a 10% margin.
+      const tx = {
+        account: user as Address,
+        chainId: call.chainId as any,
+        to: call.to,
+        data: call.data,
+        value: call.value,
+      };
+      await simulateCall(wagmiConfig, tx);
+      const gas = await estimateGas(wagmiConfig, tx);
+      hash = await sendTransaction(wagmiConfig, { ...tx, gas: (gas * 110n) / 100n } as any);
+    } else {
+      const { request } = await simulateContract(wagmiConfig, {
+        ...(call as any),
+        chainId: call.chainId as any,
+        account: user as Address,
+      });
+      hash = await writeContract(wagmiConfig, request as any);
+    }
     await waitForTransactionReceipt(wagmiConfig, { hash, chainId: call.chainId as any });
     lastHash = hash;
   }

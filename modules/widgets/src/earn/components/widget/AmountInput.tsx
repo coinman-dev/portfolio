@@ -14,6 +14,8 @@ interface AmountInputProps {
   balanceLabel: React.ReactNode;
   disabled?: boolean;
   symbol: string;
+  /** Replaces the fixed asset button — the deposit token picker. */
+  tokenPicker?: React.ReactNode;
 }
 
 export const AmountInput: React.FC<AmountInputProps> = ({
@@ -25,6 +27,7 @@ export const AmountInput: React.FC<AmountInputProps> = ({
   balanceLabel,
   disabled,
   symbol,
+  tokenPicker,
 }) => (
   <div className="y-amount">
     <div className="y-amount__top">
@@ -66,18 +69,20 @@ export const AmountInput: React.FC<AmountInputProps> = ({
           if (/^\d*\.?\d*$/.test(next)) onChange(next);
         }}
       />
-      <button type="button" className="y-token-select" disabled>
-        <VaultAvatar
-          icon={vault.token?.icon}
-          tokenIcon={vault.token?.icon}
-          symbol={symbol}
-          chainId={vault.chainID}
-          tokenAddress={vault.token?.address}
-          size={28}
-        />
-        <span className="y-token-select__symbol">{symbol}</span>
-        <ChevronDown size={16} />
-      </button>
+      {tokenPicker ?? (
+        <button type="button" className="y-token-select" disabled>
+          <VaultAvatar
+            icon={vault.token?.icon}
+            tokenIcon={vault.token?.icon}
+            symbol={symbol}
+            chainId={vault.chainID}
+            tokenAddress={vault.token?.address}
+            size={28}
+          />
+          <span className="y-token-select__symbol">{symbol}</span>
+          <ChevronDown size={16} />
+        </button>
+      )}
     </div>
 
     <div className="y-amount__bottom">

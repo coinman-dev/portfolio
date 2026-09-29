@@ -534,3 +534,163 @@
 .y-btn--contrast:hover {
   opacity: 0.9;
 }
+
+/* ---------- any-token picker (Enso zaps) ---------- */
+
+.y-token-picker {
+  position: relative;
+}
+
+.y-token-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 41;
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  max-height: 320px;
+  margin: 0;
+  padding: 4px;
+  overflow-y: auto;
+  list-style: none;
+  background: var(--y-surface);
+  border: 1px solid var(--y-border);
+  border-radius: var(--y-r-lg);
+  box-shadow: 0 12px 24px -8px rgb(0 0 0 / 0.6);
+}
+
+.y-token-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--y-r-sm);
+  background: transparent;
+  color: var(--y-text-2);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 20px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.y-token-menu__item:hover,
+.y-token-menu__item.is-active {
+  background: var(--y-surface-2);
+  color: var(--y-text);
+}
+
+.y-token-menu__symbol {
+  flex: 1;
+  font-weight: 600;
+}
+
+.y-token-menu__balance {
+  font-variant-numeric: tabular-nums;
+  color: var(--y-text-2);
+}
+
+.y-widget__receive {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+}
+
+.y-slippage {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.y-slippage__btn {
+  padding: 2px 8px;
+  border: 1px solid var(--y-border);
+  border-radius: var(--y-r-full);
+  background: transparent;
+  color: var(--y-text-2);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 16px;
+  cursor: pointer;
+}
+
+.y-slippage__btn.is-active {
+  border-color: var(--y-primary);
+  color: var(--y-text);
+}
+
+/* ---------- "You have unstaked yBOLD" ---------- */
+
+.y-widget__stake {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--y-primary) 60%, transparent);
+  border-radius: var(--y-r-lg);
+  background: color-mix(in srgb, var(--y-primary) 10%, transparent);
+}
+
+.y-widget__stake-title {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--y-text);
+}
+
+.y-widget__stake-text {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--y-text-2);
+}
+
+/* ---------- migrate ---------- */
+
+.y-migrate {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.y-migrate__card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--y-border);
+  border-radius: var(--y-r-lg);
+  background: var(--y-surface-2);
+}
+
+.y-migrate__label {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--y-text-2);
+}
+
+.y-migrate__value {
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 600;
+  color: var(--y-text);
+}
+
+.y-migrate__target {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--y-text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}

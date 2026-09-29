@@ -70,7 +70,10 @@ export interface KongSnapshot {
     riskScore?: KongRiskScore;
   };
   fees?: Record<string, unknown>;
-  meta?: Record<string, unknown>;
+  /** `migration`: where a retired vault's shares can move, and the contract that moves them. */
+  meta?: Record<string, unknown> & {
+    migration?: { available?: boolean; target?: string; contract?: string };
+  };
   strategies?: string[];
   composition?: KongCompositionEntry[];
 }

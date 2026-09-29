@@ -8,6 +8,10 @@ import { openExternal } from '../../openExternal';
 import { Lock, Unlock, Wallet } from '../ui/icons';
 import { useVaultActions, VaultVariant, WidgetMode } from '../../hooks/useVaultActions';
 import { canStakeOnDeposit, isRetiredVault } from '../../vaultTx';
+import { ZAP_SLIPPAGE_DEFAULT, ZAP_SLIPPAGE_PRESETS } from '../../constants';
+import { ZapToken, useZapTokens } from '../../hooks/useZap';
+import { TokenPicker } from './TokenPicker';
+import { MigratePanel } from './MigratePanel';
 import { getHeadlineAPY, RETIRED_TAG_DESCRIPTION } from '../../vaultMeta';
 import { AmountInput } from './AmountInput';
 import { InfoPopover } from './InfoPopover';
@@ -20,7 +24,7 @@ const WALLET_TABS: { id: WalletTabId; label: string }[] = [
   { id: 'transactions', label: 'Transactions' },
 ];
 
-export type WidgetTab = 'deposit' | 'withdraw' | 'info';
+export type WidgetTab = 'deposit' | 'withdraw' | 'info' | 'migrate';
 
 interface SummaryRowProps {
   label: React.ReactNode;
@@ -45,6 +49,9 @@ interface VaultWidgetProps {
   /** "All activity": Portfolio → Activity. */
   onOpenActivity?: () => void;
   onBalancesChanged?: () => void;
+  /** For the Migrate tab's destination link. */
+  vaults?: YearnVault[];
+  onSelectVault?: (vault: YearnVault) => void;
 }
 
 export const VaultWidget: React.FC<VaultWidgetProps> = ({
@@ -56,6 +63,8 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
   onConnectWallet,
   onOpenActivity,
   onBalancesChanged,
+  vaults = [],
+  onSelectVault,
 }) => {
   const [infoTab, setInfoTab] = useState<WalletTabId>('balances');
   const mode: WidgetMode = tab === 'withdraw' ? 'withdraw' : 'deposit';
@@ -80,7 +89,35 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
     }
   };
 
-  const actions = useVaultActions(vault, mode, walletAddress, walletChainId, variant);
+  // Any-token deposits and withdrawals (Enso). The asset itself is null here:
+  // it takes the direct routes.
+  const { tokens: zapTokens } = useZapTokens(vault, mode, walletAddress);
+  const [depositToken, setDepositToken] = useState<ZapToken | null>(null);
+  const [withdrawToken, setWithdrawToken] = useState<ZapToken | null>(null);
+  const [slippage, setSlippage] = useState(ZAP_SLIPPAGE_DEFAULT);
+  useEffect(() => {
+    setDepositToken(null);
+    setWithdrawToken(null);
+  }, [vault.chainID, vault.address]);
+  // yvUSD's locked side and staked withdrawals have their own contracts.
+  const canZap = variant !== 'locked' && !(mode === 'withdraw' && variant === 'staked');
+  const selectedToken = mode === 'deposit' ? depositToken : withdrawToken;
+  const zapToken = canZap && selectedToken && !selectedToken.isAsset ? selectedToken : null;
+  const selectToken = (token: ZapToken) => {
+    const next = token.isAsset ? null : token;
+    if (mode === 'deposit') setDepositToken(next);
+    else setWithdrawToken(next);
+  };
+
+  const actions = useVaultActions(
+    vault,
+    mode,
+    walletAddress,
+    walletChainId,
+    variant,
+    zapToken,
+    slippage
+  );
 
   const sourcesKey = actions.sources.join(',');
   useEffect(() => {
@@ -104,7 +141,9 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
 
   // Unstaked yBOLD earns nothing — its yield accrues in st-yBOLD.
   const earnsYield = !(stakesOnDeposit && variant !== 'staked');
-  const amountNumber = Number(formatUnits(actions.parsedAmount, decimals));
+  const amountNumber = Number(formatUnits(actions.parsedAmount, actions.inputDecimals));
+  const zap = actions.zap;
+  const inputSymbol = mode === 'deposit' && zapToken ? zapToken.symbol : symbol;
   const apy = !earnsYield
     ? 0
     : hasLockedVariant && lockedVariant
@@ -124,6 +163,20 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
           { id: 'unlocked', label: 'Unstaked', icon: <Unlock size={12} /> },
         ]
       : [];
+
+  if (tab === 'migrate') {
+    return (
+      <MigratePanel
+        vault={vault}
+        vaults={vaults}
+        walletAddress={walletAddress}
+        walletChainId={walletChainId}
+        onConnectWallet={onConnectWallet}
+        onSelectVault={onSelectVault}
+        onBalancesChanged={onBalancesChanged}
+      />
+    );
+  }
 
   if (tab === 'info') {
     // `actions` reads only the vault itself; the portfolio scan also counts
@@ -238,6 +291,7 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
   if (!walletAddress) buttonLabel = 'Connect Wallet';
   else if (actions.isWrongChain) buttonLabel = `Switch to ${chain.name}`;
   else if (actions.blockedReason && actions.parsedAmount > 0n) buttonLabel = actions.blockedReason;
+  else if (zap && actions.parsedAmount > 0n && zap.minOut === null) buttonLabel = 'Fetching route…';
   if (isBusy) {
     buttonLabel = step
       ? `${step.label}…${stepSuffix}`
@@ -261,13 +315,66 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
     (Boolean(walletAddress) &&
       !actions.isWrongChain &&
       !needsCooldown &&
-      (actions.parsedAmount === 0n || Boolean(actions.blockedReason)));
+      (actions.parsedAmount === 0n ||
+        Boolean(actions.blockedReason) ||
+        Boolean(zap && (zap.isQuoting || zap.minOut === null))));
 
-  const sharesPreview = Number(formatUnits(actions.sharesPreview, shareDecimalsValue));
+  const sharesPreview = Number(
+    formatUnits(actions.sharesPreview, zap && isDeposit ? zap.outDecimals : shareDecimalsValue)
+  );
   const receiveAmount = actions.isMax
     ? Number(formatUnits(available, decimals))
     : amountNumber;
   const approval = actions.approval;
+  // An Enso route guarantees only its minimum; show that, as yearn.fi does.
+  const zapReceive = !zap
+    ? null
+    : zap.minOut === null
+      ? zap.isQuoting
+        ? 'Fetching route…'
+        : '—'
+      : `at least ${formatAmount(Number(formatUnits(zap.minOut, zap.outDecimals)))} ${zap.outSymbol}`;
+  const showTokenPicker = canZap && zapTokens.length > 1;
+
+  const zapRows = zap ? (
+    <>
+      <SummaryRow
+        label={
+          <InfoPopover label="Price impact" title="Price impact">
+            <p>
+              The zap swaps through Enso. Estimated impact is what the route is expected to cost;
+              worst case is what it may cost at the minimum it guarantees.
+            </p>
+          </InfoPopover>
+        }
+        value={
+          zap.estImpact === null
+            ? '—'
+            : `${zap.estImpact.toFixed(2)}% (worst ${(zap.worstImpact ?? zap.estImpact).toFixed(2)}%)`
+        }
+      />
+      <SummaryRow
+        label="Slippage tolerance"
+        value={
+          <span className="y-slippage">
+            {ZAP_SLIPPAGE_PRESETS.map((preset) => (
+              <button
+                key={preset}
+                type="button"
+                className={`y-slippage__btn${slippage === preset ? ' is-active' : ''}`}
+                disabled={isBusy}
+                onClick={() => setSlippage(preset)}
+              >
+                {`${preset}%`}
+              </button>
+            ))}
+          </span>
+        }
+      />
+    </>
+  ) : null;
+  const hasUnstakedYBold =
+    isDeposit && stakesOnDeposit && (actions.position?.vaultShares ?? 0n) > 0n;
 
   return (
     <div className="y-widget">
@@ -295,14 +402,48 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
           <p className="y-widget__warning">{`This vault is retired. ${RETIRED_TAG_DESCRIPTION}`}</p>
         )}
 
+        {hasUnstakedYBold && (
+          <div className="y-widget__stake">
+            <div>
+              <p className="y-widget__stake-title">You have unstaked yBOLD.</p>
+              <p
+                className="y-widget__stake-text"
+                title="In order to earn yield, BOLD needs to be deposited and staked into ysyBOLD. It always makes sense to stake yBOLD and there is no lockup or fee."
+              >
+                Click the button to the right to stake your yBOLD to earn yield.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="y-btn--contrast"
+              disabled={isBusy || actions.isWrongChain}
+              onClick={() => void actions.stakeShares()}
+            >
+              Stake
+            </button>
+          </div>
+        )}
+
         <AmountInput
           vault={vault}
-          symbol={symbol}
+          symbol={inputSymbol}
           value={actions.amount}
           onChange={actions.setAmount}
           onPercent={actions.setPercent}
           disabled={!walletAddress || isBusy}
-          usdValue={formatUSD(amountNumber * price)}
+          usdValue={zapToken && isDeposit ? '' : formatUSD(amountNumber * price)}
+          tokenPicker={
+            isDeposit && showTokenPicker ? (
+              <TokenPicker
+                chainId={vault.chainID}
+                tokens={zapTokens}
+                selected={depositToken ?? zapTokens[0]}
+                onSelect={selectToken}
+                disabled={isBusy}
+                ariaLabel="Deposit token"
+              />
+            ) : undefined
+          }
           balanceLabel={
             walletAddress ? (
               <button
@@ -310,7 +451,9 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
                 className="y-amount__balance"
                 onClick={() => actions.setPercent(100)}
               >
-                {`Balance: ${formatAmount(Number(formatUnits(available, decimals)))} ${symbol}`}
+                {`Balance: ${formatAmount(
+                  Number(formatUnits(available, isDeposit ? actions.inputDecimals : decimals))
+                )} ${inputSymbol}`}
               </button>
             ) : (
               <button type="button" className="y-amount__balance" onClick={onConnectWallet}>
@@ -320,12 +463,26 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
           }
         />
 
+        {!isDeposit && showTokenPicker && (
+          <div className="y-widget__receive">
+            <span className="y-summary__label">Receive</span>
+            <TokenPicker
+              chainId={vault.chainID}
+              tokens={zapTokens}
+              selected={withdrawToken ?? zapTokens[0]}
+              onSelect={selectToken}
+              disabled={isBusy}
+              ariaLabel="Withdrawal token"
+            />
+          </div>
+        )}
+
         <div className="y-summary">
           {isDeposit ? (
             <>
               <SummaryRow
                 label="You Will Deposit"
-                value={`${formatAmount(amountNumber)} ${symbol}`}
+                value={`${formatAmount(amountNumber)} ${inputSymbol}`}
               />
               <SummaryRow
                 label={
@@ -346,8 +503,9 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
                     </p>
                   </InfoPopover>
                 }
-                value={`${formatAmount(sharesPreview)} ${actions.sharesSymbol}`}
+                value={zapReceive ?? `${formatAmount(sharesPreview)} ${actions.sharesSymbol}`}
               />
+              {!zap && (
               <SummaryRow
                 label={
                   <InfoPopover label="Vault share value" title="Vault Share Value">
@@ -363,6 +521,7 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
                   amountNumber * price
                 )})`}
               />
+              )}
               <SummaryRow
                 label={
                   <InfoPopover label="Est. Annual Return" title="Estimated Annual Return">
@@ -374,17 +533,17 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
                       <b>Calculation factors:</b>
                     </p>
                     <p>{`Current APR: ${formatAPY(apy)}`}</p>
-                    <p>{`Your deposit: ${formatAmount(amountNumber)} ${symbol}`}</p>
+                    <p>{`Your deposit: ${formatAmount(amountNumber)} ${inputSymbol}`}</p>
                     <p>{`Expected annual yield: ${formatAmount(
                       amountNumber * (apy || 0)
-                    )} ${symbol}`}</p>
+                    )} ${inputSymbol}`}</p>
                     <p>
                       Please note that past performance does not guarantee future results. Actual
                       returns may vary based on market volatility and vault strategy adjustments.
                     </p>
                   </InfoPopover>
                 }
-                value={`${formatAmount(amountNumber * (apy || 0))} ${symbol}`}
+                value={`${formatAmount(amountNumber * (apy || 0))} ${inputSymbol}`}
               />
               {approval && (
                 <SummaryRow
@@ -403,6 +562,7 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
                   )} ${approval.symbol}`}
                 />
               )}
+              {zapRows}
             </>
           ) : (
             <>
@@ -419,8 +579,9 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
               />
               <SummaryRow
                 label="You will receive"
-                value={`${formatAmount(receiveAmount)} ${symbol}`}
+                value={zapReceive ?? `${formatAmount(receiveAmount)} ${symbol}`}
               />
+              {zapRows}
               {approval && (
                 <SummaryRow
                   label={
