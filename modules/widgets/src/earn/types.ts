@@ -129,7 +129,8 @@ export interface YearnVault {
     pricePerShare?: string;
     tvl?: number;
   };
-  /** Address whose APY/charts represent this vault (yBOLD uses its staking contract). */
+  /** Address whose APY/charts represent this vault. yBOLD uses its staking
+   *  vault (st-yBOLD), whose shares also count toward the yBOLD position. */
   dataAddress?: string;
   // User onchain state (hydrated when wallet connected)
   userTokenBalance?: {

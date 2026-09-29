@@ -154,6 +154,8 @@ export const YearnDashboard: React.FC<EarnMountOptions> = ({
         {activeView === 'portfolio' && (
           <PortfolioPage
             holdings={holdings}
+            vaults={vaults}
+            walletAddress={walletStatus.address}
             isConnected={walletStatus.isConnected}
             activeTab={portfolioTab}
             onSelectTab={handlePortfolioTab}

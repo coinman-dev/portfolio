@@ -2,12 +2,15 @@ import React from 'react';
 import { YearnVault } from '../../types';
 import { PortfolioHoldings as PortfolioHoldingsData } from '../../hooks/usePortfolioHoldings';
 import { EmptySectionCard } from './EmptySectionCard';
+import { PortfolioHistoryChart } from './PortfolioHistoryChart';
 import { PortfolioHoldings } from './PortfolioHoldings';
 import { PortfolioMetrics } from './PortfolioMetrics';
 import { PortfolioTabId, PortfolioTabs } from './PortfolioTabs';
 
 interface PortfolioPageProps {
   holdings: PortfolioHoldingsData;
+  vaults: YearnVault[];
+  walletAddress?: string;
   isConnected: boolean;
   activeTab: PortfolioTabId;
   onSelectTab: (tab: PortfolioTabId) => void;
@@ -18,6 +21,8 @@ interface PortfolioPageProps {
 
 export const PortfolioPage: React.FC<PortfolioPageProps> = ({
   holdings,
+  vaults,
+  walletAddress,
   isConnected,
   activeTab,
   onSelectTab,
@@ -62,7 +67,7 @@ export const PortfolioPage: React.FC<PortfolioPageProps> = ({
       );
     }
 
-    if (!isConnected) {
+    if (!isConnected || !walletAddress) {
       return (
         <section className="y-pf-section">
           <EmptySectionCard
@@ -78,11 +83,19 @@ export const PortfolioPage: React.FC<PortfolioPageProps> = ({
 
     return (
       <div className="y-pf-overview">
-        <PortfolioMetrics
-          positions={holdings.positions}
-          totalUsd={holdings.totalUsd}
-          isLoading={holdings.isLoading}
-        />
+        <div className="y-pf-summary">
+          <PortfolioHistoryChart
+            address={walletAddress}
+            vaults={vaults}
+            liveTotalUsd={holdings.isLoading ? 0 : holdings.totalUsd}
+          />
+          <PortfolioMetrics
+            address={walletAddress}
+            positions={holdings.positions}
+            totalUsd={holdings.totalUsd}
+            isLoading={holdings.isLoading}
+          />
+        </div>
         <PortfolioHoldings
           positions={holdings.positions}
           holdings={holdings.holdings}

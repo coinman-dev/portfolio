@@ -21,6 +21,13 @@ interface VaultChartProps {
   isLoading?: boolean;
 }
 
+export const CHART_PERIODS: { id: ChartPeriod; label: string }[] = [
+  { id: '30d', label: '30D' },
+  { id: '90d', label: '90D' },
+  { id: '1y', label: '1Y' },
+  { id: 'all', label: 'ALL' },
+];
+
 const COLOR_UNLOCKED = '#2578ff';
 const COLOR_LOCKED = '#46a2ff';
 
@@ -45,14 +52,14 @@ function formatAxisValue(kind: ChartKind, value: number): string {
 
 const pad = (value: number) => String(value).padStart(2, '0');
 
-/** `07/26` for long ranges, `07/28/26` for 30d/90d — matches yearn.fi's tick formatters. */
-function formatTick(date: string, isShort: boolean): string {
+/** `07/26` for long ranges, `07/28/26` for short ones — matches yearn.fi's tick formatters. */
+export function formatTick(date: string, isShort: boolean): string {
   const [month, day, year] = date.split('/');
   return isShort ? `${month}/${day}/${year}` : `${month}/${year}`;
 }
 
 /** One tick per month (long ranges) or per ISO week (short ranges). */
-function pickTicks(points: ChartPoint[], isShort: boolean): string[] {
+export function pickTicks(points: { time: number; date: string }[], isShort: boolean): string[] {
   const ticks: string[] = [];
   let lastKey = '';
   for (const point of points) {

@@ -46,6 +46,18 @@ export function formatUSDFull(value: number | null | undefined): string {
   return `$${wholeFormatter.format(num)}`;
 }
 
+const centsFormatter = new Intl.NumberFormat(LOCALE, {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+/** `$2,030,246.13` — portfolio metrics and history tooltips. */
+export function formatUSDCents(value: number | null | undefined): string {
+  const num = Number(value || 0);
+  if (!Number.isFinite(num)) return '$0.00';
+  return `${num < 0 ? '-' : ''}$${centsFormatter.format(Math.abs(num))}`;
+}
+
 /** Accepts a ratio (0.0846) and prints `8.46%`. */
 export function formatAPY(ratio: number | null | undefined): string {
   const num = Number(ratio || 0);

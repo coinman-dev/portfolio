@@ -60,6 +60,20 @@ function shareSources(vault: YearnVault): ShareSource[] {
       isWrapper: true,
     });
   }
+  // yBOLD's staking vault is dropped from the list and merged into the yBOLD
+  // row, and yDaemon leaves yBOLD's `staking` empty, so it is only known here.
+  if (
+    vault.dataAddress &&
+    vault.dataAddress.toLowerCase() !== vault.address.toLowerCase() &&
+    vault.dataAddress.toLowerCase() !== vault.staking?.address?.toLowerCase()
+  ) {
+    sources.push({
+      chainId: vault.chainID,
+      vaultKey: key,
+      address: vault.dataAddress,
+      isWrapper: true,
+    });
+  }
   return sources;
 }
 

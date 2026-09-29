@@ -5,6 +5,9 @@ export const SHOW_YEARN_BRAND = true;
 
 export const YDAEMON_BASE_URL = 'https://ydaemon.yearn.fi';
 export const KONG_BASE_URL = 'https://kong.yearn.fi';
+/** yearn.fi's own portfolio-history API. It runs on a private indexer, so it
+ *  cannot be hosted here; it is public and sends `Access-Control-Allow-Origin: *`. */
+export const YEARN_HOLDINGS_API = 'https://yearn.fi/api/holdings';
 
 /** yvUSD ships as two vaults that yearn.fi merges into a single entry. */
 export const YVUSD_UNLOCKED_ADDRESS = '0x696d02Db93291651ED510704c9b286841d506987';

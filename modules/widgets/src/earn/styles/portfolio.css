@@ -167,29 +167,55 @@
   background: var(--y-surface-2);
 }
 
+/* ---------- summary card: history chart + metrics ---------- */
+
+/* `min-[920px]:grid-cols-[minmax(640px,1fr)_minmax(200px,340px)]` on the site.
+   No overflow clip: the chart's dropdowns open over the card edge. */
+.y-pf-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(200px, 340px);
+  background: var(--y-surface);
+  border: 1px solid var(--y-border);
+  border-radius: var(--y-r-lg);
+}
+
+.y-pf-chart {
+  min-width: 0;
+  padding: 16px 16px 8px;
+  border-right: 1px solid var(--y-border);
+}
+
+/* Four tabs plus two dropdowns: let the dropdowns drop below on narrow cards. */
+.y-pf-chart .y-vd-chart__bar {
+  flex-wrap: wrap;
+}
+
+.y-pf-chart__controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* ---------- metrics ---------- */
 
 .y-pf-metrics {
   display: flex;
-  align-items: stretch;
-  background: var(--y-surface);
-  border: 1px solid var(--y-border);
-  border-radius: var(--y-r-lg);
-  overflow: hidden;
+  flex-direction: column;
 }
 
 .y-pf-metric {
   display: flex;
   flex: 1;
   flex-direction: column;
+  justify-content: center;
   gap: 4px;
-  padding: 12px;
-  border-right: 1px solid var(--y-border);
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--y-border);
   min-width: 0;
 }
 
 .y-pf-metric:last-child {
-  border-right: none;
+  border-bottom: none;
 }
 
 .y-pf-metric__label {
@@ -244,6 +270,27 @@
 @keyframes y-pf-spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 919px) {
+  .y-pf-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .y-pf-chart {
+    border-right: none;
+    border-bottom: 1px solid var(--y-border);
+  }
+
+  .y-pf-metrics {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .y-pf-metric {
+    flex: 1 1 33%;
+    border-bottom: none;
   }
 }
 
