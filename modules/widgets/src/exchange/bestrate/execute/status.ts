@@ -1,4 +1,4 @@
-import { ExecPlan } from './plan';
+import { StatusRef } from './plan';
 
 export type DeliveryState = 'pending' | 'done' | 'refunded' | 'failed';
 
@@ -17,8 +17,7 @@ async function json(url: string, signal: AbortSignal): Promise<any> {
 }
 
 /** One look at where a cross-chain transfer stands, in each service's own terms. */
-async function checkOnce(plan: ExecPlan, hash: string, signal: AbortSignal): Promise<Delivery> {
-  const ref = plan.status;
+async function checkOnce(ref: StatusRef, hash: string, signal: AbortSignal): Promise<Delivery> {
   switch (ref.kind) {
     case 'none':
       return { state: 'done' };
@@ -64,7 +63,7 @@ async function checkOnce(plan: ExecPlan, hash: string, signal: AbortSignal): Pro
 
 /** Polls until the transfer lands, is refunded or fails; stops on `signal`. */
 export async function watchDelivery(
-  plan: ExecPlan,
+  ref: StatusRef,
   hash: string,
   onUpdate: (d: Delivery) => void,
   signal: AbortSignal
@@ -72,7 +71,7 @@ export async function watchDelivery(
   const started = Date.now();
   while (!signal.aborted) {
     try {
-      const delivery = await checkOnce(plan, hash, signal);
+      const delivery = await checkOnce(ref, hash, signal);
       onUpdate(delivery);
       if (delivery.state !== 'pending') return delivery;
     } catch {

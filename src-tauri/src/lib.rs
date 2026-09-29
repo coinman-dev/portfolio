@@ -1,4 +1,5 @@
 mod diag_log;
+mod exchange_history;
 mod settings;
 mod storage;
 mod wallet_store;
@@ -338,6 +339,16 @@ fn save_wallet_store(
 }
 
 #[tauri::command]
+fn load_exchange_history(app: tauri::AppHandle) -> Vec<serde_json::Value> {
+    exchange_history::load(&app)
+}
+
+#[tauri::command]
+fn save_exchange_record(app: tauri::AppHandle, record: serde_json::Value) -> Result<(), String> {
+    exchange_history::save_record(&app, record)
+}
+
+#[tauri::command]
 fn load_earn_settings(app: tauri::AppHandle) -> serde_json::Value {
     settings::load_earn_settings(&app)
 }
@@ -576,7 +587,9 @@ pub fn run() {
             load_earn_settings,
             save_earn_settings,
             load_wallet_store,
-            save_wallet_store
+            save_wallet_store,
+            load_exchange_history,
+            save_exchange_record
         ])
         .setup(|app| {
             let cli_debug = cli_debug_flag();

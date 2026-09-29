@@ -780,3 +780,73 @@
 .br-section__more {
   margin-top: 10px;
 }
+
+/* History */
+
+.br-modal__panel.br-hist {
+  width: min(760px, calc(100vw - 32px));
+  height: min(680px, calc(100vh - 64px));
+}
+
+.br-hist__list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.br-hist__row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  background: var(--br-paper);
+  border: 1px solid var(--br-line);
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.br-hist__top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.br-hist__status {
+  padding: 1px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--br-raised);
+  color: var(--br-muted);
+}
+
+.br-hist__status.is-done {
+  color: var(--br-good);
+}
+
+.br-hist__status.is-pending,
+.br-hist__status.is-sending {
+  color: var(--br-accent);
+}
+
+.br-hist__status.is-refunded {
+  color: var(--br-warn);
+}
+
+.br-hist__status.is-failed {
+  color: var(--br-bad);
+}
+
+.br-hist__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.br-hist__note {
+  font-size: 11px;
+}

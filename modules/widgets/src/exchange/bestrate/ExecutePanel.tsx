@@ -10,6 +10,7 @@ import { SimulationResult, simulatePlan } from './execute/simulate';
 import { RunProgress, RunStep, pendingApprovals, runPlan } from './execute/run';
 import { Delivery, watchDelivery } from './execute/status';
 import { explainRevert, readBalance } from './execute/balance';
+import { SwapRecorder } from './history';
 import { formatAmount, formatUSD, shortAddress } from './format';
 
 /** A plan older than this is rebuilt before signing — quotes go stale. */
@@ -125,25 +126,31 @@ export const ExecutePanel: React.FC<ExecutePanelProps> = (props) => {
       return;
     }
     setPhase('running');
+    const recorder = new SwapRecorder(current, req);
     try {
-      const hash = await runPlan(current, req, (p) => setProgress((prev) => ({ ...prev, [p.step]: p })));
+      const hash = await runPlan(current, req, (p) => {
+        setProgress((prev) => ({ ...prev, [p.step]: p }));
+        recorder.onProgress(p);
+      });
       setSwapHash(hash);
       if (current.sameChain) {
+        recorder.finish('done');
         setPhase('done');
         return;
       }
       setPhase('delivering');
-      const result = await watchDelivery(current, hash, setDelivery, abort.current.signal);
+      // Closing the window stops this watch; the history picks the transfer up later.
+      const result = await watchDelivery(current.status, hash, setDelivery, abort.current.signal);
+      if (result.state !== 'pending') recorder.finish(result.state, result.detail);
       setPhase(result.state === 'done' ? 'done' : result.state === 'refunded' ? 'refunded' : result.state === 'failed' ? 'error' : 'delivering');
       if (result.state === 'failed') setError(`The transfer failed on ${current.providerName}'s side: ${result.detail ?? ''}`);
       diag('info', 'BESTRATE', `${current.providerName} delivery: ${result.state} ${result.detail ?? ''}`);
     } catch (err: any) {
       const message = err?.shortMessage ?? err?.message ?? String(err);
-      setError(
-        /reject|denied|cancel/i.test(message)
-          ? 'Cancelled in the wallet. Nothing more was sent.'
-          : explainRevert(message, req.fromToken.symbol)
-      );
+      const rejected = /reject|denied|cancel/i.test(message);
+      const shown = rejected ? 'Cancelled in the wallet. Nothing more was sent.' : explainRevert(message, req.fromToken.symbol);
+      recorder.finish(rejected ? 'cancelled' : 'failed', shown);
+      setError(shown);
       setPhase('error');
       diag('warn', 'BESTRATE', `${current.providerName} execution stopped: ${message}`);
     }

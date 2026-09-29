@@ -20,6 +20,8 @@ import { FAMILY_NAMES, formatAmount, formatUSD, isAddressFor, shortAddress } fro
 import { Logo, TokenSelect } from './TokenSelect';
 import { RouteCard, RouteSection } from './RouteCard';
 import { ExecutePanel } from './ExecutePanel';
+import { HistoryPanel } from './HistoryPanel';
+import { resumePending } from './history';
 import { executionBlocker } from './execute/plan';
 import { readBalance } from './execute/balance';
 import { RankedRoute } from './search';
@@ -94,6 +96,16 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
   // restart swaps go back to the user's own address.
   const [customReceiver, setCustomReceiver] = useState(false);
   const [receiverText, setReceiverText] = useState('');
+  const [showHistory, setShowHistory] = useState(false);
+  const closeHistory = useCallback(() => setShowHistory(false), []);
+
+  // Transfers that were still on their way at the last close are followed
+  // again in the background, so their outcome lands in the history.
+  useEffect(() => {
+    const controller = new AbortController();
+    void resumePending(controller.signal);
+    return () => controller.abort();
+  }, []);
 
   const update = useCallback(
     (patch: Partial<BestRateSettings>) => {
@@ -524,6 +536,9 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
                   ? `Updated ${updatedAt.toLocaleTimeString()}`
                   : ''}
             </span>
+            <button type="button" className="br-btn br-btn--ghost" onClick={() => setShowHistory(true)}>
+              History
+            </button>
             <button
               type="button"
               className="br-btn br-btn--ghost"
@@ -611,6 +626,8 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
           </p>
         </section>
       </div>
+
+      {showHistory && <HistoryPanel onClose={closeHistory} />}
 
       {executing && request && (
         <ExecutePanel
