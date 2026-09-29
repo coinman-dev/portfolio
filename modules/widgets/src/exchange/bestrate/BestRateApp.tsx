@@ -90,6 +90,10 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
   const [executing, setExecuting] = useState<RankedRoute | null>(null);
   /** The wallet's balance of the input token; null when it cannot be read here. */
   const [balance, setBalance] = useState<bigint | null>(null);
+  // Sending to someone else is set per session and never saved: after a
+  // restart swaps go back to the user's own address.
+  const [customReceiver, setCustomReceiver] = useState(false);
+  const [receiverText, setReceiverText] = useState('');
 
   const update = useCallback(
     (patch: Partial<BestRateSettings>) => {
@@ -150,8 +154,15 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
   const addressOf = (chain?: BrChain) =>
     !chain ? undefined : chain.type === 'EVM' ? evmAddress : addresses[chain.type]?.trim() || undefined;
   const fromAddress = addressOf(fromChain);
-  const toAddress = addressOf(toChain);
-  const families = [...new Set([fromChain?.type, toChain?.type].filter((t): t is ChainType => !!t && t !== 'EVM'))];
+  // A custom receiver replaces the default one; with the box ticked but the
+  // field empty or wrong there is no receiver at all, so nothing can be sent.
+  const toAddress = customReceiver ? receiverText.trim() || undefined : addressOf(toChain);
+  const receiverInvalid = customReceiver && !!toChain && receiverText.trim() !== '' && !isAddressFor(toChain.type, receiverText);
+  const families = [
+    ...new Set(
+      [fromChain?.type, customReceiver ? undefined : toChain?.type].filter((t): t is ChainType => !!t && t !== 'EVM')
+    ),
+  ];
 
   const request: QuoteRequest | null = useMemo(() => {
     if (!fromChain || !toChain || !fromToken || !toToken || !amount) return null;
@@ -424,6 +435,37 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
             </button>
             {toToken && toToken.status !== 'verified' && (
               <span className="br-warn">This token is {toToken.status} — check the address.</span>
+            )}
+            <label className="br-check br-receiver-toggle">
+              <input
+                type="checkbox"
+                checked={customReceiver}
+                onChange={(e) => {
+                  setCustomReceiver(e.target.checked);
+                  if (!e.target.checked) setReceiverText('');
+                }}
+              />
+              <span>Send to another address</span>
+            </label>
+            {customReceiver && toChain && (
+              <label className="br-address">
+                <span className="br-side__label">Receiver on {toChain.name}</span>
+                <input
+                  className={`br-input br-mono${receiverInvalid ? ' is-invalid' : ''}`}
+                  placeholder={`${FAMILY_NAMES[toChain.type]} address of the receiver`}
+                  spellCheck={false}
+                  autoComplete="off"
+                  value={receiverText}
+                  onChange={(e) => setReceiverText(e.target.value)}
+                />
+                {receiverInvalid && (
+                  <span className="br-warn">
+                    Not a valid {FAMILY_NAMES[toChain.type]} address
+                    {toChain.type === 'EVM' ? ' (or a checksum typo)' : ''}.
+                  </span>
+                )}
+                <span className="br-muted">Funds sent to a wrong address cannot be recovered.</span>
+              </label>
             )}
           </div>
 

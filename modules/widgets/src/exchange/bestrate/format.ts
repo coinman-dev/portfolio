@@ -1,3 +1,4 @@
+import { isAddress } from 'viem';
 import { ChainType } from './types';
 
 const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
@@ -35,7 +36,9 @@ const ADDRESS_PATTERNS: Record<ChainType, RegExp> = {
   MVM: /^0x[0-9a-fA-F]{64}$/,
 };
 
-export const isAddressFor = (type: ChainType, address: string) => ADDRESS_PATTERNS[type].test(address.trim());
+/** Format check; mixed-case EVM addresses must also match their checksum, which catches typos. */
+export const isAddressFor = (type: ChainType, address: string) =>
+  type === 'EVM' ? isAddress(address.trim()) : ADDRESS_PATTERNS[type].test(address.trim());
 
 export const FAMILY_NAMES: Record<ChainType, string> = {
   EVM: 'EVM',

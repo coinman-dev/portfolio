@@ -705,3 +705,9 @@
   font-size: 12px;
   font-weight: 700;
 }
+
+.br-receiver-toggle {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--br-muted);
+}

@@ -46,6 +46,7 @@ export const ExecutePanel: React.FC<ExecutePanelProps> = (props) => {
   const [error, setError] = useState<string | null>(null);
   const [acceptLoss, setAcceptLoss] = useState(false);
   const [gasWarning, setGasWarning] = useState<string | null>(null);
+  const [receiverAck, setReceiverAck] = useState(false);
   const abort = useRef(new AbortController());
 
   const outToken = isNative(req.toChain, req.toToken) ? null : (req.toToken.address as `0x${string}`);
@@ -160,7 +161,9 @@ export const ExecutePanel: React.FC<ExecutePanelProps> = (props) => {
   const lossPct = inputUSD > 0 && outUSD > 0 ? ((inputUSD - outUSD) / inputUSD) * 100 : 0;
   const needsLossAck = lossPct > LOSS_WARN_PCT;
   const simBlocks = !!simulation && simulation.supported && !simulation.ok;
-  const canConfirm = phase === 'review' && !simBlocks && (!needsLossAck || acceptLoss);
+  const otherReceiver = !!plan && plan.receiver.toLowerCase() !== plan.user.toLowerCase();
+  const canConfirm =
+    phase === 'review' && !simBlocks && (!needsLossAck || acceptLoss) && (!otherReceiver || receiverAck);
   const busy = phase === 'building' || phase === 'running';
 
   return (
@@ -264,6 +267,15 @@ export const ExecutePanel: React.FC<ExecutePanelProps> = (props) => {
         )}
         {phase === 'review' && gasWarning && <div className="br-warn">{gasWarning}</div>}
 
+        {phase === 'review' && otherReceiver && plan && (
+          <label className="br-check br-warn">
+            <input type="checkbox" checked={receiverAck} onChange={(e) => setReceiverAck(e.target.checked)} />
+            <span>
+              I checked the receiver {shortAddress(plan.receiver)} on {req.toChain.name} — funds sent there cannot be
+              returned.
+            </span>
+          </label>
+        )}
         {phase === 'review' && needsLossAck && (
           <label className="br-check br-warn">
             <input type="checkbox" checked={acceptLoss} onChange={(e) => setAcceptLoss(e.target.checked)} />
