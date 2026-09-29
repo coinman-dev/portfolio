@@ -41,6 +41,11 @@ export interface YearnAPR {
   extra?: {
     stakingRewardsAPR?: number | null;
     gammaRewardAPR?: number | null;
+    /** Katana: KAT incentives on top of the native yield. */
+    katanaAppRewardsAPR?: number;
+    katanaBonusAPY?: number;
+    steerPointsPerDollar?: number;
+    fixedRateKatanaRewards?: number;
   };
   forwardAPR?: {
     type?: string;
@@ -121,6 +126,8 @@ export interface YearnVault {
     isHidden?: boolean;
     category?: string;
   };
+  /** Retired vault with a successor it can be migrated to. */
+  migration?: { available: boolean; target?: string; contract?: string };
   /** yvUSD is shown as one row merging the unlocked and locked vaults. */
   lockedTwin?: {
     address: string;
@@ -129,8 +136,7 @@ export interface YearnVault {
     pricePerShare?: string;
     tvl?: number;
   };
-  /** Address whose APY/charts represent this vault. yBOLD uses its staking
-   *  vault (st-yBOLD), whose shares also count toward the yBOLD position. */
+  /** Address whose APY/charts represent this vault (yBOLD uses st-yBOLD). */
   dataAddress?: string;
   // User onchain state (hydrated when wallet connected)
   userTokenBalance?: {

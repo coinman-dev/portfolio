@@ -1,17 +1,18 @@
 import { useQuery } from '@tanstack/react-query';
 import {
   BalanceDenomination,
-  HoldingsNetworkError,
   HoldingsTimeframe,
   fetchBalanceHistory,
   fetchProtocolReturnHistory,
+  isRetryableHoldingsError,
 } from '../holdingsApi';
 
 /** History only changes once a day settles; yearn.fi caches it for an hour. */
 const STALE_MS = 60 * 60 * 1000;
 
+/** A cold history request can take close to Vercel's 60s limit; two retries at most. */
 const retryNetworkErrors = (failureCount: number, error: unknown) =>
-  error instanceof HoldingsNetworkError && failureCount < 2;
+  isRetryableHoldingsError(error) && failureCount < 2;
 
 export function useBalanceHistory(
   address: string | undefined,

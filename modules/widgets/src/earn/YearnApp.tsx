@@ -9,6 +9,7 @@ import { VaultDetailPage } from './components/detail/VaultDetailPage';
 import { PortfolioPage } from './components/portfolio/PortfolioPage';
 import { PortfolioTabId } from './components/portfolio/PortfolioTabs';
 import { usePortfolioHoldings } from './hooks/usePortfolioHoldings';
+import { getVaultKey } from './vaultMeta';
 import { wagmiConfig, subscribeWalletStatus, getWalletStatus, WalletStatus, connectWallet } from '../wallet/wallet';
 import { TopNav } from './components/shell/TopNav';
 import { Crumb } from './components/shell/Breadcrumbs';
@@ -147,7 +148,14 @@ export const YearnDashboard: React.FC<EarnMountOptions> = ({
             vault={selectedVault}
             walletAddress={walletStatus.address}
             walletChainId={walletStatus.chainId}
+            position={holdings.positions.find((p) => p.key === getVaultKey(selectedVault))}
             onConnectWallet={handleConnectWallet}
+            onBalancesChanged={holdings.refresh}
+            onOpenActivity={() => {
+              setActiveView('portfolio');
+              setSelectedVault(null);
+              handlePortfolioTab('activity');
+            }}
           />
         )}
 

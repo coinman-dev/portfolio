@@ -1,13 +1,17 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { formatUnits } from 'viem';
 import { YearnVault } from '../../types';
+import { PortfolioPosition } from '../../hooks/usePortfolioHoldings';
 import { getChain } from '../../yearnApi';
 import { formatAmount, formatAPY, formatDuration, formatUSD, formatUSDFull } from '../../format';
 import { openExternal } from '../../openExternal';
 import { Lock, Unlock, Wallet } from '../ui/icons';
-import { useVaultActions, WidgetMode } from '../../hooks/useVaultActions';
+import { useVaultActions, VaultVariant, WidgetMode } from '../../hooks/useVaultActions';
+import { canStakeOnDeposit, isRetiredVault } from '../../vaultTx';
+import { getHeadlineAPY, RETIRED_TAG_DESCRIPTION } from '../../vaultMeta';
 import { AmountInput } from './AmountInput';
 import { InfoPopover } from './InfoPopover';
+import { RecentTransactions } from './RecentTransactions';
 
 type WalletTabId = 'balances' | 'transactions';
 
@@ -35,7 +39,12 @@ interface VaultWidgetProps {
   tab: WidgetTab;
   walletAddress?: string;
   walletChainId?: number;
+  /** Portfolio-scan position; My Info shows it so merged contracts count. */
+  position?: PortfolioPosition;
   onConnectWallet: () => void;
+  /** "All activity": Portfolio → Activity. */
+  onOpenActivity?: () => void;
+  onBalancesChanged?: () => void;
 }
 
 export const VaultWidget: React.FC<VaultWidgetProps> = ({
@@ -43,46 +52,93 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
   tab,
   walletAddress,
   walletChainId,
+  position,
   onConnectWallet,
+  onOpenActivity,
+  onBalancesChanged,
 }) => {
-  // Deposits default to Locked; withdrawals default to Unlocked, as on yearn.fi.
   const [infoTab, setInfoTab] = useState<WalletTabId>('balances');
-  const [depositLocked, setDepositLocked] = useState(true);
-  const [withdrawLocked, setWithdrawLocked] = useState(false);
   const mode: WidgetMode = tab === 'withdraw' ? 'withdraw' : 'deposit';
-  const lockedVariant = mode === 'withdraw' ? withdrawLocked : depositLocked;
-  const setLockedVariant = mode === 'withdraw' ? setWithdrawLocked : setDepositLocked;
   const hasLockedVariant = Boolean(vault.lockedTwin);
-  const actions = useVaultActions(
-    vault,
-    mode,
-    walletAddress,
-    walletChainId,
-    hasLockedVariant && lockedVariant ? 'locked' : 'unlocked'
+  const stakesOnDeposit = canStakeOnDeposit(vault);
+
+  // yvUSD: deposits default to Locked, withdrawals to Unlocked, as on yearn.fi.
+  // Yearn BOLD: deposits default to Staked ("Stake automatically" is on there).
+  // Withdrawals follow whichever source holds shares until the user picks one.
+  const [depositVariant, setDepositVariant] = useState<VaultVariant>(
+    hasLockedVariant ? 'locked' : stakesOnDeposit ? 'staked' : 'unlocked'
   );
+  const [withdrawVariant, setWithdrawVariant] = useState<VaultVariant>('unlocked');
+  const [withdrawPicked, setWithdrawPicked] = useState(false);
+  const variant = mode === 'withdraw' ? withdrawVariant : depositVariant;
+  const setVariant = (next: VaultVariant) => {
+    if (mode === 'withdraw') {
+      setWithdrawVariant(next);
+      setWithdrawPicked(true);
+    } else {
+      setDepositVariant(next);
+    }
+  };
+
+  const actions = useVaultActions(vault, mode, walletAddress, walletChainId, variant);
+
+  const sourcesKey = actions.sources.join(',');
+  useEffect(() => {
+    if (hasLockedVariant || withdrawPicked) return;
+    setWithdrawVariant(actions.sources[0] === 'staking' ? 'staked' : 'unlocked');
+  }, [sourcesKey, hasLockedVariant, withdrawPicked]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // A confirmed deposit or withdrawal changes the position the page and the
+  // portfolio show, not just this widget's own balances.
+  const txStage = actions.status.stage;
+  useEffect(() => {
+    if (txStage === 'success') onBalancesChanged?.();
+  }, [txStage, onBalancesChanged]);
 
   const chain = getChain(vault.chainID);
   const decimals = vault.token.decimals || 18;
+  const shareDecimalsValue = vault.decimals ?? decimals;
   const symbol = vault.token.symbol;
   const price = vault.tvl?.price || 0;
+  const lockedVariant = variant === 'locked';
 
+  // Unstaked yBOLD earns nothing — its yield accrues in st-yBOLD.
+  const earnsYield = !(stakesOnDeposit && variant !== 'staked');
   const amountNumber = Number(formatUnits(actions.parsedAmount, decimals));
-  const apy = hasLockedVariant && lockedVariant
-    ? vault.lockedTwin?.netAPR
-    : vault.apr.forwardAPR?.netAPR ?? vault.apr.netAPR;
+  const apy = !earnsYield
+    ? 0
+    : hasLockedVariant && lockedVariant
+      ? vault.lockedTwin?.netAPR
+      : hasLockedVariant
+        ? vault.apr.forwardAPR?.netAPR || vault.apr.netAPR
+        : getHeadlineAPY(vault);
 
-  // yvUSD locked deposits route through the Yearn Zap contract.
-  const approvalLabel =
-    hasLockedVariant && lockedVariant ? 'Existing Approval (Yearn Zap)' : 'Existing Approval (Vault)';
-
-  const shareLabel = hasLockedVariant
-    ? `${lockedVariant ? 'Locked' : 'Unlocked'} Vault Shares`
-    : vault.symbol;
+  const variantOptions: { id: VaultVariant; label: string; icon: React.ReactNode }[] = hasLockedVariant
+    ? [
+        { id: 'locked', label: 'Locked', icon: <Lock size={12} /> },
+        { id: 'unlocked', label: 'Unlocked', icon: <Unlock size={12} /> },
+      ]
+    : (mode === 'deposit' && stakesOnDeposit) || (mode === 'withdraw' && actions.sources.length > 1)
+      ? [
+          { id: 'staked', label: 'Staked', icon: <Lock size={12} /> },
+          { id: 'unlocked', label: 'Unstaked', icon: <Unlock size={12} /> },
+        ]
+      : [];
 
   if (tab === 'info') {
-    const depositedAssets = Number(formatUnits(actions.underlyingBalance, decimals));
-    const shares = Number(formatUnits(actions.vaultShares, vault.decimals ?? decimals));
-    const walletAssets = Number(formatUnits(actions.tokenBalance, decimals));
+    // `actions` reads only the vault itself; the portfolio scan also counts
+    // st-yBOLD, locked yvUSD and staking contracts.
+    const vaultPosition = actions.position;
+    const fallbackAssets = vaultPosition
+      ? (vaultPosition.vaultShares * vaultPosition.pricePerShare) / 10n ** BigInt(shareDecimalsValue)
+      : 0n;
+    const depositedAssets = Number(
+      formatUnits(position ? position.assets : fallbackAssets, decimals)
+    );
+    const shares = Number(
+      formatUnits(position ? position.shares : vaultPosition?.vaultShares ?? 0n, shareDecimalsValue)
+    );
+    const walletAssets = Number(formatUnits(vaultPosition?.assetBalance ?? 0n, decimals));
 
     return (
       <div className="y-widget y-wallet">
@@ -149,10 +205,11 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
               </section>
             </>
           ) : (
-            <section className="y-wallet__section">
-              <h4 className="y-wallet__section-title">Recent transactions</h4>
-              <p className="y-wallet__muted">No recent transactions.</p>
-            </section>
+            <RecentTransactions
+              address={walletAddress}
+              vault={vault}
+              onOpenActivity={onOpenActivity}
+            />
           )}
         </div>
       </div>
@@ -163,6 +220,7 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
   const available = actions.available;
   const isBusy = actions.status.stage === 'approving' || actions.status.stage === 'executing';
   const { locked } = actions;
+  const isRetired = isRetiredVault(vault);
 
   // A locked withdrawal is a cooldown cycle, not a single call: arm it, wait
   // out `cooldownDuration`, then redeem inside `withdrawalWindow`.
@@ -170,23 +228,29 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
   const needsCooldown =
     isLockedWithdraw && (locked.phase === 'idle' || locked.phase === 'expired');
   const isCoolingDown = isLockedWithdraw && locked.phase === 'cooling';
-  const approvalSymbol = isDeposit ? symbol : `${vault.symbol} shares`;
+
+  const step = actions.status.step;
+  const stepSuffix = step && step.total > 1 ? ` (${step.index + 1}/${step.total})` : '';
 
   let buttonLabel = isDeposit ? 'Deposit' : 'Withdraw';
   if (needsCooldown) buttonLabel = locked.phase === 'expired' ? 'Restart Cooldown' : 'Start Cooldown';
   if (isCoolingDown) buttonLabel = `Cooldown ${formatDuration(locked.secondsLeft)}`;
   if (!walletAddress) buttonLabel = 'Connect Wallet';
   else if (actions.isWrongChain) buttonLabel = `Switch to ${chain.name}`;
-  else if (actions.needsApproval) buttonLabel = `Approve ${approvalSymbol}`;
-  if (actions.status.stage === 'approving') buttonLabel = 'Approving…';
-  if (actions.status.stage === 'executing') {
-    buttonLabel = needsCooldown ? 'Starting cooldown…' : isDeposit ? 'Depositing…' : 'Withdrawing…';
+  else if (actions.blockedReason && actions.parsedAmount > 0n) buttonLabel = actions.blockedReason;
+  if (isBusy) {
+    buttonLabel = step
+      ? `${step.label}…${stepSuffix}`
+      : needsCooldown
+        ? 'Starting cooldown…'
+        : isDeposit
+          ? 'Depositing…'
+          : 'Withdrawing…';
   }
 
   const handleAction = () => {
     if (!walletAddress) return onConnectWallet();
     if (actions.isWrongChain) return void actions.switchToVaultChain();
-    if (actions.needsApproval) return void actions.approve();
     if (needsCooldown) return void actions.startCooldown();
     return void actions.execute();
   };
@@ -196,35 +260,40 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
     isCoolingDown ||
     (Boolean(walletAddress) &&
       !actions.isWrongChain &&
-      !actions.needsApproval &&
-      (actions.parsedAmount === 0n || actions.parsedAmount > available));
+      !needsCooldown &&
+      (actions.parsedAmount === 0n || Boolean(actions.blockedReason)));
+
+  const sharesPreview = Number(formatUnits(actions.sharesPreview, shareDecimalsValue));
+  const receiveAmount = actions.isMax
+    ? Number(formatUnits(available, decimals))
+    : amountNumber;
+  const approval = actions.approval;
 
   return (
     <div className="y-widget">
       <div className="y-widget__inner">
         <div className="y-widget__head">
           <h3 className="y-widget__title">{isDeposit ? 'Deposit' : 'Withdraw'}</h3>
-          {hasLockedVariant && (
+          {variantOptions.length > 0 && (
             <div className="y-variant" role="group" aria-label="Vault share variant">
-              <button
-                type="button"
-                className={`y-variant__btn${lockedVariant ? ' is-active' : ''}`}
-                onClick={() => setLockedVariant(true)}
-              >
-                <Lock size={12} />
-                Locked
-              </button>
-              <button
-                type="button"
-                className={`y-variant__btn${!lockedVariant ? ' is-active' : ''}`}
-                onClick={() => setLockedVariant(false)}
-              >
-                <Unlock size={12} />
-                Unlocked
-              </button>
+              {variantOptions.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  className={`y-variant__btn${variant === option.id ? ' is-active' : ''}`}
+                  onClick={() => setVariant(option.id)}
+                >
+                  {option.icon}
+                  {option.label}
+                </button>
+              ))}
             </div>
           )}
         </div>
+
+        {isRetired && !isDeposit && (
+          <p className="y-widget__warning">{`This vault is retired. ${RETIRED_TAG_DESCRIPTION}`}</p>
+        )}
 
         <AmountInput
           vault={vault}
@@ -266,7 +335,7 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
                     </p>
                     <p>{`You're depositing ${symbol} into the vault. You'll receive ${vault.name}${
                       hasLockedVariant ? ` (${lockedVariant ? 'Locked' : 'Unlocked'})` : ''
-                    } shares.`}</p>
+                    }${variant === 'staked' ? ' (staked)' : ''} shares.`}</p>
                     <p>
                       <b>How vault shares work</b>
                     </p>
@@ -277,7 +346,7 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
                     </p>
                   </InfoPopover>
                 }
-                value={`${formatAmount(amountNumber)} ${shareLabel}`}
+                value={`${formatAmount(sharesPreview)} ${actions.sharesSymbol}`}
               />
               <SummaryRow
                 label={
@@ -317,21 +386,23 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
                 }
                 value={`${formatAmount(amountNumber * (apy || 0))} ${symbol}`}
               />
-              <SummaryRow
-                label={
-                  <InfoPopover label={approvalLabel} title="Manage approval">
-                    <p>
-                      <b>What is this?</b>
-                    </p>
-                    <p>
-                      {`Token approval allows a smart contract to transfer your ${symbol} up to a set limit. This is required before depositing.`}
-                    </p>
-                  </InfoPopover>
-                }
-                value={`${formatAmount(
-                  Number(formatUnits(actions.allowance, decimals))
-                )} ${symbol}`}
-              />
+              {approval && (
+                <SummaryRow
+                  label={
+                    <InfoPopover label={`Existing Approval (${approval.spender})`} title="Manage approval">
+                      <p>
+                        <b>What is this?</b>
+                      </p>
+                      <p>
+                        {`Token approval allows a smart contract to transfer your ${approval.symbol} up to a set limit. Deposits approve exactly the amount being deposited.`}
+                      </p>
+                    </InfoPopover>
+                  }
+                  value={`${formatAmount(
+                    Number(formatUnits(approval.amount, approval.decimals))
+                  )} ${approval.symbol}`}
+                />
+              )}
             </>
           ) : (
             <>
@@ -344,35 +415,39 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
                     </p>
                   </InfoPopover>
                 }
-                value={`${formatAmount(
-                  Number(formatUnits(actions.redeemShares, vault.decimals ?? decimals))
-                )} ${hasLockedVariant ? shareLabel : 'Vault shares'}`}
+                value={`${formatAmount(sharesPreview)} ${actions.sharesSymbol}`}
               />
               <SummaryRow
                 label="You will receive"
-                value={`${formatAmount(amountNumber)} ${symbol}`}
+                value={`${formatAmount(receiveAmount)} ${symbol}`}
               />
-              {isLockedWithdraw && (
+              {approval && (
                 <SummaryRow
                   label={
-                    <InfoPopover label="Existing Approval (Yearn Zap)" title="Manage approval">
+                    <InfoPopover label={`Existing Approval (${approval.spender})`} title="Manage approval">
                       <p>
                         <b>What is this?</b>
                       </p>
                       <p>
-                        Withdrawing a locked position routes through the Yearn Zap contract, which
-                        needs approval to spend your locked vault shares.
+                        {`This withdrawal routes through the ${approval.spender} contract, which needs approval to spend your ${approval.symbol}.`}
                       </p>
                     </InfoPopover>
                   }
                   value={`${formatAmount(
-                    Number(formatUnits(actions.allowance, vault.decimals ?? decimals))
-                  )} ${vault.symbol}`}
+                    Number(formatUnits(approval.amount, approval.decimals))
+                  )} ${approval.symbol}`}
                 />
               )}
             </>
           )}
         </div>
+
+        {isDeposit && !earnsYield && (
+          <p className="y-widget__warning">
+            Automatic staking is off. Unstaked yBOLD does not earn yield — its yield accrues to
+            staked yBOLD.
+          </p>
+        )}
 
         {hasLockedVariant && lockedVariant && isDeposit && (
           <ul className="y-widget__notice">

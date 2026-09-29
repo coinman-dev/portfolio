@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { fetchVaultSnapshot } from '../../kongApi';
 import { YearnVault } from '../../types';
 import { getChain } from '../../yearnApi';
-import { formatAPY, formatUSD } from '../../format';
+import { formatAPY, formatTVL } from '../../format';
 import { openExternal } from '../../openExternal';
 import { ExternalLink, Lock } from '../ui/icons';
 import { VaultAvatar } from '../list/VaultAvatar';
@@ -9,6 +10,8 @@ import { VaultsListChip } from '../list/VaultsListChip';
 import {
   deriveAssetCategory,
   getCategoryDescription,
+  getHeadlineAPY,
+  getMonthAgoAPY,
   getChainDescription,
   getKindDescription,
   getProductTypeDescription,
@@ -124,13 +127,28 @@ export const VaultDetailHeader: React.FC<VaultDetailHeaderProps> = ({
   isCompact,
 }) => {
   const hasLocked = Boolean(vault.lockedTwin);
+  // Same rules as the list, so a vault never shows two different rates.
+  const estApy = getHeadlineAPY(vault);
+  const listMonthApy = getMonthAgoAPY(vault);
+  const [snapshotMonthApy, setSnapshotMonthApy] = useState<number | null>(null);
 
-  const estApy = hasLocked
-    ? vault.lockedTwin?.netAPR
-    : vault.apr.forwardAPR?.netAPR ?? vault.apr.netAPR;
-  const monthApy = hasLocked
-    ? vault.lockedTwin?.monthAgo ?? vault.apr.points?.monthAgo
-    : vault.apr.points?.monthAgo;
+  // Kong's list carries no history for some vaults (Velodrome LPs); yearn.fi's
+  // detail page reads it from the vault snapshot instead.
+  useEffect(() => {
+    setSnapshotMonthApy(null);
+    if (listMonthApy) return;
+    let cancelled = false;
+    void fetchVaultSnapshot(vault.chainID, vault.address).then((snapshot) => {
+      const monthly = snapshot?.apy?.monthlyNet;
+      const weekly = snapshot?.apy?.weeklyNet;
+      const chosen = monthly ? monthly : weekly;
+      if (!cancelled && typeof chosen === 'number') setSnapshotMonthApy(chosen);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [vault.chainID, vault.address, listMonthApy]);
+  const monthApy = snapshotMonthApy ?? listMonthApy;
 
   return (
     <div className={`y-vd-header${isCompact ? ' is-compact' : ''}`}>
@@ -155,7 +173,7 @@ export const VaultDetailHeader: React.FC<VaultDetailHeaderProps> = ({
             tooltip={KPI_TOOLTIPS.monthApy}
             showLock={hasLocked}
           />
-          <KpiCell label="TVL" value={formatUSD(vault.tvl?.tvl)} tooltip={KPI_TOOLTIPS.tvl} />
+          <KpiCell label="TVL" value={formatTVL(vault.tvl?.tvl)} tooltip={KPI_TOOLTIPS.tvl} />
         </div>
       </div>
 

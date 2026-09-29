@@ -8,6 +8,7 @@
 
 import { YearnVault } from './types';
 import { getChain } from './yearnApi';
+import { isYBoldProductAddress } from './kongVaults';
 
 export type ListKind = 'allocator' | 'strategy' | 'factory' | 'legacy';
 export type ProductType = 'v3' | 'lp';
@@ -227,18 +228,69 @@ export function getVaultKey(vault: YearnVault): string {
   return `${vault.chainID}_${vault.address.toLowerCase()}`;
 }
 
+const KATANA_CHAIN_ID = 747474;
+
+/** Katana vaults add KAT app rewards on top of their native yield. */
+function katanaAppRewards(vault: YearnVault): number | undefined {
+  if (vault.chainID !== KATANA_CHAIN_ID) return undefined;
+  const extra = vault.apr?.extra;
+  if (extra?.katanaAppRewardsAPR === undefined && extra?.steerPointsPerDollar === undefined) {
+    return undefined;
+  }
+  return extra?.katanaAppRewardsAPR ?? 0;
+}
+
+/** yearn.fi `getVaultForwardAPY`: yBOLD takes the better of its 7-day and oracle rates. */
+function getForwardAPY(vault: YearnVault): number {
+  const forward = vault.apr?.forwardAPR?.netAPR || 0;
+  if (isYBoldProductAddress(vault.address)) {
+    return Math.max(vault.apr?.points?.weekAgo || 0, forward);
+  }
+  return forward;
+}
+
 /**
- * Est. APY as shown in the list, on the detail page and in portfolio metrics:
- * yvUSD reports its locked twin's rate, everything else prefers forward APR.
+ * Est. APY as shown in the list, on the detail page and in portfolio metrics —
+ * yearn.fi's `calculateVaultEstimatedAPY`. yvUSD reports its locked twin's rate.
  */
 export function getHeadlineAPY(vault: YearnVault): number {
   if (vault.lockedTwin) return vault.lockedTwin.netAPR ?? 0;
-  return vault.apr?.forwardAPR?.netAPR || vault.apr?.netAPR || 0;
+  const apr = vault.apr;
+  const forward = getForwardAPY(vault);
+  if (isYBoldProductAddress(vault.address)) return forward;
+
+  if (vault.chainID === KATANA_CHAIN_ID) {
+    const rewards = katanaAppRewards(vault);
+    // Without KAT rewards data the site shows the realised rate instead.
+    return rewards === undefined ? apr?.netAPR || 0 : forward + rewards;
+  }
+
+  const stakingRewards = apr?.extra?.stakingRewardsAPR || 0;
+  if (apr?.forwardAPR?.type === '') return stakingRewards + (apr?.netAPR || 0);
+  if (vault.chainID === 1 && (apr?.forwardAPR?.composite?.boost || 0) > 0 && !stakingRewards) {
+    return forward;
+  }
+  const rewards = stakingRewards + (apr?.extra?.gammaRewardAPR || 0);
+  if (rewards > 0) return rewards + forward;
+  if (forward !== 0) return forward;
+  return apr?.netAPR || 0;
 }
 
-/** 30-day APY (`apr.points.monthAgo`), with the same yvUSD locked-twin rule. */
+/**
+ * 30-day APY — yearn.fi's `calculateVaultHistoricalAPY`: the monthly rate, or
+ * the weekly one while the monthly is still 0; Katana adds app rewards.
+ */
 export function getMonthAgoAPY(vault: YearnVault): number | null {
   if (vault.lockedTwin) return vault.lockedTwin.monthAgo ?? null;
-  const value = vault.apr?.points?.monthAgo;
-  return value === undefined || value === null ? null : value;
+  const monthly = vault.apr?.points?.monthAgo;
+  const weekly = vault.apr?.points?.weekAgo;
+  const chosen = monthly ? monthly : weekly;
+  if (typeof chosen !== 'number') return null;
+  const rewards = katanaAppRewards(vault);
+  return rewards === undefined ? chosen : chosen + rewards;
+}
+
+/** The forward rate is still being established ("NEW" on yearn.fi). */
+export function isNewVaultAPY(vault: YearnVault): boolean {
+  return String(vault.apr?.forwardAPR?.type || '').includes('new');
 }

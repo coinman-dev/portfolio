@@ -6,11 +6,13 @@ import {
   deriveAssetCategory,
   deriveListKind,
   getFeeStructureKey,
+  getHeadlineAPY,
   getProductTypeInfo,
   getVaultKey,
   ProductType,
 } from '../../vaultMeta';
 import { isSelectableChain } from '../../yearnApi';
+import { isRetiredVault } from '../../vaultTx';
 import { VaultsFiltersBar } from './VaultsFiltersBar';
 import { countActiveFilters, DEFAULT_FILTERS, VaultFilters, VaultsFiltersModal } from './VaultsFiltersModal';
 import { VaultsListHead, SortDir, SortKey } from './VaultsListHead';
@@ -41,8 +43,8 @@ export const DEFAULT_LIST_STATE: VaultsListState = {
   categories: [],
   feeStructureKey: null,
   search: '',
-  sortBy: 'tvl',
-  sortDir: 'desc',
+  sortBy: 'featuring',
+  sortDir: '',
   filters: DEFAULT_FILTERS,
 };
 
@@ -62,7 +64,11 @@ function toggleValue<T>(list: T[], value: T): T[] {
 }
 
 /** Does this vault survive the filter bar, the Filters modal and the search box? */
-function matchesListState(vault: YearnVault, state: VaultsListState): boolean {
+function matchesListState(
+  vault: YearnVault,
+  state: VaultsListState,
+  holdings: Record<string, number>
+): boolean {
   const { productType, chains, categories, feeStructureKey, search, filters } = state;
   const listKind = deriveListKind(vault);
   const info = getProductTypeInfo(vault);
@@ -71,6 +77,11 @@ function matchesListState(vault: YearnVault, state: VaultsListState): boolean {
   if (!filters.showLegacy && info.isLegacy) return false;
   if (!filters.showSingleAssetStrategies && listKind === 'strategy') return false;
   if (vault.info?.isHidden) return false;
+  // A vault the wallet holds is always listed, even retired or below the TVL floor.
+  const held = (holdings[getVaultKey(vault)] ?? 0) > 0;
+  if (isRetiredVault(vault) && !held) return false;
+  // Kept in the data set so positions in them can still be withdrawn.
+  if (vault.emergency_shutdown) return false;
 
   if (productType !== 'all' && info.productType !== productType) return false;
   if (chains.length && !chains.includes(vault.chainID)) return false;
@@ -84,7 +95,7 @@ function matchesListState(vault: YearnVault, state: VaultsListState): boolean {
 
   if (filters.assets.length && !filters.assets.includes(vault.token?.symbol || '')) return false;
 
-  if (filters.minTvl > 0 && (vault.tvl?.tvl || 0) < filters.minTvl) return false;
+  if (!held && filters.minTvl > 0 && (vault.tvl?.tvl || 0) < filters.minTvl) return false;
 
   if (filters.categories.length && !filters.categories.includes(deriveAssetCategory(vault))) {
     return false;
@@ -132,7 +143,7 @@ const RELAXATIONS: Relaxation[] = [
 function sortValue(vault: YearnVault, key: SortKey, holdings: Record<string, number>): number {
   switch (key) {
     case 'estAPY':
-      return vault.apr?.forwardAPR?.netAPR ?? vault.apr?.netAPR ?? 0;
+      return getHeadlineAPY(vault);
     case 'tvl':
       return vault.tvl?.tvl ?? 0;
     case 'deposited':
@@ -143,12 +154,15 @@ function sortValue(vault: YearnVault, key: SortKey, holdings: Record<string, num
 }
 
 /**
- * Default ("featuring") order: highlighted vaults first, then TVL descending —
- * this reproduces the order yearn.fi's backend returns.
+ * Default order, as yearn.fi renders it: yvUSD pinned first, then the
+ * single-asset vaults, then the LP vaults — each block by TVL descending.
  */
 function compareFeatured(a: YearnVault, b: YearnVault): number {
-  const scoreDelta = (b.featuringScore ?? 0) - (a.featuringScore ?? 0);
-  if (scoreDelta !== 0) return scoreDelta;
+  const pinned = Number(Boolean(b.lockedTwin)) - Number(Boolean(a.lockedTwin));
+  if (pinned !== 0) return pinned;
+  const block = (vault: YearnVault) => (getProductTypeInfo(vault).productType === 'v3' ? 0 : 1);
+  const blockDelta = block(a) - block(b);
+  if (blockDelta !== 0) return blockDelta;
   return (b.tvl?.tvl ?? 0) - (a.tvl?.tvl ?? 0);
 }
 
@@ -193,8 +207,8 @@ export const VaultsListView: React.FC<VaultsListViewProps> = ({
   }, [vaults]);
 
   const filtered = useMemo(
-    () => vaults.filter((vault) => matchesListState(vault, state)),
-    [vaults, state]
+    () => vaults.filter((vault) => matchesListState(vault, state, holdings)),
+    [vaults, state, holdings]
   );
 
   /**
@@ -221,7 +235,7 @@ export const VaultsListView: React.FC<VaultsListViewProps> = ({
       .map((combo) => {
         const filters = combo.reduce((acc, relaxation) => relaxation.apply(acc), state.filters);
         const count = vaults.filter((vault) =>
-          matchesListState(vault, { ...state, filters })
+          matchesListState(vault, { ...state, filters }, holdings)
         ).length;
         return { combo, filters, delta: count - filtered.length };
       })
@@ -240,7 +254,7 @@ export const VaultsListView: React.FC<VaultsListViewProps> = ({
     }
 
     return suggestions;
-  }, [vaults, state, filtered.length]);
+  }, [vaults, state, filtered.length, holdings]);
 
   const sorted = useMemo(() => {
     if (state.sortBy === 'featuring' || !state.sortDir) {

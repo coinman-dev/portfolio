@@ -60,21 +60,17 @@ function shareSources(vault: YearnVault): ShareSource[] {
       isWrapper: true,
     });
   }
-  // yBOLD's staking vault is dropped from the list and merged into the yBOLD
-  // row, and yDaemon leaves yBOLD's `staking` empty, so it is only known here.
-  if (
-    vault.dataAddress &&
-    vault.dataAddress.toLowerCase() !== vault.address.toLowerCase() &&
-    vault.dataAddress.toLowerCase() !== vault.staking?.address?.toLowerCase()
-  ) {
-    sources.push({
-      chainId: vault.chainID,
-      vaultKey: key,
-      address: vault.dataAddress,
-      isWrapper: true,
-    });
-  }
   return sources;
+}
+
+function apiSharesToAssets(vault: YearnVault, shares: bigint): bigint {
+  if (!vault.pricePerShare) return shares;
+  try {
+    const unit = 10n ** BigInt(vault.decimals ?? vault.token.decimals ?? 18);
+    return (shares * BigInt(vault.pricePerShare)) / unit;
+  } catch {
+    return shares;
+  }
 }
 
 /**
@@ -258,7 +254,9 @@ export function usePortfolioHoldings(
         const next: PortfolioPosition[] = held.map((vault) => {
           const key = getVaultKey(vault);
           const shares = sharesByKey.get(key) as bigint;
-          const assets = assetsByKey.get(key) ?? shares;
+          // Both on-chain conversions failed: the API's price per share beats
+          // assuming 1:1 (st-yCRV trades at ~2.6 per share).
+          const assets = assetsByKey.get(key) ?? apiSharesToAssets(vault, shares);
           const decimals = vault.token.decimals || 18;
           const amount = Number(assets) / 10 ** decimals;
           return { vault, key, shares, assets, usdValue: amount * (vault.tvl?.price || 0) };

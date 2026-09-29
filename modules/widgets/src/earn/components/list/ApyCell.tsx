@@ -3,6 +3,9 @@ import { YearnVault } from '../../types';
 import { formatAPY } from '../../format';
 import { Lock, Unlock } from '../ui/icons';
 import { YVUSD_COOLDOWN_DAYS } from '../../constants';
+import { getHeadlineAPY, isNewVaultAPY } from '../../vaultMeta';
+
+const KATANA_CHAIN_ID = 747474;
 
 interface ApyCellProps {
   vault: YearnVault;
@@ -45,16 +48,27 @@ function buildBreakdown(vault: YearnVault): Breakdown | null {
     };
   }
 
-  const rewards = vault.apr.extra?.stakingRewardsAPR || 0;
-  const gamma = vault.apr.extra?.gammaRewardAPR || 0;
-  if (rewards > 0 || gamma > 0) {
-    const forward = vault.apr.forwardAPR?.netAPR || vault.apr.netAPR || 0;
-    const base = Math.max(forward - rewards - gamma, 0);
-    const rows: BreakdownRow[] = [{ label: 'Base APY', value: formatAPY(base) }];
-    if (rewards > 0) rows.push({ label: 'Rewards APY', value: formatAPY(rewards) });
-    if (gamma > 0) rows.push({ label: 'Gamma rewards APY', value: formatAPY(gamma) });
-    rows.push({ label: 'Total APY', value: formatAPY(forward) });
-    return { rows, ariaLabel: `Show ${vault.name} APY breakdown` };
+  // Katana: native yield plus KAT app rewards (yearn.fi's "Katana Est. APY breakdown").
+  const appRewards = vault.chainID === KATANA_CHAIN_ID ? vault.apr.extra?.katanaAppRewardsAPR : undefined;
+  if (appRewards !== undefined && appRewards > 0) {
+    const native = vault.apr.forwardAPR?.netAPR || 0;
+    return {
+      ariaLabel: `Show ${vault.name} APY breakdown`,
+      rows: [
+        { label: 'Est. Native APY', value: formatAPY(native) },
+        { label: 'App Rewards APR', value: formatAPY(appRewards) },
+        { label: 'Total APY', value: formatAPY(getHeadlineAPY(vault)) },
+      ],
+      notes: [{ term: 'KAT:', text: 'This Vault is receiving KAT incentives.' }],
+    };
+  }
+
+  const boost = vault.chainID === 1 ? vault.apr.forwardAPR?.composite?.boost || 0 : 0;
+  if (boost > 0) {
+    return {
+      ariaLabel: `Show ${vault.name} APY breakdown`,
+      rows: [{ label: 'Boost', value: `${boost.toFixed(2)}x` }],
+    };
   }
 
   return null;
@@ -67,12 +81,12 @@ export const ApyValue: React.FC<{ vault: YearnVault; align?: 'left' | 'right' }>
 }) => {
   const [open, setOpen] = useState(false);
   const breakdown = buildBreakdown(vault);
-  const headline = vault.lockedTwin
-    ? vault.lockedTwin.netAPR
-    : vault.apr.forwardAPR?.netAPR || vault.apr.netAPR;
+  const headline = isNewVaultAPY(vault)
+    ? 'NEW'
+    : `${vault.info?.isBoosted ? '⚡️ ' : ''}${formatAPY(getHeadlineAPY(vault))}`;
 
   if (!breakdown) {
-    return <b className="y-row__value">{formatAPY(headline)}</b>;
+    return <b className="y-row__value">{headline}</b>;
   }
 
   return (
@@ -91,7 +105,7 @@ export const ApyValue: React.FC<{ vault: YearnVault; align?: 'left' | 'right' }>
           setOpen((prev) => !prev);
         }}
       >
-        <b className="y-row__value">{formatAPY(headline)}</b>
+        <b className="y-row__value">{headline}</b>
         <span aria-hidden="true" className="y-apy__star">
           *
         </span>

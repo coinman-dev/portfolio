@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { YearnVault } from '../../types';
 import { getChain } from '../../yearnApi';
-import { formatUSD } from '../../format';
+import { formatTVL, formatUSD } from '../../format';
 import {
   deriveAssetCategory,
   formatFeeStructureAriaLabel,
@@ -212,7 +212,7 @@ export const VaultsListRow: React.FC<VaultsListRowProps> = ({
           <ApyCell vault={vault} span={apySpan} interactiveHoverProps={interactiveHoverProps} />
           <div className={`y-row__cell y-span-${tvlSpan}`} datatype="number">
             <span className="y-row__cell-label">TVL:</span>
-            <p className="y-row__value">{formatUSD(tvl)}</p>
+            <p className="y-row__value">{formatTVL(tvl)}</p>
           </div>
           {showHoldings ? (
             <div className="y-row__cell y-span-4" datatype="number">

@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { formatUnits } from 'viem';
 import { YearnVault } from '../../types';
 import { formatUSD } from '../../format';
-import { getUserVaultShares } from '../../yearnContracts';
+import { PortfolioPosition } from '../../hooks/usePortfolioHoldings';
+import { isDepositClosed } from '../../vaultTx';
 import { ArrowUp } from '../ui/icons';
 import { VaultWidget, WidgetTab } from '../widget/VaultWidget';
 import { DetailSection, VaultDetailHeader, VaultIdentity } from './VaultDetailHeader';
@@ -22,20 +22,33 @@ interface VaultDetailPageProps {
   vault: YearnVault;
   walletAddress?: string;
   walletChainId?: number;
+  /** The wallet's position from the portfolio scan. It counts every contract
+   *  merged into this row (st-yBOLD, locked yvUSD, staking wrappers), which a
+   *  balance read on `vault.address` alone would miss. */
+  position?: PortfolioPosition;
   onConnectWallet: () => void;
+  onOpenActivity: () => void;
+  /** A deposit or withdrawal went through; positions need a rescan. */
+  onBalancesChanged: () => void;
 }
 
 export const VaultDetailPage: React.FC<VaultDetailPageProps> = ({
   vault,
   walletAddress,
   walletChainId,
+  position,
   onConnectWallet,
+  onOpenActivity,
+  onBalancesChanged,
 }) => {
   const [activeSection, setActiveSection] = useState<DetailSection>('performance');
-  const [widgetTab, setWidgetTab] = useState<WidgetTab>('deposit');
+  // Retired and shut-down vaults lose the Deposit tab, as on yearn.fi.
+  const depositClosed = isDepositClosed(vault);
+  const widgetTabs = depositClosed ? WIDGET_TABS.filter((tab) => tab.id !== 'deposit') : WIDGET_TABS;
+  const [widgetTab, setWidgetTab] = useState<WidgetTab>(depositClosed ? 'withdraw' : 'deposit');
   const [isCompact, setIsCompact] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
-  const [deposits, setDeposits] = useState(0);
+  const deposits = walletAddress ? (position?.usdValue ?? 0) : 0;
 
   const rootRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -49,28 +62,6 @@ export const VaultDetailPage: React.FC<VaultDetailPageProps> = ({
     }),
     []
   );
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!walletAddress) {
-      setDeposits(0);
-      return () => {
-        cancelled = true;
-      };
-    }
-    getUserVaultShares(vault.chainID, vault.address, walletAddress)
-      .then((shares) => {
-        if (cancelled) return;
-        const underlying = Number(
-          formatUnits(shares.assetsUnderlying, vault.token.decimals || 18)
-        );
-        setDeposits(underlying * (vault.tvl?.price || 0));
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [vault.chainID, vault.address, vault.token.decimals, vault.tvl?.price, walletAddress]);
 
   // The header collapses its chips once the page scrolls past the sentinel.
   useEffect(() => {
@@ -153,7 +144,7 @@ export const VaultDetailPage: React.FC<VaultDetailPageProps> = ({
             <span className="y-vd-deposits__value">{formatUSD(deposits)}</span>
           </div>
           <div className="y-vd-tabs y-vd-tabs--widget" role="tablist" aria-label="Vault actions">
-            {WIDGET_TABS.map((tab) => (
+            {widgetTabs.map((tab) => (
               <button
                 key={tab.id}
                 type="button"
@@ -184,7 +175,10 @@ export const VaultDetailPage: React.FC<VaultDetailPageProps> = ({
             tab={widgetTab}
             walletAddress={walletAddress}
             walletChainId={walletChainId}
+            position={position}
             onConnectWallet={onConnectWallet}
+            onOpenActivity={onOpenActivity}
+            onBalancesChanged={onBalancesChanged}
           />
         </aside>
       </div>

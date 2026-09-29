@@ -39,6 +39,15 @@ export function formatUSD(value: number | null | undefined): string {
   return `$${compactFormatter.format(num)}`;
 }
 
+/** TVL as yearn.fi prints it: `$19.7M` from $10K, `$5,192` from $100, `$95.12` below. */
+export function formatTVL(value: number | null | undefined): string {
+  const num = Number(value || 0);
+  if (!Number.isFinite(num) || num === 0) return '$0.00';
+  if (Math.abs(num) >= 10_000) return `${compactFormatter.format(num)}`;
+  if (Math.abs(num) >= 100) return `${wholeFormatter.format(num)}`;
+  return `${plainFormatter.format(num)}`;
+}
+
 /** `$5,519,192` — used in the strategy donut legend and tooltips. */
 export function formatUSDFull(value: number | null | undefined): string {
   const num = Number(value || 0);
@@ -58,10 +67,11 @@ export function formatUSDCents(value: number | null | undefined): string {
   return `${num < 0 ? '-' : ''}$${centsFormatter.format(Math.abs(num))}`;
 }
 
-/** Accepts a ratio (0.0846) and prints `8.46%`. */
+/** Accepts a ratio (0.0846) and prints `8.46%`; yearn.fi caps the display at `≥ 500%`. */
 export function formatAPY(ratio: number | null | undefined): string {
   const num = Number(ratio || 0);
   if (!Number.isFinite(num) || num === 0) return '0.00%';
+  if (num >= 5) return '≥ 500%';
   return `${plainFormatter.format(num * 100)}%`;
 }
 

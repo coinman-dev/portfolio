@@ -143,6 +143,44 @@ export const Info: React.FC<IconProps> = ({ size = 16, className, style }) => (
   </svg>
 );
 
+/* Activity row icons. */
+
+export const DepositIcon: React.FC<IconProps> = ({ size = 20, className, style }) => (
+  <svg {...base(size)} className={className} style={style}>
+    <path d="M12 3v12M7 10l5 5 5-5" {...stroke} />
+    <path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" {...stroke} />
+  </svg>
+);
+
+export const WithdrawIcon: React.FC<IconProps> = ({ size = 20, className, style }) => (
+  <svg {...base(size)} className={className} style={style}>
+    <path d="M12 15V3M7 8l5-5 5 5" {...stroke} />
+    <path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" {...stroke} />
+  </svg>
+);
+
+export const TransferIcon: React.FC<IconProps> = ({ size = 20, className, style }) => (
+  <svg {...base(size)} className={className} style={style}>
+    <circle cx="18" cy="18" r="3" {...stroke} />
+    <circle cx="6" cy="6" r="3" {...stroke} />
+    <path d="M13 6h3a2 2 0 0 1 2 2v7M11 18H8a2 2 0 0 1-2-2V9" {...stroke} />
+  </svg>
+);
+
+export const CoinsIcon: React.FC<IconProps> = ({ size = 20, className, style }) => (
+  <svg {...base(size)} className={className} style={style}>
+    <circle cx="8" cy="8" r="6" {...stroke} />
+    <path d="M18.09 10.37A6 6 0 1 1 10.34 18M7 6h1v4M16.71 13.88l.7.71-2.82 2.82" {...stroke} />
+  </svg>
+);
+
+export const CalendarIcon: React.FC<IconProps> = ({ size = 16, className, style }) => (
+  <svg {...base(size)} className={className} style={style}>
+    <rect x="3" y="4" width="18" height="18" rx="2" {...stroke} />
+    <path d="M16 2v4M8 2v4M3 10h18" {...stroke} />
+  </svg>
+);
+
 export const Menu: React.FC<IconProps> = ({ size = 24, className, style }) => (
   <svg {...base(size)} className={className} style={style}>
     <path d="M3 6h18M3 12h18M3 18h18" {...stroke} />

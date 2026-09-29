@@ -29,6 +29,19 @@ export const VAULT_ICON_OVERRIDES: Record<string, string> = {
 
 export const YBOLD_VAULT_ADDRESS = '0x9F4330700a36B29952869fac9b33f45EEdd8A3d8';
 export const YBOLD_STAKING_ADDRESS = '0x23346B04a7f55b8760E5860AA5A77383D63491cD';
+/**
+ * yBOLD Zapper (source on Sourcify, `src/periphery/Zapper.sol`). `zapIn` takes
+ * BOLD, deposits it into yBOLD and stakes the shares in st-yBOLD for the
+ * receiver; `zapOut` redeems st-yBOLD and then yBOLD back to BOLD.
+ */
+export const YBOLD_ZAPPER_ADDRESS = '0xE7099092533A3FB693Bb123cD96B8e53b4d83C58';
+
+/**
+ * Loss a full withdrawal may accept, in basis points (0.01%). The vaults'
+ * own default for `redeem` is 100%; yearn.fi relies on it, but a position of
+ * this size should fail loudly rather than absorb an unrealized loss.
+ */
+export const MAX_LOSS_BPS = 1n;
 
 export const LINKS = {
   userDocs: 'https://docs.yearn.fi/getting-started/products/yvaults/overview',

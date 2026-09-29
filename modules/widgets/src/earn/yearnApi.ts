@@ -1,4 +1,12 @@
 import { YearnVault, SupportedChain, YearnStrategy } from './types';
+import { fetchKongVaultList } from './kongApi';
+import {
+  formatVaultDisplayName,
+  isMergedAlias,
+  isYearnCatalogVault,
+  KongListVault,
+  mapKongVault,
+} from './kongVaults';
 import {
   VAULT_ICON_OVERRIDES,
   YBOLD_STAKING_ADDRESS,
@@ -119,21 +127,6 @@ interface MapContext {
   lockedYvUsd?: any;
 }
 
-/**
- * Display name rule used by yearn.fi: drop the Curve/Aerodrome/Velodrome
- * prefix, turn "… Factory yVault" into "… LP" and strip a bare " yVault".
- */
-function formatVaultDisplayName(rawName: string): string {
-  const baseName = rawName.replace(/^(curve|aerodrome|velodrome)\s+/i, '');
-  if (baseName.includes(' Factory yVault')) {
-    return baseName.replace(' Factory yVault', ' LP');
-  }
-  if (baseName.includes(' yVault')) {
-    return baseName.replace(' yVault', '');
-  }
-  return baseName;
-}
-
 function mapVault(v: any, chainId: number, ctx: MapContext = {}): YearnVault {
   const addr = String(v.address).toLowerCase();
   let netAPR = 0;
@@ -145,7 +138,7 @@ function mapVault(v: any, chainId: number, ctx: MapContext = {}): YearnVault {
     // Yearn BOLD shows the staking contract's yield and fees.
     const stakedWeekAgo = Number(ctx.stakedYBold.apr?.points?.weekAgo || 0);
     const stakedNet = Number(ctx.stakedYBold.apr?.netAPR || 0);
-    netAPR = stakedWeekAgo > 0 ? stakedWeekAgo : stakedNet > 0 ? stakedNet : 0.131;
+    netAPR = stakedWeekAgo > 0 ? stakedWeekAgo : stakedNet;
     fees = {
       management: 0,
       performance:
@@ -172,6 +165,11 @@ function mapVault(v: any, chainId: number, ctx: MapContext = {}): YearnVault {
     const hist = Number(v.apr?.netAPR || 0);
     netAPR = fwd > 0 ? fwd : hist;
   }
+
+  // yBOLD itself earns nothing (APR 0, price per share 1); its yield accrues in
+  // the staking vault, so the 7/30-day and inception points come from there too.
+  const aprPoints =
+    addr === YBOLD_VAULT && ctx.stakedYBold?.apr?.points ? ctx.stakedYBold.apr.points : v.apr?.points;
 
   let computedName = v.name || v.displayName || 'Yearn Vault';
   let category = v.category || v.details?.category || 'General';
@@ -233,11 +231,11 @@ function mapVault(v: any, chainId: number, ctx: MapContext = {}): YearnVault {
       type: v.apr?.type,
       netAPR,
       fees,
-      points: v.apr?.points
+      points: aprPoints
         ? {
-            weekAgo: numberOrNull(v.apr.points.weekAgo),
-            monthAgo: numberOrNull(v.apr.points.monthAgo),
-            inception: numberOrNull(v.apr.points.inception),
+            weekAgo: numberOrNull(aprPoints.weekAgo),
+            monthAgo: numberOrNull(aprPoints.monthAgo),
+            inception: numberOrNull(aprPoints.inception),
           }
         : undefined,
       pricePerShare: v.apr?.pricePerShare
@@ -262,7 +260,11 @@ function mapVault(v: any, chainId: number, ctx: MapContext = {}): YearnVault {
         : undefined,
     },
     strategies: mapStrategies(v),
-    staking: v.staking,
+    // As yearn.fi's `patchYBoldVaults`: st-yBOLD is yBOLD's staking contract.
+    staking:
+      addr === YBOLD_VAULT && ctx.stakedYBold
+        ? { address: ctx.stakedYBold.address, available: true, source: 'yBOLD' }
+        : v.staking,
     info: v.info,
     details: v.details,
     lockedTwin,
@@ -270,54 +272,82 @@ function mapVault(v: any, chainId: number, ctx: MapContext = {}): YearnVault {
   };
 }
 
-/**
- * Fetch all vaults for a specific chain using Yearn's yDaemon.
- */
-export async function fetchYearnVaults(chainId: number): Promise<YearnVault[]> {
+async function fetchRawYDaemonVaults(chainId: number): Promise<any[]> {
   try {
-    const url = `${YDAEMON_BASE_URL}/${chainId}/vaults/all?limit=2500`;
-    const res = await fetch(url);
-    if (!res.ok) {
-      throw new Error(`Failed to fetch Yearn vaults: ${res.statusText}`);
-    }
-
-    const rawVaults: any[] = await res.json();
-    if (!Array.isArray(rawVaults)) {
-      return [];
-    }
-
-    // Alias vaults that yearn.fi merges into a parent row.
-    const ctx: MapContext = {
-      stakedYBold: rawVaults.find((v) => v?.address && v.address.toLowerCase() === YBOLD_STAKING),
-      lockedYvUsd: rawVaults.find((v) => v?.address && v.address.toLowerCase() === YVUSD_LOCKED),
-    };
-
-    return rawVaults
-      .filter((v) => {
-        if (!v || !v.address || !v.token) return false;
-        const addr = v.address.toLowerCase();
-        // Merged alias vaults are not listed separately.
-        if (addr === YBOLD_STAKING) return false;
-        if (addr === YVUSD_LOCKED) return false;
-        // Retired vaults stay in the list (they render a "Retired" chip);
-        // hidden vaults and the minimum-TVL floor are handled by the list filters.
-        if (v.emergency_shutdown) return false;
-        return true;
-      })
-      .map((v) => mapVault(v, chainId, ctx));
+    const res = await fetch(`${YDAEMON_BASE_URL}/${chainId}/vaults/all?limit=2500`);
+    if (!res.ok) throw new Error(`Failed to fetch Yearn vaults: ${res.statusText}`);
+    const body = await res.json();
+    return Array.isArray(body) ? body.filter((v) => v?.address && v.token) : [];
   } catch (err) {
-    console.error(`[YearnApi] Error fetching vaults for chain ${chainId}:`, err);
+    console.error(`[YearnApi] Error fetching yDaemon vaults for chain ${chainId}:`, err);
     return [];
   }
 }
 
+/** yDaemon-only mapping: the fallback when Kong is down, and vaults Kong's
+ *  catalog leaves out. */
+function mapYDaemonVaults(rawVaults: any[], chainId: number): YearnVault[] {
+  // Alias vaults that yearn.fi merges into a parent row.
+  const ctx: MapContext = {
+    stakedYBold: rawVaults.find((v) => v.address.toLowerCase() === YBOLD_STAKING),
+    lockedYvUsd: rawVaults.find((v) => v.address.toLowerCase() === YVUSD_LOCKED),
+  };
+  return rawVaults.filter((v) => !isMergedAlias(v)).map((v) => mapVault(v, chainId, ctx));
+}
+
 /**
- * Fetch vaults across all supported chains concurrently.
+ * Every vault on the supported chains. The list and its numbers come from
+ * Kong's catalog, as on yearn.fi; yDaemon fills in prices, strategies and
+ * descriptions. Retired and shut-down vaults stay in the data set — positions
+ * in them must still show up and be withdrawable; the list filters decide
+ * what is listed.
  */
 export async function fetchAllChainsVaults(): Promise<YearnVault[]> {
-  const promises = SUPPORTED_CHAINS.map((c) => fetchYearnVaults(c.id));
-  const results = await Promise.all(promises);
-  return results.flat();
+  const [kongList, ydaemonLists] = await Promise.all([
+    fetchKongVaultList().catch((err) => {
+      console.warn('[YearnApi] Kong vault list unavailable, falling back to yDaemon:', err);
+      return null;
+    }),
+    Promise.all(SUPPORTED_CHAINS.map((chain) => fetchRawYDaemonVaults(chain.id))),
+  ]);
+
+  if (!kongList) {
+    return ydaemonLists.flatMap((raw, index) => mapYDaemonVaults(raw, SUPPORTED_CHAINS[index].id));
+  }
+
+  const key = (chainId: number, address: string) => `${chainId}:${address.toLowerCase()}`;
+  const ydaemon = new Map<string, any>();
+  ydaemonLists.forEach((raw, index) => {
+    for (const vault of raw) ydaemon.set(key(SUPPORTED_CHAINS[index].id, vault.address), vault);
+  });
+
+  const supported = new Set(SUPPORTED_CHAINS.map((chain) => chain.id));
+  const catalog = (kongList as KongListVault[]).filter(
+    (vault) => vault?.address && supported.has(vault.chainId) && isYearnCatalogVault(vault)
+  );
+  const onMainnet = (address: string) =>
+    catalog.find((vault) => vault.chainId === 1 && vault.address.toLowerCase() === address.toLowerCase());
+  const ctx = {
+    ydaemon,
+    stakedYBold: onMainnet(YBOLD_STAKING_ADDRESS),
+    lockedYvUsd: onMainnet(YVUSD_LOCKED_ADDRESS),
+  };
+
+  const mapped = catalog.filter((vault) => !isMergedAlias(vault)).map((vault) => mapKongVault(vault, ctx));
+
+  // Vaults outside the site's catalog never show in the list, but a position
+  // in one still shows up in the portfolio and can be withdrawn.
+  const seen = new Set([...catalog.map((vault) => key(vault.chainId, vault.address))]);
+  const extras = ydaemonLists.flatMap((raw, index) => {
+    const chainId = SUPPORTED_CHAINS[index].id;
+    const missing = raw.filter((vault) => !seen.has(key(chainId, vault.address)));
+    return mapYDaemonVaults(missing, chainId).map((vault) => ({
+      ...vault,
+      info: { ...vault.info, isHidden: true },
+    }));
+  });
+
+  return [...mapped, ...extras];
 }
 
 /** Single vault fetch — used by the detail page for fresh strategies/APR points. */

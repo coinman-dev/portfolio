@@ -49,6 +49,13 @@ export interface KongCompositionEntry {
 export interface KongSnapshot {
   chainId: number;
   address: string;
+  /** Realised net APY; the list endpoint leaves it out for some vaults. */
+  apy?: {
+    net?: number | null;
+    weeklyNet?: number | null;
+    monthlyNet?: number | null;
+    inceptionNet?: number | null;
+  };
   name?: string;
   symbol?: string;
   decimals?: number;
@@ -156,6 +163,62 @@ export async function fetchTvlTimeseries(
   const raw = await cachedJson<RawPoint[]>(timeseriesUrl('tvl', chainId, address, []));
   const series = groupSeries(raw);
   return series[0]?.points || [];
+}
+
+const KONG_LIST_TTL_MS = 10 * 60_000;
+let kongList: { at: number; promise: Promise<any[]> } | null = null;
+
+/**
+ * Kong's full vault list (~2 MB). The vaults list and the activity labels both
+ * need it, so one download serves both for a few minutes.
+ */
+export function fetchKongVaultList(): Promise<any[]> {
+  if (kongList && Date.now() - kongList.at < KONG_LIST_TTL_MS) return kongList.promise;
+  const promise = fetch(`${KONG_BASE_URL}/api/rest/list/vaults`).then(async (res) => {
+    if (!res.ok) throw new Error(`Kong vault list: ${res.status} ${res.statusText}`);
+    const body = await res.json();
+    return Array.isArray(body) ? body : [];
+  });
+  kongList = { at: Date.now(), promise };
+  // A failed download must not be served from the cache.
+  promise.catch(() => {
+    if (kongList?.promise === promise) kongList = null;
+  });
+  return promise;
+}
+
+/** Name and symbols of one vault as yearn.fi labels it in the activity list. */
+export interface KongVaultLabel {
+  name: string;
+  symbol: string;
+  assetAddress?: string;
+  assetSymbol?: string;
+}
+
+/** `${chainId}:${lowercase address}` */
+export type KongVaultIndex = Record<string, KongVaultLabel>;
+
+export const kongVaultKey = (chainId: number, address: string) =>
+  `${chainId}:${address.toLowerCase()}`;
+
+/**
+ * Every vault Kong knows, including the ones the vaults list merges away
+ * (st-yBOLD, locked yvUSD) and long-retired ones that still appear in a
+ * wallet's history. About 2 MB raw, ~290 KB over the wire.
+ */
+export async function fetchKongVaultIndex(): Promise<KongVaultIndex> {
+  const raw = await fetchKongVaultList();
+  const index: KongVaultIndex = {};
+  for (const vault of Array.isArray(raw) ? raw : []) {
+    if (!vault?.address || !vault?.chainId) continue;
+    index[kongVaultKey(vault.chainId, vault.address)] = {
+      name: vault.name || vault.symbol || '',
+      symbol: vault.symbol || '',
+      assetAddress: vault.asset?.address,
+      assetSymbol: vault.asset?.symbol,
+    };
+  }
+  return index;
 }
 
 /** Vault snapshot: deployment time, risk breakdown, live totals. */

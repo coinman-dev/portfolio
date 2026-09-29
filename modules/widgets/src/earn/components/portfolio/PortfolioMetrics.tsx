@@ -19,7 +19,8 @@ interface Metric {
   isLoading: boolean;
 }
 
-/** Deposit-weighted average of a per-vault rate; null when no rate is known. */
+/** Deposit-weighted average of a per-vault rate over the whole portfolio, as
+ *  yearn.fi computes it: a vault without a rate counts as 0%. */
 function weightedRate(
   positions: PortfolioPosition[],
   totalUsd: number,
@@ -27,14 +28,10 @@ function weightedRate(
 ): number | null {
   if (totalUsd <= 0) return null;
   let weighted = 0;
-  let covered = 0;
   for (const position of positions) {
-    const rate = rateOf(position);
-    if (rate === null) continue;
-    weighted += rate * position.usdValue;
-    covered += position.usdValue;
+    weighted += (rateOf(position) ?? 0) * position.usdValue;
   }
-  return covered > 0 ? weighted / covered : null;
+  return weighted / totalUsd;
 }
 
 /** `+4.66%` — the site signs the all-time return. */

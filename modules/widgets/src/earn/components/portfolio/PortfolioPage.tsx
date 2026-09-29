@@ -2,6 +2,7 @@ import React from 'react';
 import { YearnVault } from '../../types';
 import { PortfolioHoldings as PortfolioHoldingsData } from '../../hooks/usePortfolioHoldings';
 import { EmptySectionCard } from './EmptySectionCard';
+import { PortfolioActivity } from './PortfolioActivity';
 import { PortfolioHistoryChart } from './PortfolioHistoryChart';
 import { PortfolioHoldings } from './PortfolioHoldings';
 import { PortfolioMetrics } from './PortfolioMetrics';
@@ -34,12 +35,16 @@ export const PortfolioPage: React.FC<PortfolioPageProps> = ({
     if (activeTab === 'activity') {
       return (
         <section className="y-pf-section">
-          <EmptySectionCard
-            title={isConnected ? 'Activity is coming soon' : 'Connect a wallet to view activity'}
-            description="Review your recent Yearn transactions."
-            ctaLabel={isConnected ? 'Explore Vaults' : 'Connect wallet'}
-            onCta={isConnected ? onExploreVaults : onConnectWallet}
-          />
+          {isConnected && walletAddress ? (
+            <PortfolioActivity address={walletAddress} vaults={vaults} onSelectVault={onSelectVault} />
+          ) : (
+            <EmptySectionCard
+              title="Connect a wallet to view activity"
+              description="Review your recent Yearn transactions."
+              ctaLabel="Connect wallet"
+              onCta={onConnectWallet}
+            />
+          )}
         </section>
       );
     }
