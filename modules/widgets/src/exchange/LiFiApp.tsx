@@ -1,13 +1,53 @@
-import React, { useMemo, useEffect } from 'react';
-import { LiFiWidget, WidgetConfig, useWidgetEvents, WidgetEvent } from '@lifi/widget';
+import React, { useMemo, useEffect, useRef, useState } from 'react';
+import {
+  ChainId,
+  ChainType,
+  FormFieldChanged,
+  LiFiWidget,
+  WidgetConfig,
+  useWidgetEvents,
+  WidgetEvent,
+} from '@lifi/widget';
 import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { EthereumProvider } from '@lifi/widget-provider-ethereum';
+import { TronProvider } from '@lifi/widget-provider-tron';
+import { EthereumProvider as EthereumSDKProvider } from '@lifi/sdk-provider-ethereum';
+import { TronProvider as TronSDKProvider } from '@lifi/sdk-provider-tron';
+import {
+  WalletProvider as TronWalletProvider,
+  useWallet as useTronWallet,
+} from '@tronweb3/tronwallet-adapter-react-hooks';
+import { WalletConnectAdapter } from '@tronweb3/tronwallet-adapter-walletconnect';
 import { ExchangeMountOptions } from '../types';
-import { wagmiConfig, PROJECT_ID } from '../wallet/wallet';
+import { wagmiConfig, PROJECT_ID, defaultMetadata } from '../wallet/wallet';
 import { diag } from '../diag';
+import { guardEvmClient, guardTronWallet, onGuardBlock } from './lifiGuard';
 
 const queryClient = new QueryClient();
+
+/**
+ * Tron wallets connect over WalletConnect only: the extension wallets the
+ * widget would otherwise list (TronLink, OKX…) cannot live in this webview.
+ */
+function createTronAdapters(projectId: string) {
+  return [
+    new WalletConnectAdapter({
+      network: 'Mainnet',
+      options: { projectId, metadata: defaultMetadata, customStoragePrefix: 'tron' },
+      themeMode: 'dark',
+      themeVariables: { '--w3m-z-index': 10001 },
+      enableAnalytics: false,
+    }),
+  ];
+}
+
+function shortenTronAddress(address: string): string {
+  return `${address.slice(0, 6)}…${address.slice(-4)}`;
+}
+
+const isUserRejection = (err: any) =>
+  err?.code === 4001 || /reject|cancel|closed|reset/i.test(String(err?.message ?? err));
 
 /** One line per route for the diagnostic log: `12.5$ USDC (1) → DAI (42161) id=…`. */
 function describeRoute(route: any): string {
@@ -76,13 +116,74 @@ function WidgetEventsHandler({ onSettingsChange }: { onSettingsChange?: (setting
   return null;
 }
 
-export const LiFiApp: React.FC<ExchangeMountOptions> = ({
-  projectId = PROJECT_ID,
-  initialSettings: _initialSettings,
-  onSettingsChange,
-  onWalletConnect: _onWalletConnect,
-  onWalletDisconnect: _onWalletDisconnect,
-}) => {
+/** The connected Tron wallet and a way to drop it: while wallets are managed
+ *  outside the widget, it hides its own wallet menu. */
+function TronWalletBar() {
+  const { address, connected, disconnect } = useTronWallet();
+  if (!connected || !address) return null;
+  return (
+    <div className="coinman-tron-bar">
+      <span className="coinman-tron-bar__label">Tron</span>
+      <span className="coinman-tron-bar__address" title={address}>
+        {shortenTronAddress(address)}
+      </span>
+      <button
+        type="button"
+        className="coinman-tron-bar__btn"
+        onClick={() => void disconnect().catch(() => undefined)}
+      >
+        Disconnect
+      </button>
+    </div>
+  );
+}
+
+/** Says why a transaction never reached the wallet; the widget itself only
+ *  reports a generic failure. */
+function GuardNotice() {
+  const [reason, setReason] = useState<string | null>(null);
+  useEffect(() => onGuardBlock(setReason), []);
+  if (!reason) return null;
+  return (
+    <div className="coinman-exchange-alert" role="alert">
+      <span>{`Transaction blocked: ${reason}. Nothing was sent to the wallet.`}</span>
+      <button type="button" aria-label="Dismiss" onClick={() => setReason(null)}>
+        ×
+      </button>
+    </div>
+  );
+}
+
+function LiFiExchange({ onSettingsChange }: { onSettingsChange?: (settings: any) => void }) {
+  const { wallets, select } = useTronWallet();
+  const connectTron = useRef<() => Promise<void>>(async () => undefined);
+
+  // Until there is a route the widget's "Connect wallet" does not say which
+  // chain it needs, so the source chain the user picked decides.
+  const widgetEvents = useWidgetEvents();
+  const fromChainId = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    const onFieldChanged = (change?: FormFieldChanged) => {
+      if (change?.fieldName === 'fromChain') fromChainId.current = change.newValue as number | undefined;
+    };
+    widgetEvents.on(WidgetEvent.FormFieldChanged, onFieldChanged);
+    return () => {
+      widgetEvents.off(WidgetEvent.FormFieldChanged, onFieldChanged);
+    };
+  }, [widgetEvents]);
+  useEffect(() => {
+    connectTron.current = async () => {
+      const adapter = wallets[0]?.adapter;
+      if (!adapter) return;
+      try {
+        select(adapter.name);
+        await adapter.connect();
+      } catch (err: any) {
+        if (!isUserRejection(err)) diag('error', 'LIFI', `Tron wallet connect failed: ${err?.message ?? err}`);
+      }
+    };
+  }, [wallets, select]);
+
   const widgetConfig: WidgetConfig = useMemo(() => {
     return {
       integrator: 'CoinMan',
@@ -123,26 +224,74 @@ export const LiFiApp: React.FC<ExchangeMountOptions> = ({
       variant: 'compact',
       subvariant: 'default',
       appearance: 'dark',
+      // Both providers sign through lifiGuard. Message signing stays off, so
+      // every step is a plain transaction the guard can inspect.
       providers: [
-        EthereumProvider(),
+        EthereumProvider({
+          disableMessageSigning: true,
+          sdkProvider: ({ getWalletClient, switchChain }) =>
+            EthereumSDKProvider({
+              getWalletClient: async () => guardEvmClient(await getWalletClient()),
+              switchChain: async (chainId: number) => {
+                const client = await switchChain(chainId);
+                return client ? guardEvmClient(client) : client;
+              },
+              disableMessageSigning: true,
+            }),
+        }),
+        TronProvider({
+          sdkProvider: ({ getWallet }) =>
+            TronSDKProvider({
+              getWallet: async () => guardTronWallet(await getWallet()),
+              multicallBatchSize: 40,
+            }),
+        }),
       ],
       walletConfig: {
-        async onConnect() {
-          console.log('[CoinMan Exchange] Li-Fi connected wallet');
+        // EVM wallets are the app's own; Tron connects over WalletConnect here.
+        onConnect(args) {
+          const tron = args?.chain
+            ? args.chain.chainType === ChainType.TVM
+            : fromChainId.current === ChainId.TRN;
+          if (tron) void connectTron.current();
+          else void (window as any).AppExchange?.handleWalletClick?.();
         },
       },
     };
-  }, [projectId]);
+  }, []);
+
+  return (
+    <div className="coinman-exchange-wrapper">
+      <GuardNotice />
+      <TronWalletBar />
+      <div className="coinman-exchange-card">
+        <WidgetEventsHandler onSettingsChange={onSettingsChange} />
+        <LiFiWidget integrator="CoinMan" config={widgetConfig} />
+      </div>
+    </div>
+  );
+}
+
+export const LiFiApp: React.FC<ExchangeMountOptions> = ({
+  projectId = PROJECT_ID,
+  initialSettings: _initialSettings,
+  onSettingsChange,
+  onWalletConnect: _onWalletConnect,
+  onWalletDisconnect: _onWalletDisconnect,
+}) => {
+  const [tronAdapters] = useState(() => createTronAdapters(projectId));
 
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        <div className="coinman-exchange-wrapper">
-          <div className="coinman-exchange-card">
-            <WidgetEventsHandler onSettingsChange={onSettingsChange} />
-            <LiFiWidget integrator="CoinMan" config={widgetConfig} />
-          </div>
-        </div>
+        <TronWalletProvider
+          adapters={tronAdapters}
+          onError={(err) => {
+            if (!isUserRejection(err)) diag('warn', 'LIFI', `Tron wallet: ${err.message}`);
+          }}
+        >
+          <LiFiExchange onSettingsChange={onSettingsChange} />
+        </TronWalletProvider>
       </QueryClientProvider>
     </WagmiProvider>
   );
