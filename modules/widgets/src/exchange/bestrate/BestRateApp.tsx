@@ -18,7 +18,7 @@ import {
 } from './search';
 import { FAMILY_NAMES, formatAmount, formatUSD, isAddressFor, shortAddress } from './format';
 import { Logo, TokenSelect } from './TokenSelect';
-import { RouteCard } from './RouteCard';
+import { RouteCard, RouteSection } from './RouteCard';
 import { ExecutePanel } from './ExecutePanel';
 import { executionBlocker } from './execute/plan';
 import { readBalance } from './execute/balance';
@@ -244,17 +244,21 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
     [routes, request, feeCap, disabled]
   );
   const bestNet = ranking?.ranked.find((r) => r.badges.includes('best'))?.netUSD;
-  const [showAll, setShowAll] = useState(false);
-  // One row per service unless asked for more: LI.FI alone returns up to ten.
-  const visible = useMemo(() => {
-    if (!ranking || showAll) return ranking?.ranked ?? [];
-    const seen = new Set<string>();
-    return ranking.ranked.filter((route) => {
-      const first = !seen.has(route.provider);
-      seen.add(route.provider);
-      return first || route.badges.length > 0;
-    });
-  }, [ranking, showAll]);
+  // Routes signable in the app first, site-only ones below; each list shows
+  // its best two (from different services) until expanded.
+  const [expanded, setExpanded] = useState({ here: false, site: false });
+  const sections = useMemo(() => {
+    if (!ranking || !request) return null;
+    const signableHere = (route: RankedRoute) =>
+      SIGNABLE.includes(route.provider) &&
+      !route.estimateOnly &&
+      request.fromChain.type === 'EVM' &&
+      WALLET_CHAINS.includes(request.fromChain.id);
+    return {
+      here: ranking.ranked.filter(signableHere),
+      site: ranking.ranked.filter((route) => !signableHere(route)),
+    };
+  }, [ranking, request]);
 
   const choose = (side: 'from' | 'to', chain: BrChain, token: BrToken) => {
     if (side === 'from') setFromToken(token);
@@ -281,6 +285,15 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
         <section className="br-card br-form">
           <div className="br-form__head">
             <h2>Best rate</h2>
+            {/* Same wallet list as the Exchange menu's "Wallet Connect". */}
+            <button
+              type="button"
+              className={`br-wallet${evmAddress ? '' : ' is-empty'}`}
+              title={evmAddress ?? 'No wallet connected — quotes use a stand-in address'}
+              onClick={() => void (window as any).AppExchange?.handleWalletClick?.()}
+            >
+              {evmAddress ? shortAddress(evmAddress) : 'Connect wallet'}
+            </button>
             <button
               type="button"
               className="br-icon-btn"
@@ -469,13 +482,8 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
             )}
           </div>
 
+          {families.length > 0 && (
           <div className="br-addresses">
-            <div className="br-address">
-              <span className="br-side__label">EVM address</span>
-              <span className={evmAddress ? '' : 'br-muted'}>
-                {evmAddress ? shortAddress(evmAddress) : 'No wallet connected — quotes use a stand-in address'}
-              </span>
-            </div>
             {families.map((family) => {
               const value = addresses[family] ?? '';
               const invalid = value.trim() !== '' && !isAddressFor(family, value);
@@ -493,6 +501,7 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
               );
             })}
           </div>
+          )}
 
           <div className="br-sites">
             <span className="br-side__label">Also check on their own sites</span>
@@ -532,34 +541,45 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
             <div className="br-muted br-pad">No route under your fee limit.</div>
           )}
 
-          {ranking && toToken && (
-            <div className="br-routes">
-              {visible.map((route) => (
-                <RouteCard
-                  key={route.id}
-                  route={route}
-                  toToken={toToken}
-                  bestNetUSD={bestNet}
-                  onOpenSite={openExternal}
-                  swapBlocker={
-                    SIGNABLE.includes(route.provider) && !route.estimateOnly && request
-                      ? executionBlocker(route, request, WALLET_CHAINS, balance)
-                      : undefined
-                  }
-                  onSwap={() => setExecuting(route)}
-                />
-              ))}
-              {ranking.ranked.length > visible.length && (
-                <button type="button" className="br-link" onClick={() => setShowAll(true)}>
-                  Show all {ranking.ranked.length} routes
-                </button>
-              )}
-              {showAll && (
-                <button type="button" className="br-link" onClick={() => setShowAll(false)}>
-                  Best route per service only
-                </button>
-              )}
-            </div>
+          {sections && toToken && request && ranking!.ranked.length > 0 && (
+            <>
+              <RouteSection
+                title="Swap here"
+                hint="signed from your wallet after the contract check and simulation"
+                empty="None of these services can be signed here for this pair."
+                routes={sections.here}
+                expanded={expanded.here}
+                onToggle={() => setExpanded((prev) => ({ ...prev, here: !prev.here }))}
+                renderCard={(route) => (
+                  <RouteCard
+                    key={route.id}
+                    route={route}
+                    toToken={toToken}
+                    bestNetUSD={bestNet}
+                    onOpenSite={openExternal}
+                    swapBlocker={executionBlocker(route, request, WALLET_CHAINS, balance)}
+                    onSwap={() => setExecuting(route)}
+                  />
+                )}
+              />
+              <RouteSection
+                title="On the service's site"
+                hint="opens the official site with the pair filled in"
+                empty="Nothing extra on the services' own sites."
+                routes={sections.site}
+                expanded={expanded.site}
+                onToggle={() => setExpanded((prev) => ({ ...prev, site: !prev.site }))}
+                renderCard={(route) => (
+                  <RouteCard
+                    key={route.id}
+                    route={route}
+                    toToken={toToken}
+                    bestNetUSD={bestNet}
+                    onOpenSite={openExternal}
+                  />
+                )}
+              />
+            </>
           )}
 
           {ranking && ranking.overCap.length > 0 && (

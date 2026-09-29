@@ -711,3 +711,72 @@
   font-size: 13px;
   color: var(--br-muted);
 }
+
+.br-wallet {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--br-line);
+  border-radius: 8px;
+  background: var(--br-paper);
+  color: var(--br-text);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.br-wallet::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--br-good);
+}
+
+.br-wallet.is-empty {
+  color: var(--br-accent);
+  font-family: inherit;
+}
+
+.br-wallet.is-empty::before {
+  background: var(--br-muted);
+}
+
+.br-wallet:hover {
+  border-color: rgba(255, 140, 0, 0.5);
+}
+
+.br-section + .br-section {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--br-line);
+}
+
+.br-section__head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.br-section__head h4 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.br-section__head .br-muted {
+  font-size: 12px;
+}
+
+.br-section__empty {
+  padding: 6px 0;
+  font-size: 13px;
+}
+
+.br-section__more {
+  margin-top: 10px;
+}

@@ -136,3 +136,58 @@ export const RouteCard: React.FC<RouteCardProps> = ({
     </div>
   );
 };
+
+const COLLAPSED_ROWS = 2;
+
+/** First route of each service, in rank order. */
+function bestPerService(routes: RankedRoute[]): RankedRoute[] {
+  const seen = new Set<string>();
+  return routes.filter((route) => {
+    if (seen.has(route.provider)) return false;
+    seen.add(route.provider);
+    return true;
+  });
+}
+
+interface RouteSectionProps {
+  title: string;
+  hint: string;
+  empty: string;
+  routes: RankedRoute[];
+  expanded: boolean;
+  onToggle: () => void;
+  renderCard: (route: RankedRoute) => React.ReactNode;
+}
+
+/** A titled list: its best two routes, from different services, until expanded to all. */
+export const RouteSection: React.FC<RouteSectionProps> = ({
+  title,
+  hint,
+  empty,
+  routes,
+  expanded,
+  onToggle,
+  renderCard,
+}) => {
+  const collapsed = bestPerService(routes).slice(0, COLLAPSED_ROWS);
+  const shown = expanded ? routes : collapsed;
+  const hidden = routes.length - collapsed.length;
+  return (
+    <section className="br-section">
+      <div className="br-section__head">
+        <h4>{title}</h4>
+        <span className="br-muted">{hint}</span>
+      </div>
+      {routes.length === 0 ? (
+        <div className="br-muted br-section__empty">{empty}</div>
+      ) : (
+        <div className="br-routes">{shown.map(renderCard)}</div>
+      )}
+      {hidden > 0 && (
+        <button type="button" className="br-link br-section__more" onClick={onToggle}>
+          {expanded ? 'Show less' : `Show more (${hidden})`}
+        </button>
+      )}
+    </section>
+  );
+};
