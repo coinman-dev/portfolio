@@ -1,9 +1,10 @@
-//! Swaps sent from Exchange → Best Rate, kept in `data/exchange-history.json`.
+//! Exchange's histories: swaps sent from Best Rate (`data/exchange-history.json`)
+//! and revokes sent from Approvals (`data/revoke-history.json`).
 //!
-//! A JSON array of records, newest first. The frontend owns the record
-//! format; this side only stores it: each save replaces the record with the
-//! same `id` or puts a new one on top, and the list is capped so the file
-//! cannot grow without bound.
+//! Each file is a JSON array of records, newest first. The frontend owns the
+//! record format; this side only stores it: each save replaces the record
+//! with the same `id` or puts a new one on top, and the list is capped so the
+//! file cannot grow without bound.
 //!
 //! Records hold addresses and amounts, so they never go to the diagnostic log.
 
@@ -15,28 +16,33 @@ use tauri::{AppHandle, Runtime};
 
 use crate::settings;
 
-/// The most records kept; older ones fall off the end.
+/// Swaps sent from Best Rate.
+pub const SWAPS: &str = "exchange-history.json";
+/// Revokes sent from Approvals.
+pub const REVOKES: &str = "revoke-history.json";
+
+/// The most records kept per file; older ones fall off the end.
 const MAX_RECORDS: usize = 500;
 
 /// Serializes read-modify-write cycles; commands run on several threads.
 static LOCK: Mutex<()> = Mutex::new(());
 
-pub fn load<R: Runtime>(app: &AppHandle<R>) -> Vec<Value> {
+pub fn load<R: Runtime>(app: &AppHandle<R>, file: &str) -> Vec<Value> {
     let _guard = LOCK.lock().unwrap_or_else(|p| p.into_inner());
-    read(&path(app))
+    read(&path(app, file))
 }
 
 /// Inserts `record`, or replaces the stored one with the same `id`.
-pub fn save_record<R: Runtime>(app: &AppHandle<R>, record: Value) -> Result<(), String> {
+pub fn save_record<R: Runtime>(app: &AppHandle<R>, file: &str, record: Value) -> Result<(), String> {
     let _guard = LOCK.lock().unwrap_or_else(|p| p.into_inner());
-    let path = path(app);
+    let path = path(app, file);
     let mut records = read(&path);
     upsert(&mut records, record)?;
     write(&path, &records)
 }
 
-fn path<R: Runtime>(app: &AppHandle<R>) -> PathBuf {
-    settings::data_dir(app).join("exchange-history.json")
+fn path<R: Runtime>(app: &AppHandle<R>, file: &str) -> PathBuf {
+    settings::data_dir(app).join(file)
 }
 
 fn upsert(records: &mut Vec<Value>, record: Value) -> Result<(), String> {

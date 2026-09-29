@@ -6,7 +6,7 @@ import {
   switchChain,
   waitForTransactionReceipt,
 } from '@wagmi/core';
-import { encodeFunctionData, parseAbi } from 'viem';
+import { encodeFunctionData, parseAbi, type PublicClient } from 'viem';
 import { wagmiConfig } from '../../../wallet/wallet';
 import { diag } from '../../../diag';
 import { QuoteRequest } from '../types';
@@ -93,7 +93,8 @@ export async function runPlan(
   }
 
   // With the allowance in place the swap can be tried for real, without sending.
-  const client = getPublicClient(wagmiConfig, { chainId: plan.chainId as any });
+  // One client type for all wallet networks (the union of 16 chain clients is too big for TypeScript).
+  const client = getPublicClient(wagmiConfig, { chainId: plan.chainId as any }) as unknown as PublicClient;
   try {
     await client.call({ account: plan.user, to: plan.tx.to, data: plan.tx.data, value: plan.tx.value });
   } catch (err: any) {

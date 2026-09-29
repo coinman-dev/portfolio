@@ -128,6 +128,10 @@
 					<div class="dropdown-item" id="menu-exchange-jumper" onclick="AppExchange.selectExchangeModule('jumper')">
 						<span>Jumper Exchange</span>
 					</div>
+					<div class="dropdown-divider"></div>
+					<div class="dropdown-item" id="menu-exchange-approvals" onclick="AppExchange.selectExchangeModule('approvals')">
+						<span>Approvals</span>
+					</div>
 				</div>
 			</div>
 			<div class="menu-item" id="menu-item-earn" onclick="toggleDropdown('earn-dropdown', event)"> Earn
@@ -483,6 +487,7 @@
 				</div>
 				<div id="exchange-lifi-container" class="module-widget-body" style="display: none; width: 100%;"></div>
 				<div id="exchange-cowswap-container" style="display: none; width: 100%;"></div>
+				<div id="exchange-approvals-container" style="display: none;"></div>
 			</div>
 		</div>
 		<!-- EARN VIEW -->
@@ -515,6 +520,10 @@
 			<p class="wallet-modal-intro">
 				Connect your hardware wallet (OneKey HD) or mobile/desktop wallet via WalletConnect.
 				Wallets stay connected between launches. The selected wallet is used by all exchange and earn modules; click another one to switch.
+			</p>
+			<p class="wallet-modal-intro wallet-modal-note">
+				One wallet app keeps one connection: approving a second one in OneKey ends the first. To use another account of the same OneKey,
+				switch the account in OneKey itself — CoinMan follows it without a new QR code.
 			</p>
 			<div id="wallet-modal-list" class="wallet-list"></div>
 			<div id="wallet-modal-error" class="wallet-modal-error hidden"></div>

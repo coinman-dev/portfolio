@@ -36,8 +36,29 @@ function copyToExchangePlugin() {
   };
 }
 
+/**
+ * Reown AppKit must exist once on the page. Every copy registers the same
+ * custom elements (w3m-modal…) as the bundle loads and the first one wins,
+ * so with a second copy (the Tron connector brings its own) the EVM
+ * wallet's QR window rendered the other copy's empty state and never showed.
+ */
+const APPKIT_PACKAGES = [
+  '@reown/appkit',
+  '@reown/appkit-common',
+  '@reown/appkit-controllers',
+  '@reown/appkit-pay',
+  '@reown/appkit-polyfills',
+  '@reown/appkit-scaffold-ui',
+  '@reown/appkit-ui',
+  '@reown/appkit-utils',
+  '@reown/appkit-wallet',
+];
+
 export default defineConfig({
   plugins: [react(), copyToExchangePlugin()],
+  resolve: {
+    dedupe: APPKIT_PACKAGES,
+  },
   define: {
     'process.env.NODE_ENV': JSON.stringify('production'),
     'global': 'window',

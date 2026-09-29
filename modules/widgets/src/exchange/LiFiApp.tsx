@@ -18,29 +18,13 @@ import {
   WalletProvider as TronWalletProvider,
   useWallet as useTronWallet,
 } from '@tronweb3/tronwallet-adapter-react-hooks';
-import { WalletConnectAdapter } from '@tronweb3/tronwallet-adapter-walletconnect';
 import { ExchangeMountOptions } from '../types';
-import { wagmiConfig, PROJECT_ID, defaultMetadata } from '../wallet/wallet';
+import { wagmiConfig } from '../wallet/wallet';
+import { connectTron, subscribeTron, tronAdapter } from '../wallet/tron';
 import { diag } from '../diag';
 import { guardEvmClient, guardTronWallet, onGuardBlock } from './lifiGuard';
 
 const queryClient = new QueryClient();
-
-/**
- * Tron wallets connect over WalletConnect only: the extension wallets the
- * widget would otherwise list (TronLink, OKX…) cannot live in this webview.
- */
-function createTronAdapters(projectId: string) {
-  return [
-    new WalletConnectAdapter({
-      network: 'Mainnet',
-      options: { projectId, metadata: defaultMetadata, customStoragePrefix: 'tron' },
-      themeMode: 'dark',
-      themeVariables: { '--w3m-z-index': 10001 },
-      enableAnalytics: false,
-    }),
-  ];
-}
 
 function shortenTronAddress(address: string): string {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
@@ -116,10 +100,11 @@ function WidgetEventsHandler({ onSettingsChange }: { onSettingsChange?: (setting
   return null;
 }
 
-/** The connected Tron wallet and a way to drop it: while wallets are managed
- *  outside the widget, it hides its own wallet menu. */
+/** The Tron account in use: while wallets are managed outside the widget,
+ *  it hides its own wallet menu. Tron belongs to the connected wallet's
+ *  session, so it ends with that wallet (Exchange → Wallet Connect). */
 function TronWalletBar() {
-  const { address, connected, disconnect } = useTronWallet();
+  const { address, connected } = useTronWallet();
   if (!connected || !address) return null;
   return (
     <div className="coinman-tron-bar">
@@ -127,13 +112,6 @@ function TronWalletBar() {
       <span className="coinman-tron-bar__address" title={address}>
         {shortenTronAddress(address)}
       </span>
-      <button
-        type="button"
-        className="coinman-tron-bar__btn"
-        onClick={() => void disconnect().catch(() => undefined)}
-      >
-        Disconnect
-      </button>
     </div>
   );
 }
@@ -155,8 +133,16 @@ function GuardNotice() {
 }
 
 function LiFiExchange({ onSettingsChange }: { onSettingsChange?: (settings: any) => void }) {
-  const { wallets, select } = useTronWallet();
-  const connectTron = useRef<() => Promise<void>>(async () => undefined);
+  const { select } = useTronWallet();
+
+  // The widget sees the shared Tron connection wherever it was made (here or in Approvals).
+  useEffect(
+    () =>
+      subscribeTron((address) => {
+        if (address) select(tronAdapter.name);
+      }),
+    [select]
+  );
 
   // Until there is a route the widget's "Connect wallet" does not say which
   // chain it needs, so the source chain the user picked decides.
@@ -171,18 +157,6 @@ function LiFiExchange({ onSettingsChange }: { onSettingsChange?: (settings: any)
       widgetEvents.off(WidgetEvent.FormFieldChanged, onFieldChanged);
     };
   }, [widgetEvents]);
-  useEffect(() => {
-    connectTron.current = async () => {
-      const adapter = wallets[0]?.adapter;
-      if (!adapter) return;
-      try {
-        select(adapter.name);
-        await adapter.connect();
-      } catch (err: any) {
-        if (!isUserRejection(err)) diag('error', 'LIFI', `Tron wallet connect failed: ${err?.message ?? err}`);
-      }
-    };
-  }, [wallets, select]);
 
   const widgetConfig: WidgetConfig = useMemo(() => {
     return {
@@ -253,8 +227,11 @@ function LiFiExchange({ onSettingsChange }: { onSettingsChange?: (settings: any)
           const tron = args?.chain
             ? args.chain.chainType === ChainType.TVM
             : fromChainId.current === ChainId.TRN;
-          if (tron) void connectTron.current();
-          else void (window as any).AppExchange?.handleWalletClick?.();
+          if (tron) {
+            connectTron().catch((err: any) => {
+              if (!isUserRejection(err)) diag('error', 'LIFI', `Tron wallet connect failed: ${err?.message ?? err}`);
+            });
+          } else void (window as any).AppExchange?.handleWalletClick?.();
         },
       },
     };
@@ -273,19 +250,22 @@ function LiFiExchange({ onSettingsChange }: { onSettingsChange?: (settings: any)
 }
 
 export const LiFiApp: React.FC<ExchangeMountOptions> = ({
-  projectId = PROJECT_ID,
   initialSettings: _initialSettings,
   onSettingsChange,
   onWalletConnect: _onWalletConnect,
   onWalletDisconnect: _onWalletDisconnect,
 }) => {
-  const [tronAdapters] = useState(() => createTronAdapters(projectId));
+  // Tron comes from the connected wallet's own session (shared with Approvals).
+  const [tronAdapters] = useState(() => [tronAdapter]);
 
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
+        {/* No auto-connect: connecting Tron may re-pair the wallet, which
+            only the user should start (see wallet/tron). */}
         <TronWalletProvider
           adapters={tronAdapters}
+          autoConnect={false}
           onError={(err) => {
             if (!isUserRejection(err)) diag('warn', 'LIFI', `Tron wallet: ${err.message}`);
           }}

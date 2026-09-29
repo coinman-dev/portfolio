@@ -8,9 +8,10 @@ var AppExchange = (function () {
     var settingsStore = kit.createSettingsStore('exchange', 'Exchange');
 
     var bundlePromise = null;
-    var activeModule = 'lifi'; // 'bestrate' | 'lifi' | 'cowswap'
+    var activeModule = 'lifi'; // 'bestrate' | 'lifi' | 'cowswap' | 'jumper' | 'approvals'
     var exchangeSettings = null;
     var bestRateInstance = null;
+    var approvalsInstance = null;
     var lifiInstance = null;
     var cowswapInstance = null;
     var walletSubscription = null;
@@ -247,7 +248,7 @@ var AppExchange = (function () {
     }
 
     function markActiveModuleItem() {
-        ['bestrate', 'lifi', 'cowswap', 'jumper'].forEach(function (name) {
+        ['bestrate', 'lifi', 'cowswap', 'jumper', 'approvals'].forEach(function (name) {
             var item = document.getElementById('menu-exchange-' + name);
             if (item) item.classList.toggle('active', activeModule === name);
         });
@@ -258,6 +259,7 @@ var AppExchange = (function () {
         cowswap: 'CoinMan DEX Exchange • CoW Swap',
         jumper: 'CoinMan Jumper Exchange • jumper.xyz',
         lifi: 'CoinMan Cross-Chain Exchange • LI.FI',
+        approvals: 'CoinMan Approvals • revoke token access',
     };
 
     function updateExchangeViews() {
@@ -267,6 +269,7 @@ var AppExchange = (function () {
             lifi: document.getElementById('exchange-lifi-container'),
             cowswap: document.getElementById('exchange-cowswap-container'),
             jumper: document.getElementById('exchange-jumper-container'),
+            approvals: document.getElementById('exchange-approvals-container'),
         };
         Object.keys(containers).forEach(function (name) {
             if (containers[name]) containers[name].style.display = name === module ? 'block' : 'none';
@@ -279,6 +282,7 @@ var AppExchange = (function () {
 
         ensureBundleLoaded().then(function () {
             if (module === 'bestrate') mountBestRateIfNeeded();
+            else if (module === 'approvals') mountApprovalsIfNeeded();
             else if (module === 'cowswap') mountCowSwapIfNeeded();
             else if (module === 'jumper') showJumper();
             else mountLiFiIfNeeded();
@@ -324,6 +328,28 @@ var AppExchange = (function () {
             }
         } catch (err) {
             console.error('[Exchange] Error mounting Best Rate:', err);
+        }
+    }
+
+    function mountApprovalsIfNeeded() {
+        var container = document.getElementById('exchange-approvals-container');
+        if (!container || approvalsInstance) return;
+
+        try {
+            if (window.CoinmanApprovals && typeof window.CoinmanApprovals.mount === 'function') {
+                approvalsInstance = window.CoinmanApprovals.mount({
+                    container: container,
+                    initialSettings: exchangeSettings || {},
+                    onSettingsChange: function (updated) {
+                        exchangeSettings = Object.assign({}, exchangeSettings || {}, updated);
+                        saveExchangeSettings(exchangeSettings);
+                    },
+                });
+            } else {
+                console.warn('[Exchange] CoinmanApprovals.mount is not available');
+            }
+        } catch (err) {
+            console.error('[Exchange] Error mounting Approvals:', err);
         }
     }
 

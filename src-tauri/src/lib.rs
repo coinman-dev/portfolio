@@ -1,3 +1,4 @@
+mod approvals;
 mod diag_log;
 mod exchange_history;
 mod jumper;
@@ -342,12 +343,22 @@ fn save_wallet_store(
 
 #[tauri::command]
 fn load_exchange_history(app: tauri::AppHandle) -> Vec<serde_json::Value> {
-    exchange_history::load(&app)
+    exchange_history::load(&app, exchange_history::SWAPS)
 }
 
 #[tauri::command]
 fn save_exchange_record(app: tauri::AppHandle, record: serde_json::Value) -> Result<(), String> {
-    exchange_history::save_record(&app, record)
+    exchange_history::save_record(&app, exchange_history::SWAPS, record)
+}
+
+#[tauri::command]
+fn load_revoke_history(app: tauri::AppHandle) -> Vec<serde_json::Value> {
+    exchange_history::load(&app, exchange_history::REVOKES)
+}
+
+#[tauri::command]
+fn save_revoke_record(app: tauri::AppHandle, record: serde_json::Value) -> Result<(), String> {
+    exchange_history::save_record(&app, exchange_history::REVOKES, record)
 }
 
 #[tauri::command]
@@ -592,6 +603,9 @@ pub fn run() {
             save_wallet_store,
             load_exchange_history,
             save_exchange_record,
+            load_revoke_history,
+            save_revoke_record,
+            approvals::approvals_hypersync,
             jumper::jumper_show,
             jumper::jumper_hide,
             jumper::jumper_wallet_response,

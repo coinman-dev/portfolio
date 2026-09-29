@@ -2,6 +2,7 @@ import ReactDOM from 'react-dom/client';
 import { LiFiApp } from './exchange/LiFiApp';
 import { mountCowSwap } from './exchange/cowswap';
 import { BestRateApp } from './exchange/bestrate/BestRateApp';
+import { ApprovalsApp } from './exchange/approvals/ApprovalsApp';
 import { hideJumperView, showJumperView } from './exchange/jumperBridge';
 import { YearnApp } from './earn/YearnApp';
 import { EarnMountOptions, EarnInstance } from './earn/types';
@@ -23,6 +24,17 @@ export function mountLiFi(options: ExchangeMountOptions): ExchangeInstance {
 export function mountBestRate(options: ExchangeMountOptions): ExchangeInstance {
   const root = ReactDOM.createRoot(options.container);
   root.render(<BestRateApp {...options} />);
+
+  return {
+    unmount: () => {
+      root.unmount();
+    },
+  };
+}
+
+export function mountApprovals(options: ExchangeMountOptions): ExchangeInstance {
+  const root = ReactDOM.createRoot(options.container);
+  root.render(<ApprovalsApp {...options} />);
 
   return {
     unmount: () => {
@@ -70,6 +82,9 @@ declare global {
       show: typeof showJumperView;
       hide: typeof hideJumperView;
     };
+    CoinmanApprovals?: {
+      mount: typeof mountApprovals;
+    };
     CoinmanEarnYearn?: {
       mount: typeof mountYearn;
     };
@@ -90,6 +105,9 @@ if (typeof window !== 'undefined') {
   window.CoinmanJumper = {
     show: showJumperView,
     hide: hideJumperView,
+  };
+  window.CoinmanApprovals = {
+    mount: mountApprovals,
   };
   window.CoinmanEarnYearn = {
     mount: mountYearn,

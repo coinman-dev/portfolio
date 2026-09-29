@@ -1157,6 +1157,11 @@ body.show-cur-price .col-cur-price {
     margin: 0 0 14px;
     font-size: 13px;
 }
+.wallet-modal-note {
+    margin-top: -6px;
+    font-size: 12px;
+    opacity: 0.85;
+}
 .wallet-list {
     display: flex;
     flex-direction: column;
@@ -1467,8 +1472,9 @@ body.show-cur-price .col-cur-price {
     font-size: 14px;
 }
 
-/* Best Rate lists many routes, so it scrolls inside the view. */
-#exchange-bestrate-container {
+/* Best Rate and Approvals list many rows, so they scroll inside the view. */
+#exchange-bestrate-container,
+#exchange-approvals-container {
     width: 100%;
     flex: 1;
     min-height: 0;
