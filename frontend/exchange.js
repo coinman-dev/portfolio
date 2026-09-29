@@ -247,51 +247,62 @@ var AppExchange = (function () {
     }
 
     function markActiveModuleItem() {
-        ['bestrate', 'lifi', 'cowswap'].forEach(function (name) {
+        ['bestrate', 'lifi', 'cowswap', 'jumper'].forEach(function (name) {
             var item = document.getElementById('menu-exchange-' + name);
             if (item) item.classList.toggle('active', activeModule === name);
         });
     }
 
+    var MODULE_TITLES = {
+        bestrate: 'CoinMan Best Rate • compare exchanges',
+        cowswap: 'CoinMan DEX Exchange • CoW Swap',
+        jumper: 'CoinMan Jumper Exchange • jumper.xyz',
+        lifi: 'CoinMan Cross-Chain Exchange • LI.FI',
+    };
+
     function updateExchangeViews() {
-        var bestRateContainer = document.getElementById('exchange-bestrate-container');
-        var lifiContainer = document.getElementById('exchange-lifi-container');
-        var cowswapContainer = document.getElementById('exchange-cowswap-container');
+        var module = MODULE_TITLES[activeModule] ? activeModule : 'lifi';
+        var containers = {
+            bestrate: document.getElementById('exchange-bestrate-container'),
+            lifi: document.getElementById('exchange-lifi-container'),
+            cowswap: document.getElementById('exchange-cowswap-container'),
+            jumper: document.getElementById('exchange-jumper-container'),
+        };
+        Object.keys(containers).forEach(function (name) {
+            if (containers[name]) containers[name].style.display = name === module ? 'block' : 'none';
+        });
         var titleEl = document.getElementById('exchange-header-title');
+        if (titleEl) titleEl.textContent = MODULE_TITLES[module];
 
-        if (bestRateContainer) bestRateContainer.style.display = activeModule === 'bestrate' ? 'block' : 'none';
+        // jumper.xyz is a native view over its box; it leaves with its tab.
+        if (module !== 'jumper' && window.CoinmanJumper) window.CoinmanJumper.hide();
 
-        if (activeModule === 'bestrate') {
-            if (titleEl) titleEl.textContent = 'CoinMan Best Rate • compare exchanges';
-            if (lifiContainer) lifiContainer.style.display = 'none';
-            if (cowswapContainer) cowswapContainer.style.display = 'none';
+        ensureBundleLoaded().then(function () {
+            if (module === 'bestrate') mountBestRateIfNeeded();
+            else if (module === 'cowswap') mountCowSwapIfNeeded();
+            else if (module === 'jumper') showJumper();
+            else mountLiFiIfNeeded();
+        }).catch(function (err) {
+            console.error('[Exchange] Failed to mount ' + module + ':', err);
+        });
+    }
 
-            ensureBundleLoaded().then(function () {
-                mountBestRateIfNeeded();
-            }).catch(function (err) {
-                console.error('[Exchange] Failed to mount Best Rate:', err);
-            });
-        } else if (activeModule === 'cowswap') {
-            if (titleEl) titleEl.textContent = 'CoinMan DEX Exchange • CoW Swap';
-            if (lifiContainer) lifiContainer.style.display = 'none';
-            if (cowswapContainer) cowswapContainer.style.display = 'block';
+    var pendingJumperUrl = null;
 
-            ensureBundleLoaded().then(function () {
-                mountCowSwapIfNeeded();
-            }).catch(function (err) {
-                console.error('[Exchange] Failed to mount CoW Swap:', err);
-            });
-        } else {
-            if (titleEl) titleEl.textContent = 'CoinMan Cross-Chain Exchange • LI.FI';
-            if (cowswapContainer) cowswapContainer.style.display = 'none';
-            if (lifiContainer) lifiContainer.style.display = 'block';
+    function showJumper() {
+        var container = document.getElementById('exchange-jumper-container');
+        if (!container || !window.CoinmanJumper) return;
+        var url = pendingJumperUrl;
+        pendingJumperUrl = null;
+        window.CoinmanJumper.show(container, url || undefined).catch(function (err) {
+            console.error('[Exchange] Failed to show Jumper:', err);
+        });
+    }
 
-            ensureBundleLoaded().then(function () {
-                mountLiFiIfNeeded();
-            }).catch(function (err) {
-                console.error('[Exchange] Failed to mount LI.FI:', err);
-            });
-        }
+    /** Opens the Jumper Exchange tab, at a jumper.xyz address if given (Best Rate links). */
+    function openJumper(url) {
+        pendingJumperUrl = url || null;
+        selectExchangeModule('jumper');
     }
 
     function mountBestRateIfNeeded() {
@@ -446,6 +457,7 @@ var AppExchange = (function () {
         handleRemoveSelectedWallet: handleRemoveSelectedWallet,
         selectExchangeModule: selectExchangeModule,
         updateExchangeViews: updateExchangeViews,
+        openJumper: openJumper,
     };
 })();
 

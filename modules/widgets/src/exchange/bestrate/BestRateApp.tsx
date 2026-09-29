@@ -27,6 +27,16 @@ import { readBalance } from './execute/balance';
 import { RankedRoute } from './search';
 import './bestrate.css';
 
+/** jumper.xyz opens in the Jumper Exchange tab (with the CoinMan wallet); other sites in the browser. */
+function openSite(url: string): void {
+  const exchange = (window as any).AppExchange;
+  if (url.startsWith('https://jumper.xyz/') && typeof exchange?.openJumper === 'function') {
+    exchange.openJumper(url);
+    return;
+  }
+  openExternal(url);
+}
+
 /** Chains the wallet connection can send on. */
 const WALLET_CHAINS = wagmiConfig.chains.map((c) => c.id as number);
 /** Services whose routes get a Swap button (others only link to their site). */
@@ -519,7 +529,7 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
             <span className="br-side__label">Also check on their own sites</span>
             {request &&
               otherSites(request).map((site) => (
-                <button key={site.name} type="button" className="br-link" onClick={() => openExternal(site.url)}>
+                <button key={site.name} type="button" className="br-link" onClick={() => openSite(site.url)}>
                   {site.name} ↗ <span className="br-muted">{site.note}</span>
                 </button>
               ))}
@@ -571,7 +581,7 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
                     route={route}
                     toToken={toToken}
                     bestNetUSD={bestNet}
-                    onOpenSite={openExternal}
+                    onOpenSite={openSite}
                     swapBlocker={executionBlocker(route, request, WALLET_CHAINS, balance)}
                     onSwap={() => setExecuting(route)}
                   />
@@ -590,7 +600,7 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
                     route={route}
                     toToken={toToken}
                     bestNetUSD={bestNet}
-                    onOpenSite={openExternal}
+                    onOpenSite={openSite}
                   />
                 )}
               />

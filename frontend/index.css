@@ -1445,6 +1445,28 @@ body.show-cur-price .col-cur-price {
     height: 100%;
 }
 
+/* Jumper Exchange: a native view is laid exactly over this box, so it must
+   fill the area and never scroll. The placeholder shows while it loads. */
+#exchange-jumper-container {
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    position: relative;
+    background: #121318;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.exchange-jumper-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #a0a5b5;
+    font-size: 14px;
+}
+
 /* Best Rate lists many routes, so it scrolls inside the view. */
 #exchange-bestrate-container {
     width: 100%;

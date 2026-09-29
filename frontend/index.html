@@ -125,6 +125,9 @@
 					<div class="dropdown-item" id="menu-exchange-cowswap" onclick="AppExchange.selectExchangeModule('cowswap')">
 						<span>CoW Swap</span>
 					</div>
+					<div class="dropdown-item" id="menu-exchange-jumper" onclick="AppExchange.selectExchangeModule('jumper')">
+						<span>Jumper Exchange</span>
+					</div>
 				</div>
 			</div>
 			<div class="menu-item" id="menu-item-earn" onclick="toggleDropdown('earn-dropdown', event)"> Earn
@@ -475,6 +478,9 @@
 			</table>
 			<div id="exchange-widget-root" class="module-widget-root">
 				<div id="exchange-bestrate-container" style="display: none;"></div>
+				<div id="exchange-jumper-container" style="display: none;">
+					<div class="exchange-jumper-placeholder">Loading jumper.xyz…</div>
+				</div>
 				<div id="exchange-lifi-container" class="module-widget-body" style="display: none; width: 100%;"></div>
 				<div id="exchange-cowswap-container" style="display: none; width: 100%;"></div>
 			</div>

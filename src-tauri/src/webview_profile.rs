@@ -25,6 +25,14 @@ pub fn prepare() -> io::Result<Option<PathBuf>> {
     Ok(dir)
 }
 
+/// This process's profile folder, for further windows to share.
+pub fn current_dir() -> Option<PathBuf> {
+    #[cfg(windows)]
+    return windows::current_dir();
+    #[cfg(not(windows))]
+    None
+}
+
 /// Deletes this process's profile folder. Call once the webview is gone.
 pub fn remove() {
     #[cfg(windows)]
@@ -100,6 +108,10 @@ mod windows {
             lock,
         });
         Ok(dir)
+    }
+
+    pub fn current_dir() -> Option<PathBuf> {
+        CURRENT.lock().unwrap().as_ref().map(|p| p.dir.clone())
     }
 
     pub fn remove() {

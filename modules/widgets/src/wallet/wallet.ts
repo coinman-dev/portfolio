@@ -15,6 +15,7 @@ import {
 } from '@wagmi/core';
 import { diag } from '../diag';
 import { forgetWalletConnectStorage, walletConnectStorage, walletStore } from './store';
+import { holdOverlay } from './overlay';
 
 export const PROJECT_ID = '927c5d6fc3d30f43842ac0b9e0714891';
 
@@ -281,6 +282,7 @@ export async function addWallet(): Promise<WalletStatus> {
   const connector = wagmiConfig._internal.connectors.setup(walletConnector(id));
   wagmiConfig._internal.connectors.setState((list) => [...list, connector]);
   diag('info', 'WALLET', `adding wallet ${id}`);
+  const releaseOverlay = holdOverlay();
   try {
     const res = await connect(wagmiConfig, { connector });
     saveWallets([
@@ -302,6 +304,7 @@ export async function addWallet(): Promise<WalletStatus> {
     forgetWalletConnectStorage(id);
     throw e;
   } finally {
+    releaseOverlay();
     notify();
   }
   return getWalletStatus();
@@ -318,7 +321,13 @@ export async function selectWallet(id: string): Promise<WalletStatus> {
   if (isConnected(connector)) {
     await switchConnection(wagmiConfig, { connector });
   } else {
-    await connect(wagmiConfig, { connector });
+    // An expired session shows the QR code again.
+    const releaseOverlay = holdOverlay();
+    try {
+      await connect(wagmiConfig, { connector });
+    } finally {
+      releaseOverlay();
+    }
     updateSavedWallet(id, { name: await peerName(connector) });
   }
   setActiveWalletId(id);

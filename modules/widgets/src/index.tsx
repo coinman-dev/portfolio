@@ -2,6 +2,7 @@ import ReactDOM from 'react-dom/client';
 import { LiFiApp } from './exchange/LiFiApp';
 import { mountCowSwap } from './exchange/cowswap';
 import { BestRateApp } from './exchange/bestrate/BestRateApp';
+import { hideJumperView, showJumperView } from './exchange/jumperBridge';
 import { YearnApp } from './earn/YearnApp';
 import { EarnMountOptions, EarnInstance } from './earn/types';
 import { ExchangeMountOptions, ExchangeInstance } from './types';
@@ -65,6 +66,10 @@ declare global {
     CoinmanExchangeBestRate?: {
       mount: typeof mountBestRate;
     };
+    CoinmanJumper?: {
+      show: typeof showJumperView;
+      hide: typeof hideJumperView;
+    };
     CoinmanEarnYearn?: {
       mount: typeof mountYearn;
     };
@@ -81,6 +86,10 @@ if (typeof window !== 'undefined') {
   };
   window.CoinmanExchangeBestRate = {
     mount: mountBestRate,
+  };
+  window.CoinmanJumper = {
+    show: showJumperView,
+    hide: hideJumperView,
   };
   window.CoinmanEarnYearn = {
     mount: mountYearn,

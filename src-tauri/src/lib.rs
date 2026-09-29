@@ -1,5 +1,7 @@
 mod diag_log;
 mod exchange_history;
+mod jumper;
+mod jumper_storage;
 mod settings;
 mod storage;
 mod wallet_store;
@@ -589,8 +591,13 @@ pub fn run() {
             load_wallet_store,
             save_wallet_store,
             load_exchange_history,
-            save_exchange_record
+            save_exchange_record,
+            jumper::jumper_show,
+            jumper::jumper_hide,
+            jumper::jumper_wallet_response,
+            jumper::jumper_wallet_state
         ])
+        .register_asynchronous_uri_scheme_protocol(jumper::PROTOCOL, jumper::handle)
         .setup(|app| {
             let cli_debug = cli_debug_flag();
             diag_log::init(settings::logs_dir(app.handle()));
