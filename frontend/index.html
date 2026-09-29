@@ -116,6 +116,9 @@
 						<span class="wallet-menu-status" id="menu-wallet-status"></span>
 					</div>
 					<div class="dropdown-divider"></div>
+					<div class="dropdown-item" id="menu-exchange-bestrate" onclick="AppExchange.selectExchangeModule('bestrate')">
+						<span>Best Rate</span>
+					</div>
 					<div class="dropdown-item" id="menu-exchange-lifi" onclick="AppExchange.selectExchangeModule('lifi')">
 						<span>Li-Fi</span>
 					</div>
@@ -471,6 +474,7 @@
 				</tr>
 			</table>
 			<div id="exchange-widget-root" class="module-widget-root">
+				<div id="exchange-bestrate-container" style="display: none;"></div>
 				<div id="exchange-lifi-container" class="module-widget-body" style="display: none; width: 100%;"></div>
 				<div id="exchange-cowswap-container" style="display: none; width: 100%;"></div>
 			</div>

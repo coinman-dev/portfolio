@@ -52,6 +52,9 @@ const EVM_DIAMONDS = new Map<number, string>(
   )
 );
 
+/** LI.FI Diamond on an EVM chain, lowercase; undefined where LI.FI has none. */
+export const lifiDiamond = (chainId: number): string | undefined => EVM_DIAMONDS.get(chainId);
+
 /** LI.FI Diamond on Tron, base58 and the hex form Tron transactions carry. */
 const TRON_DIAMOND = {
   base58: 'TU3ymitEKCWQFtASkEeHaPb8NfZcJtCHLt',

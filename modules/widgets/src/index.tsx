@@ -1,6 +1,7 @@
 import ReactDOM from 'react-dom/client';
 import { LiFiApp } from './exchange/LiFiApp';
 import { mountCowSwap } from './exchange/cowswap';
+import { BestRateApp } from './exchange/bestrate/BestRateApp';
 import { YearnApp } from './earn/YearnApp';
 import { EarnMountOptions, EarnInstance } from './earn/types';
 import { ExchangeMountOptions, ExchangeInstance } from './types';
@@ -10,6 +11,17 @@ import './styles.css';
 export function mountLiFi(options: ExchangeMountOptions): ExchangeInstance {
   const root = ReactDOM.createRoot(options.container);
   root.render(<LiFiApp {...options} />);
+
+  return {
+    unmount: () => {
+      root.unmount();
+    },
+  };
+}
+
+export function mountBestRate(options: ExchangeMountOptions): ExchangeInstance {
+  const root = ReactDOM.createRoot(options.container);
+  root.render(<BestRateApp {...options} />);
 
   return {
     unmount: () => {
@@ -50,6 +62,9 @@ declare global {
     CoinmanExchangeCowSwap?: {
       mount: typeof mountCowSwap;
     };
+    CoinmanExchangeBestRate?: {
+      mount: typeof mountBestRate;
+    };
     CoinmanEarnYearn?: {
       mount: typeof mountYearn;
     };
@@ -63,6 +78,9 @@ if (typeof window !== 'undefined') {
   };
   window.CoinmanExchangeCowSwap = {
     mount: mountCowSwap,
+  };
+  window.CoinmanExchangeBestRate = {
+    mount: mountBestRate,
   };
   window.CoinmanEarnYearn = {
     mount: mountYearn,

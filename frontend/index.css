@@ -1445,6 +1445,14 @@ body.show-cur-price .col-cur-price {
     height: 100%;
 }
 
+/* Best Rate lists many routes, so it scrolls inside the view. */
+#exchange-bestrate-container {
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+
 /* CoW Swap keeps its own surface: the iframe must fill the area so the token
    picker, network list and history can render across it. */
 #exchange-cowswap-container {

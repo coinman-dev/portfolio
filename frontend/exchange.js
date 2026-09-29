@@ -8,8 +8,9 @@ var AppExchange = (function () {
     var settingsStore = kit.createSettingsStore('exchange', 'Exchange');
 
     var bundlePromise = null;
-    var activeModule = 'lifi'; // 'lifi' | 'cowswap'
+    var activeModule = 'lifi'; // 'bestrate' | 'lifi' | 'cowswap'
     var exchangeSettings = null;
+    var bestRateInstance = null;
     var lifiInstance = null;
     var cowswapInstance = null;
     var walletSubscription = null;
@@ -235,11 +236,7 @@ var AppExchange = (function () {
             window.closeAllDropdowns();
         }
 
-        var itemLiFi = document.getElementById('menu-exchange-lifi');
-        var itemCowSwap = document.getElementById('menu-exchange-cowswap');
-
-        if (itemLiFi) itemLiFi.classList.toggle('active', activeModule === 'lifi');
-        if (itemCowSwap) itemCowSwap.classList.toggle('active', activeModule === 'cowswap');
+        markActiveModuleItem();
 
         if (exchangeSettings) {
             exchangeSettings.lastSelectedModule = activeModule;
@@ -249,12 +246,32 @@ var AppExchange = (function () {
         kit.switchView('exchange');
     }
 
+    function markActiveModuleItem() {
+        ['bestrate', 'lifi', 'cowswap'].forEach(function (name) {
+            var item = document.getElementById('menu-exchange-' + name);
+            if (item) item.classList.toggle('active', activeModule === name);
+        });
+    }
+
     function updateExchangeViews() {
+        var bestRateContainer = document.getElementById('exchange-bestrate-container');
         var lifiContainer = document.getElementById('exchange-lifi-container');
         var cowswapContainer = document.getElementById('exchange-cowswap-container');
         var titleEl = document.getElementById('exchange-header-title');
 
-        if (activeModule === 'cowswap') {
+        if (bestRateContainer) bestRateContainer.style.display = activeModule === 'bestrate' ? 'block' : 'none';
+
+        if (activeModule === 'bestrate') {
+            if (titleEl) titleEl.textContent = 'CoinMan Best Rate • compare exchanges';
+            if (lifiContainer) lifiContainer.style.display = 'none';
+            if (cowswapContainer) cowswapContainer.style.display = 'none';
+
+            ensureBundleLoaded().then(function () {
+                mountBestRateIfNeeded();
+            }).catch(function (err) {
+                console.error('[Exchange] Failed to mount Best Rate:', err);
+            });
+        } else if (activeModule === 'cowswap') {
             if (titleEl) titleEl.textContent = 'CoinMan DEX Exchange • CoW Swap';
             if (lifiContainer) lifiContainer.style.display = 'none';
             if (cowswapContainer) cowswapContainer.style.display = 'block';
@@ -274,6 +291,28 @@ var AppExchange = (function () {
             }).catch(function (err) {
                 console.error('[Exchange] Failed to mount LI.FI:', err);
             });
+        }
+    }
+
+    function mountBestRateIfNeeded() {
+        var container = document.getElementById('exchange-bestrate-container');
+        if (!container || bestRateInstance) return;
+
+        try {
+            if (window.CoinmanExchangeBestRate && typeof window.CoinmanExchangeBestRate.mount === 'function') {
+                bestRateInstance = window.CoinmanExchangeBestRate.mount({
+                    container: container,
+                    initialSettings: exchangeSettings || {},
+                    onSettingsChange: function (updated) {
+                        exchangeSettings = Object.assign({}, exchangeSettings || {}, updated);
+                        saveExchangeSettings(exchangeSettings);
+                    },
+                });
+            } else {
+                console.warn('[Exchange] CoinmanExchangeBestRate.mount is not available');
+            }
+        } catch (err) {
+            console.error('[Exchange] Error mounting Best Rate:', err);
         }
     }
 
@@ -359,10 +398,7 @@ var AppExchange = (function () {
             activeModule = exchangeSettings.lastSelectedModule;
         }
 
-        var itemLiFi = document.getElementById('menu-exchange-lifi');
-        var itemCowSwap = document.getElementById('menu-exchange-cowswap');
-        if (itemLiFi) itemLiFi.classList.toggle('active', activeModule === 'lifi');
-        if (itemCowSwap) itemCowSwap.classList.toggle('active', activeModule === 'cowswap');
+        markActiveModuleItem();
 
         ensureBundleLoaded().then(function () {
             setupWalletSubscription();
