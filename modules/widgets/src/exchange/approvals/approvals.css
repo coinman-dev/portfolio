@@ -32,9 +32,38 @@
   flex-wrap: wrap;
 }
 
+.ap-chip {
+  display: inline-flex;
+  align-items: center;
+}
+
+.ap-chip__x {
+  height: 30px;
+  margin-left: -1px;
+  padding: 0 8px;
+  border: 1px solid var(--br-line);
+  border-radius: 0 8px 8px 0;
+  background: var(--br-paper);
+  color: var(--br-muted);
+  cursor: pointer;
+}
+
+.ap-chip:has(.ap-chip__x) .br-wallet {
+  border-radius: 8px 0 0 8px;
+}
+
+.ap-chip__x:hover {
+  color: var(--br-bad);
+}
+
 .ap-lead {
   margin: 0;
   font-size: 13px;
+}
+
+.ap-note {
+  margin: -6px 0 0;
+  font-size: 12px;
 }
 
 .ap-chains {

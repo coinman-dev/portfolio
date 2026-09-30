@@ -100,11 +100,10 @@ function WidgetEventsHandler({ onSettingsChange }: { onSettingsChange?: (setting
   return null;
 }
 
-/** The Tron account in use: while wallets are managed outside the widget,
- *  it hides its own wallet menu. Tron belongs to the connected wallet's
- *  session, so it ends with that wallet (Exchange → Wallet Connect). */
+/** The connected Tron wallet and a way to drop it: while wallets are managed
+ *  outside the widget, it hides its own wallet menu. */
 function TronWalletBar() {
-  const { address, connected } = useTronWallet();
+  const { address, connected, disconnect } = useTronWallet();
   if (!connected || !address) return null;
   return (
     <div className="coinman-tron-bar">
@@ -112,6 +111,13 @@ function TronWalletBar() {
       <span className="coinman-tron-bar__address" title={address}>
         {shortenTronAddress(address)}
       </span>
+      <button
+        type="button"
+        className="coinman-tron-bar__btn"
+        onClick={() => void disconnect().catch(() => undefined)}
+      >
+        Disconnect
+      </button>
     </div>
   );
 }
@@ -255,14 +261,14 @@ export const LiFiApp: React.FC<ExchangeMountOptions> = ({
   onWalletConnect: _onWalletConnect,
   onWalletDisconnect: _onWalletDisconnect,
 }) => {
-  // Tron comes from the connected wallet's own session (shared with Approvals).
+  // Tron connects over WalletConnect only, through the connection Approvals shares.
   const [tronAdapters] = useState(() => [tronAdapter]);
 
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        {/* No auto-connect: connecting Tron may re-pair the wallet, which
-            only the user should start (see wallet/tron). */}
+        {/* No auto-connect: the provider would call the adapter without a
+            URI handler, which opens a second AppKit window (see wallet/tron). */}
         <TronWalletProvider
           adapters={tronAdapters}
           autoConnect={false}

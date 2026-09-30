@@ -2,8 +2,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { type Address } from 'viem';
 import { ExchangeMountOptions } from '../../types';
 import { subscribeWalletStatus } from '../../wallet/wallet';
-import { connectTron, subscribeTron } from '../../wallet/tron';
-import { connectSolana, subscribeSolana } from '../../wallet/solana';
+import { connectTron, disconnectTron, subscribeTron } from '../../wallet/tron';
+import { connectSolana, disconnectSolana, subscribeSolana } from '../../wallet/solana';
 import { openExternal } from '../../earn/openExternal';
 import { diag } from '../../diag';
 import { formatAmount, formatUSD, shortAddress } from '../bestrate/format';
@@ -58,21 +58,30 @@ function WalletChip({
   address,
   hint,
   onConnect,
+  onDisconnect,
 }: {
   label: string;
   address?: string | null;
   hint: string;
   onConnect: () => void;
+  onDisconnect?: () => void;
 }) {
   return (
-    <button
-      type="button"
-      className={`br-wallet${address ? '' : ' is-empty'}`}
-      title={address ?? hint}
-      onClick={onConnect}
-    >
-      {label} {address ? shortAddress(address) : '— connect'}
-    </button>
+    <span className="ap-chip">
+      <button
+        type="button"
+        className={`br-wallet${address ? '' : ' is-empty'}`}
+        title={address ?? hint}
+        onClick={onConnect}
+      >
+        {label} {address ? shortAddress(address) : '— connect'}
+      </button>
+      {address && onDisconnect && (
+        <button type="button" className="ap-chip__x" title={`Disconnect the ${label} wallet`} onClick={onDisconnect}>
+          ×
+        </button>
+      )}
+    </span>
   );
 }
 
@@ -347,19 +356,19 @@ export const ApprovalsApp: React.FC<ExchangeMountOptions> = ({ initialSettings, 
               hint="Connect a wallet"
               onConnect={() => void (window as any).AppExchange?.handleWalletClick?.()}
             />
-            {/* Tron and Solana come from the same wallet connection; connecting
-                asks the wallet once to share them. */}
             <WalletChip
               label="Tron"
               address={tron}
-              hint="Ask the connected wallet for its Tron account (one confirmation, together with Solana)"
+              hint="Pair a Tron wallet over WalletConnect (OneKey offers only EVM networks there)"
               onConnect={() => void connect('TVM')}
+              onDisconnect={() => void disconnectTron().catch(() => undefined)}
             />
             <WalletChip
               label="Solana"
               address={sol}
-              hint="Ask the connected wallet for its Solana account (one confirmation, together with Tron)"
+              hint="Pair a Solana wallet over WalletConnect (OneKey offers only EVM networks there)"
               onConnect={() => void connect('SVM')}
+              onDisconnect={() => void disconnectSolana().catch(() => undefined)}
             />
           </div>
           <button type="button" className="br-btn br-btn--ghost" onClick={() => setShowHistory(true)}>
@@ -376,6 +385,12 @@ export const ApprovalsApp: React.FC<ExchangeMountOptions> = ({ initialSettings, 
           Everything your connected wallets have allowed others to spend, read from the networks themselves. Revoking
           takes that access away; it costs only the network fee.
         </p>
+        {(!tron || !sol) && (
+          <p className="br-muted ap-note">
+            Tron and Solana are paired on their own. OneKey offers only EVM networks over WalletConnect — for Tron or
+            Solana scan the code with a wallet that supports them (Trust Wallet, TokenPocket, SafePal, Bitget…).
+          </p>
+        )}
         {walletError && <div className="br-warn">{walletError}</div>}
 
         {showSettings && (
