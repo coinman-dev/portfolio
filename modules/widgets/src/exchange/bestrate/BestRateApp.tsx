@@ -61,7 +61,7 @@ interface BestRateSettings {
 
 const DEFAULT_FROM: Pick = { chainId: 1, token: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' };
 const DEFAULT_TO: Pick = { chainId: 42161, token: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831' };
-const SLIPPAGES = [10, 50, 100];
+const SLIPPAGES = [10, 25, 50, 100];
 const FEE_CAPS = [0, 0.05, 0.1, FEE_CAP_PCT];
 const SEARCH_DELAY_MS = 700;
 
