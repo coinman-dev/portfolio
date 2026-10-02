@@ -91,6 +91,8 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
   const [picker, setPicker] = useState<'from' | 'to' | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [evmAddress, setEvmAddress] = useState<string | undefined>(getWalletStatus().address);
+  /** The selected wallet is not connected: quotes and balance for it, no signing. */
+  const [viewOnly, setViewOnly] = useState(getWalletStatus().readOnly);
   const [nativePrice, setNativePrice] = useState(0);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -128,7 +130,14 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
     [onSettingsChange]
   );
 
-  useEffect(() => subscribeWalletStatus((status) => setEvmAddress(status.address)), []);
+  useEffect(
+    () =>
+      subscribeWalletStatus((status) => {
+        setEvmAddress(status.address);
+        setViewOnly(status.readOnly);
+      }),
+    []
+  );
 
   useEffect(() => {
     fetchChains()
@@ -310,11 +319,16 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
             {/* Same wallet list as the Exchange menu's "Wallet Connect". */}
             <button
               type="button"
-              className={`br-wallet${evmAddress ? '' : ' is-empty'}`}
-              title={evmAddress ?? 'No wallet connected — quotes use a stand-in address'}
+              className={`br-wallet${evmAddress ? (viewOnly ? ' is-view' : '') : ' is-empty'}`}
+              title={
+                evmAddress
+                  ? `${evmAddress}${viewOnly ? ' — view only, reconnect to sign' : ''}`
+                  : 'No wallet connected — quotes use a stand-in address'
+              }
               onClick={() => void (window as any).AppExchange?.handleWalletClick?.()}
             >
               {evmAddress ? shortAddress(evmAddress) : 'Connect wallet'}
+              {evmAddress && viewOnly && <span className="br-wallet__view">view only</span>}
             </button>
             <button
               type="button"
@@ -582,7 +596,11 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
                     toToken={toToken}
                     bestNetUSD={bestNet}
                     onOpenSite={openSite}
-                    swapBlocker={executionBlocker(route, request, WALLET_CHAINS, balance)}
+                    swapBlocker={
+                      viewOnly
+                        ? 'This wallet is view only — reconnect it (Exchange → Wallet Connect) to swap'
+                        : executionBlocker(route, request, WALLET_CHAINS, balance)
+                    }
                     onSwap={() => setExecuting(route)}
                   />
                 )}

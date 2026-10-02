@@ -104,21 +104,33 @@ var AppExchange = (function () {
         return !!(modal && modal.classList.contains('open'));
     }
 
+    // A row selects its wallet at once; an offline one is then shown to view
+    // only (balances, Earn, approvals) and "Reconnect" pairs it to sign again.
     function renderWalletRow(w) {
         var esc = window.Utils.escapeHtml;
         var network = w.chainName || (w.chainId ? 'Chain ' + w.chainId : '');
-        var state = w.connected ? 'Connected' : 'Offline, click to reconnect';
+        var state = w.connected ? 'Connected' : (w.selected ? 'View only' : 'Offline — view only');
+        // "Connected" stays on the right; a view-only state follows the name.
+        var nameState = w.connected ? '' :
+            ' <span class="wallet-row-state wallet-row-state-inline">' + esc(state) + '</span>';
+        var metaState = w.connected ? '<div class="wallet-row-state">' + esc(state) + '</div>' : '';
+        var reconnect = w.connected ? '' :
+            '<button type="button" class="wallet-row-reconnect" data-wallet-id="' + esc(w.id) + '"' +
+            (walletActionBusy ? ' disabled' : '') +
+            ' onclick="event.stopPropagation(); AppExchange.handleReconnectWallet(this.dataset.walletId)"' +
+            ' title="Connect this wallet again to sign transactions">Reconnect</button>';
         return '<div class="wallet-row' + (w.selected ? ' selected' : '') +
             (walletActionBusy ? ' busy' : '') + '" data-wallet-id="' + esc(w.id) + '"' +
             ' onclick="AppExchange.handleSelectWallet(this.dataset.walletId)">' +
             '<span class="wallet-row-dot' + (w.connected ? ' connected' : '') + '"></span>' +
             '<div class="wallet-row-main">' +
-            '<div class="wallet-row-name">' + esc(w.name) + '</div>' +
+            '<div class="wallet-row-name">' + esc(w.name) + nameState + '</div>' +
             '<div class="wallet-row-address">' + esc(w.address || '—') + '</div>' +
             '</div>' +
             '<div class="wallet-row-meta">' +
             '<div>' + esc(network) + '</div>' +
-            '<div class="wallet-row-state">' + esc(state) + '</div>' +
+            metaState +
+            reconnect +
             '</div>' +
             '</div>';
     }
@@ -207,9 +219,15 @@ var AppExchange = (function () {
         var wallet = window.CoinmanWallet.listWallets().filter(function (w) {
             return w.id === id;
         })[0];
-        if (!wallet || (wallet.selected && wallet.connected)) return;
+        if (!wallet || wallet.selected) return;
         runWalletAction(function () {
             return window.CoinmanWallet.selectWallet(id);
+        });
+    }
+
+    function handleReconnectWallet(id) {
+        runWalletAction(function () {
+            return window.CoinmanWallet.reconnectWallet(id);
         });
     }
 
@@ -480,6 +498,7 @@ var AppExchange = (function () {
         closeWalletModal: closeWalletModal,
         handleAddWallet: handleAddWallet,
         handleSelectWallet: handleSelectWallet,
+        handleReconnectWallet: handleReconnectWallet,
         handleRemoveSelectedWallet: handleRemoveSelectedWallet,
         selectExchangeModule: selectExchangeModule,
         updateExchangeViews: updateExchangeViews,

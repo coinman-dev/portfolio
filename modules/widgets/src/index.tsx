@@ -63,6 +63,7 @@ export const CoinmanWallet = {
   listWallets: wallet.listWallets,
   addWallet: wallet.addWallet,
   selectWallet: wallet.selectWallet,
+  reconnectWallet: wallet.reconnectWallet,
   removeWallet: wallet.removeWallet,
 };
 

@@ -118,6 +118,8 @@ var AppModuleKit = (function () {
     /** Paints the connection tick on every module's menu entry. */
     function updateWalletBadges(status, isExplicitDisconnect) {
         var isConnected = !!(status && status.isConnected && status.address);
+        // Selected but not connected: shown to view only, not able to sign.
+        var isViewOnly = !isConnected && !!(status && status.readOnly && status.address);
 
         WALLET_BADGES.forEach(function (badge) {
             var statusEl = document.getElementById(badge.status);
@@ -126,6 +128,10 @@ var AppModuleKit = (function () {
                     statusEl.innerHTML =
                         '<span class="wallet-check-green" title="' +
                         (status.address || '') + '">✓</span>';
+                } else if (isViewOnly) {
+                    statusEl.innerHTML =
+                        '<span class="wallet-check-view" title="View only (not connected): ' +
+                        status.address + '">◉</span>';
                 } else if (isExplicitDisconnect || (status && !status.isConnected)) {
                     statusEl.innerHTML = '';
                 }
@@ -152,8 +158,8 @@ var AppModuleKit = (function () {
         });
 
         var current = window.CoinmanWallet.getStatus();
-        if (current && current.isConnected && current.address) {
-            onStatus(current, false);
+        if (current && current.address) {
+            onStatus(current, !current.isConnected);
         }
         return unsubscribe;
     }

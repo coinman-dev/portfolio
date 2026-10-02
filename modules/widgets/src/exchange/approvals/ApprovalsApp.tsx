@@ -157,6 +157,8 @@ export const ApprovalsApp: React.FC<ExchangeMountOptions> = ({ initialSettings, 
   const [keyDirty, setKeyDirty] = useState(false);
 
   const [evm, setEvm] = useState<string | undefined>();
+  /** The selected EVM wallet is not connected: scanned, but revoking waits for a reconnect. */
+  const [evmViewOnly, setEvmViewOnly] = useState(false);
   const [tron, setTron] = useState<string | null>(null);
   const [sol, setSol] = useState<string | null>(null);
   const [scans, setScans] = useState<Record<string, ChainScan>>({});
@@ -274,6 +276,7 @@ export const ApprovalsApp: React.FC<ExchangeMountOptions> = ({ initialSettings, 
     () =>
       subscribeWalletStatus((status) => {
         setEvm((prev) => (prev?.toLowerCase() === status.address?.toLowerCase() ? prev : status.address));
+        setEvmViewOnly(status.readOnly);
       }),
     []
   );
@@ -351,7 +354,7 @@ export const ApprovalsApp: React.FC<ExchangeMountOptions> = ({ initialSettings, 
           <h2>Approvals</h2>
           <div className="ap-wallets">
             <WalletChip
-              label="EVM"
+              label={evm && evmViewOnly ? 'EVM (view only)' : 'EVM'}
               address={evm}
               hint="Connect a wallet"
               onConnect={() => void (window as any).AppExchange?.handleWalletClick?.()}

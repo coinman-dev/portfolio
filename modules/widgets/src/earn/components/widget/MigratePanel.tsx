@@ -21,6 +21,8 @@ interface MigratePanelProps {
   vaults: YearnVault[];
   walletAddress?: string;
   walletChainId?: number;
+  /** False for a wallet selected to view only: it cannot sign until reconnected. */
+  canSign?: boolean;
   onConnectWallet: () => void;
   onSelectVault?: (vault: YearnVault) => void;
   onBalancesChanged?: () => void;
@@ -35,6 +37,7 @@ export const MigratePanel: React.FC<MigratePanelProps> = ({
   vaults,
   walletAddress,
   walletChainId,
+  canSign = true,
   onConnectWallet,
   onSelectVault,
   onBalancesChanged,
@@ -103,7 +106,7 @@ export const MigratePanel: React.FC<MigratePanelProps> = ({
   const needsApproval = allowance < shares;
 
   const migrate = async () => {
-    if (!walletAddress) return onConnectWallet();
+    if (!walletAddress || !canSign) return onConnectWallet();
     if (isWrongChain) {
       await switchChain(wagmiConfig, { chainId: vault.chainID as any }).catch(() => undefined);
       return;
@@ -131,6 +134,7 @@ export const MigratePanel: React.FC<MigratePanelProps> = ({
 
   let label = needsApproval ? 'Approve & Migrate' : 'Migrate All';
   if (!walletAddress) label = 'Connect Wallet';
+  else if (!canSign) label = 'Reconnect wallet to sign';
   else if (isWrongChain) label = `Switch to ${chain.name}`;
   else if (!route) label = 'Migration not available';
   else if (shares === 0n) label = 'Nothing to migrate';
@@ -138,7 +142,7 @@ export const MigratePanel: React.FC<MigratePanelProps> = ({
     label = `${step.label}…${step.total > 1 ? ` (${step.index + 1}/${step.total})` : ''}`;
   }
   const disabled =
-    stage === 'running' || (Boolean(walletAddress) && !isWrongChain && (!route || shares === 0n));
+    stage === 'running' || (Boolean(walletAddress) && canSign && !isWrongChain && (!route || shares === 0n));
 
   return (
     <div className="y-widget">

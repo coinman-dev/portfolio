@@ -1149,6 +1149,12 @@ body.show-cur-price .col-cur-price {
 .dropdown-item-wallet.dropdown-item-focused .wallet-check-green {
     color: #4caf50 !important;
 }
+/* Selected wallet that is not connected: view only. */
+.wallet-check-view {
+    color: #a0a5b5 !important;
+    font-size: 12px;
+    line-height: 1;
+}
 
 /* --- WALLET LIST MODAL --- */
 .wallet-modal-intro {
@@ -1232,6 +1238,27 @@ body.show-cur-price .col-cur-price {
 .wallet-row-state {
     color: var(--color-text-muted);
     font-size: 11px;
+}
+.wallet-row-state-inline {
+    margin-left: 8px;
+    font-weight: 400;
+}
+.wallet-row-reconnect {
+    margin-top: 4px;
+    padding: 2px 8px;
+    border: 1px solid rgba(255, 140, 0, 0.5);
+    border-radius: 6px;
+    background: transparent;
+    color: #ff8c00;
+    font-size: 11px;
+    cursor: pointer;
+}
+.wallet-row-reconnect:hover:not(:disabled) {
+    background: rgba(255, 140, 0, 0.12);
+}
+.wallet-row-reconnect:disabled {
+    opacity: 0.4;
+    cursor: default;
 }
 .wallet-modal-error {
     margin-top: 10px;

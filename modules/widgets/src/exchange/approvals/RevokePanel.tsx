@@ -3,6 +3,7 @@ import { formatUnits, type Address } from 'viem';
 import { openExternal } from '../../earn/openExternal';
 import { fetchChains, fetchTokens } from '../bestrate/catalog';
 import { formatUSD, shortAddress } from '../bestrate/format';
+import { getWalletStatus } from '../../wallet/wallet';
 import { connectTron } from '../../wallet/tron';
 import { connectSolana } from '../../wallet/solana';
 import { EVM_SCAN_CHAINS, txUrl } from './chains';
@@ -112,6 +113,13 @@ export const RevokePanel: React.FC<{
           prepared: true,
           needsWallet: group.family === 'EVM' ? undefined : group.family,
           blocker: `Connect the ${group.family === 'TVM' ? 'Tron' : group.family === 'SVM' ? 'Solana' : 'EVM'} wallet that holds these approvals`,
+        });
+        return;
+      }
+      if (group.family === 'EVM' && getWalletStatus().readOnly) {
+        patchGroup(group.key, {
+          prepared: true,
+          blocker: 'This wallet is view only — reconnect it (Exchange → Wallet Connect) to revoke',
         });
         return;
       }

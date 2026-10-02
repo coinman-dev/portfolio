@@ -154,8 +154,15 @@ function dropConnector(connector: Connector): void {
 
 // ─── Status ─────────────────────────────────────────────────────────────────
 
+/**
+ * The selected wallet. `isConnected` means it can sign right now. A selected
+ * wallet that is not connected still has its last known `address`, with
+ * `readOnly` set: balances, Earn positions and approvals are shown for it,
+ * and only signing waits until it is reconnected.
+ */
 export interface WalletStatus {
   isConnected: boolean;
+  readOnly: boolean;
   address?: string;
   chainId?: number;
   shortAddress?: string;
@@ -189,9 +196,36 @@ function chainName(chainId?: number): string | undefined {
 
 export function getWalletStatus(): WalletStatus {
   const acc = getAccount(wagmiConfig);
+  const activeId = getActiveWalletId();
+  const saved = savedWallets.find((w) => w.id === activeId);
+  // The selected wallet, connected and the one wagmi signs with.
+  if (saved && walletIdOf(acc.connector) === saved.id && acc.isConnected && acc.address) {
+    return {
+      isConnected: true,
+      readOnly: false,
+      address: acc.address,
+      chainId: acc.chainId,
+      shortAddress: formatShortAddress(acc.address),
+      walletId: saved.id,
+      walletName: saved.name,
+    };
+  }
+  // Selected but offline: its last known address, to look at only.
+  if (saved?.address) {
+    return {
+      isConnected: false,
+      readOnly: true,
+      address: saved.address,
+      chainId: saved.chainId,
+      shortAddress: formatShortAddress(saved.address),
+      walletId: saved.id,
+      walletName: saved.name,
+    };
+  }
   const walletId = walletIdOf(acc.connector);
   return {
     isConnected: !!acc.isConnected && !!acc.address,
+    readOnly: false,
     address: acc.address,
     chainId: acc.chainId,
     shortAddress: formatShortAddress(acc.address),
@@ -262,11 +296,17 @@ watchAccount(wagmiConfig, {
       'WALLET',
       `${account.status} ${formatShortAddress(account.address) || '-'} chain=${account.chainId ?? '-'} wallet=${walletId ?? '-'}`,
     );
-    // Whatever wagmi uses is the selected wallet; it moves on by itself when
-    // the selected one disconnects.
     if (walletId && account.isConnected) {
-      setActiveWalletId(walletId);
       updateSavedWallet(walletId, { address: account.address, chainId: account.chainId });
+      // The selection is the user's: a wallet connecting does not take it
+      // over, except when nothing is selected yet.
+      const activeId = getActiveWalletId();
+      if (!activeId || !savedWallets.some((w) => w.id === activeId)) setActiveWalletId(walletId);
+    }
+    // The selected wallet, when connected, is the one wagmi signs with.
+    const active = connectorFor(getActiveWalletId() ?? '');
+    if (active && isConnected(active) && account.connector?.uid !== active.uid) {
+      void switchConnection(wagmiConfig, { connector: active }).catch(() => undefined);
     }
     notify();
   },
@@ -287,6 +327,11 @@ watchConnections(wagmiConfig, {
       }
     }
     connectedIds = now;
+    // Keep each wallet's last address, so it can still be viewed offline.
+    for (const c of connections) {
+      const id = walletIdOf(c.connector);
+      if (id && c.accounts[0]) updateSavedWallet(id, { address: c.accounts[0], chainId: c.chainId });
+    }
     notify();
   },
 });
@@ -350,17 +395,35 @@ export async function addWallet(): Promise<WalletStatus> {
 }
 
 /**
- * Makes a saved wallet the one Exchange and Earn use. An offline wallet is
- * reconnected first; if its session has expired that shows the QR code.
+ * Makes a saved wallet the one Exchange and Earn use, at once and without
+ * asking the wallet. An offline one is selected to view only: its balances,
+ * Earn positions and approvals show, and signing waits for `reconnectWallet`.
  */
 export async function selectWallet(id: string): Promise<WalletStatus> {
   const connector = connectorFor(id);
   if (!connector) throw new Error(`Unknown wallet ${id}`);
-  diag('info', 'WALLET', `selecting wallet ${id}`);
+  setActiveWalletId(id);
   if (isConnected(connector)) {
+    diag('info', 'WALLET', `selecting wallet ${id}`);
     await switchConnection(wagmiConfig, { connector });
+    void renewSession(connector);
   } else {
-    // An expired session shows the QR code again.
+    diag('info', 'WALLET', `selecting wallet ${id} to view only (not connected)`);
+  }
+  notify();
+  return getWalletStatus();
+}
+
+/**
+ * Connects a saved wallet again so it can sign (its session ended or
+ * expired): shows the QR code, and selects it.
+ */
+export async function reconnectWallet(id: string): Promise<WalletStatus> {
+  const connector = connectorFor(id);
+  if (!connector) throw new Error(`Unknown wallet ${id}`);
+  diag('info', 'WALLET', `reconnecting wallet ${id}`);
+  setActiveWalletId(id);
+  if (!isConnected(connector)) {
     const releaseOverlay = holdOverlay();
     try {
       await connect(wagmiConfig, { connector });
@@ -368,9 +431,10 @@ export async function selectWallet(id: string): Promise<WalletStatus> {
       releaseOverlay();
     }
     updateSavedWallet(id, { name: await peerName(connector) });
+  } else {
+    await switchConnection(wagmiConfig, { connector });
   }
   void renewSession(connector);
-  setActiveWalletId(id);
   notify();
   return getWalletStatus();
 }
@@ -404,7 +468,7 @@ export async function connectWallet(): Promise<WalletStatus> {
   const current = getWalletStatus();
   if (current.isConnected) return current;
   const id = getActiveWalletId() ?? savedWallets[0]?.id;
-  if (id && connectorFor(id)) return selectWallet(id);
+  if (id && connectorFor(id)) return reconnectWallet(id);
   return addWallet();
 }
 
@@ -415,8 +479,8 @@ export async function disconnectWallet(): Promise<void> {
 }
 
 // Restore the saved sessions, then put the selected wallet back in front:
-// reconnect() makes whichever it restores first the current one (and the
-// account watcher above records that as selected, hence reading it first).
+// reconnect() makes whichever it restores first the current one. A selected
+// wallet that did not come back stays selected, to view only.
 const selectedAtStart = getActiveWalletId();
 reconnect(wagmiConfig)
   .then(async (connections) => {

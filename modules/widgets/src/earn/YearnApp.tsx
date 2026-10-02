@@ -148,6 +148,7 @@ export const YearnDashboard: React.FC<EarnMountOptions> = ({
             vault={selectedVault}
             walletAddress={walletStatus.address}
             walletChainId={walletStatus.chainId}
+            canSign={walletStatus.isConnected}
             position={holdings.positions.find((p) => p.key === getVaultKey(selectedVault))}
             onConnectWallet={handleConnectWallet}
             onBalancesChanged={holdings.refresh}
@@ -166,7 +167,8 @@ export const YearnDashboard: React.FC<EarnMountOptions> = ({
             holdings={holdings}
             vaults={vaults}
             walletAddress={walletStatus.address}
-            isConnected={walletStatus.isConnected}
+            // A wallet selected to view only still has its positions shown.
+            isConnected={!!walletStatus.address}
             activeTab={portfolioTab}
             onSelectTab={handlePortfolioTab}
             onSelectVault={handleOpenVaultDetail}
@@ -187,7 +189,7 @@ export const YearnDashboard: React.FC<EarnMountOptions> = ({
             onStateChange={handleListStateChange}
             onSelectVault={handleOpenVaultDetail}
             holdings={holdings.holdings}
-            showHoldings={walletStatus.isConnected}
+            showHoldings={!!walletStatus.address}
           />
         )}
       </PageContainer>

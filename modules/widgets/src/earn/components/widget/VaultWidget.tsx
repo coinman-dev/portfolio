@@ -43,6 +43,8 @@ interface VaultWidgetProps {
   tab: WidgetTab;
   walletAddress?: string;
   walletChainId?: number;
+  /** False for a wallet selected to view only: it cannot sign until reconnected. */
+  canSign?: boolean;
   /** Portfolio-scan position; My Info shows it so merged contracts count. */
   position?: PortfolioPosition;
   onConnectWallet: () => void;
@@ -59,6 +61,7 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
   tab,
   walletAddress,
   walletChainId,
+  canSign = true,
   position,
   onConnectWallet,
   onOpenActivity,
@@ -171,6 +174,7 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
         vaults={vaults}
         walletAddress={walletAddress}
         walletChainId={walletChainId}
+        canSign={canSign}
         onConnectWallet={onConnectWallet}
         onSelectVault={onSelectVault}
         onBalancesChanged={onBalancesChanged}
@@ -289,6 +293,7 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
   if (needsCooldown) buttonLabel = locked.phase === 'expired' ? 'Restart Cooldown' : 'Start Cooldown';
   if (isCoolingDown) buttonLabel = `Cooldown ${formatDuration(locked.secondsLeft)}`;
   if (!walletAddress) buttonLabel = 'Connect Wallet';
+  else if (!canSign) buttonLabel = 'Reconnect wallet to sign';
   else if (actions.isWrongChain) buttonLabel = `Switch to ${chain.name}`;
   else if (actions.blockedReason && actions.parsedAmount > 0n) buttonLabel = actions.blockedReason;
   else if (zap && actions.parsedAmount > 0n && zap.minOut === null) buttonLabel = 'Fetching route…';
@@ -303,7 +308,7 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
   }
 
   const handleAction = () => {
-    if (!walletAddress) return onConnectWallet();
+    if (!walletAddress || !canSign) return onConnectWallet();
     if (actions.isWrongChain) return void actions.switchToVaultChain();
     if (needsCooldown) return void actions.startCooldown();
     return void actions.execute();
@@ -313,6 +318,7 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
     isBusy ||
     isCoolingDown ||
     (Boolean(walletAddress) &&
+      canSign &&
       !actions.isWrongChain &&
       !needsCooldown &&
       (actions.parsedAmount === 0n ||

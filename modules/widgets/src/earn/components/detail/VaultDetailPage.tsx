@@ -22,6 +22,8 @@ interface VaultDetailPageProps {
   vault: YearnVault;
   walletAddress?: string;
   walletChainId?: number;
+  /** False for a wallet selected to view only: it cannot sign until reconnected. */
+  canSign?: boolean;
   /** The wallet's position from the portfolio scan. It counts every contract
    *  merged into this row (st-yBOLD, locked yvUSD, staking wrappers), which a
    *  balance read on `vault.address` alone would miss. */
@@ -38,6 +40,7 @@ export const VaultDetailPage: React.FC<VaultDetailPageProps> = ({
   vault,
   walletAddress,
   walletChainId,
+  canSign = true,
   position,
   onConnectWallet,
   onOpenActivity,
@@ -188,6 +191,7 @@ export const VaultDetailPage: React.FC<VaultDetailPageProps> = ({
             tab={widgetTab}
             walletAddress={walletAddress}
             walletChainId={walletChainId}
+            canSign={canSign}
             position={position}
             onConnectWallet={onConnectWallet}
             onOpenActivity={onOpenActivity}

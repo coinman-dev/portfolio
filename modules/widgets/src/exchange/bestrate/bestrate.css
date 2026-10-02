@@ -740,8 +740,20 @@
   font-family: inherit;
 }
 
-.br-wallet.is-empty::before {
+.br-wallet.is-empty::before,
+.br-wallet.is-view::before {
   background: var(--br-muted);
+}
+
+/* A wallet selected to view only (not connected, cannot sign). */
+.br-wallet__view {
+  margin-left: 2px;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--br-raised);
+  color: var(--br-muted);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-size: 10px;
 }
 
 .br-wallet:hover {
