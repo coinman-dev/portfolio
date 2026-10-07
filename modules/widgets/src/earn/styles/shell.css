@@ -1,0 +1,207 @@
+/* Page shell: sticky top nav (68px), breadcrumbs, content container.
+   Measured from yearn.fi: header 1200px wide inside a 1232px container. */
+
+.y-shell {
+  width: 100%;
+  min-height: 100%;
+  background: var(--y-app);
+}
+
+.y-container {
+  width: 100%;
+  max-width: var(--y-content-max);
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+/* The breadcrumb row used to provide this gap before it moved into the nav. */
+.y-page {
+  padding-top: 16px;
+}
+
+/* ---------- top nav ---------- */
+
+.y-topnav-wrap {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  width: 100%;
+  background: var(--y-app);
+  backdrop-filter: blur(12px);
+}
+
+.y-topnav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--y-header-h);
+  width: 100%;
+  padding: 0;
+}
+
+.y-topnav__left {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 16px;
+  min-width: 0;
+  padding: 4px 4px;
+}
+
+.y-topnav__logo {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  transition: opacity 0.15s ease;
+}
+
+.y-topnav__logo:hover {
+  opacity: 0.8;
+}
+
+.y-topnav__logo svg {
+  height: 32px;
+  width: auto;
+}
+
+.y-topnav__right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.y-topnav__links {
+  display: flex;
+  gap: 16px;
+}
+
+.y-topnav__link {
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 500;
+  color: var(--y-text-2);
+  transition: color 0.15s ease;
+}
+
+.y-topnav__link:hover,
+.y-topnav__link.is-active {
+  color: var(--y-text);
+}
+
+.y-topnav__theme-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 10px;
+  border-radius: var(--y-r-full);
+  color: var(--y-text-2);
+  transition: color 0.15s ease;
+}
+
+.y-topnav__theme-btn:hover {
+  color: var(--y-text);
+}
+
+/* ---------- breadcrumbs ---------- */
+
+/* Lives in the top nav, immediately right of the logo. */
+.y-breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  height: 20px;
+  padding: 0;
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--y-text-2);
+}
+
+.y-breadcrumbs__item {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Only the current page's crumb gives way when the nav runs out of room. */
+.y-breadcrumbs__item.is-current {
+  min-width: 0;
+  flex-shrink: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.y-breadcrumbs__item {
+  color: var(--y-text-2);
+  transition: color 0.15s ease;
+}
+
+.y-breadcrumbs__item:hover {
+  color: var(--y-text);
+}
+
+.y-breadcrumbs__item.is-current {
+  color: var(--y-text);
+}
+
+.y-breadcrumbs__sep {
+  flex-shrink: 0;
+  color: var(--y-text-3);
+}
+
+/* ---------- responsive ---------- */
+
+/* Below `md` yearn.fi collapses the whole nav behind a hamburger:
+   the Ecosystem/Resources menus, the Vaults/Portfolio links, the theme
+   control and the wallet button all move into the dropdown. */
+.y-topnav__burger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  color: var(--y-text);
+}
+
+.y-topnav__mobile {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .y-topnav__right {
+    display: none;
+  }
+
+  .y-topnav__burger {
+    display: inline-flex;
+  }
+
+  .y-topnav__mobile {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    padding: 8px 0 16px;
+    border-top: 1px solid var(--y-border);
+  }
+
+  .y-topnav__mobile-link {
+    padding: 10px 4px;
+    text-align: left;
+    font-size: 16px;
+    line-height: 24px;
+    font-weight: 500;
+    color: var(--y-text-2);
+    transition: color 0.15s ease;
+  }
+
+  .y-topnav__mobile-link:hover,
+  .y-topnav__mobile-link.is-active {
+    color: var(--y-text);
+  }
+
+}

@@ -1,6 +1,6 @@
 [package]
 name = "coinman-portfolio"
-version = "0.6.0"
+version = "0.8.0-beta"
 description = "CoinMan desktop portfolio tracker"
 authors = ["modulator"]
 license = "MIT"
@@ -29,8 +29,9 @@ incremental = false
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
-tauri = { version = "2.11.1", features = ["devtools"] }
-tauri-plugin-log = "2.8.0"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+# `unstable`: child webviews (Window::add_child) for the embedded Jumper Exchange.
+tauri = { version = "2.11.1", features = ["devtools", "unstable"] }
 tauri-plugin-single-instance = "2.4.2"
 tauri-plugin-dialog = "2.7.1"
 aes-gcm = "0.10"

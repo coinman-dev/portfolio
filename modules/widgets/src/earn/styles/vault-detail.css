@@ -1,0 +1,934 @@
+/* Vault detail page — measured from yearn.fi `/vaults/1/0x696d…6987` (soft-dark). */
+
+.y-vd {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Out of flow: as a flex child it also consumed a 24px column gap, which showed
+   up as dead space between the nav and the vault title. */
+.y-vd__sentinel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  scroll-margin-top: var(--y-header-h);
+}
+
+.y-vd__sticky {
+  position: sticky;
+  /* sits directly beneath the sticky top nav */
+  top: var(--y-header-h);
+  z-index: 30;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 402px;
+  gap: 24px;
+  align-items: start;
+  background: var(--y-app);
+  padding-bottom: 12px;
+}
+
+.y-vd__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 402px;
+  gap: 24px;
+  align-items: start;
+}
+
+.y-vd__main {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+.y-vd__aside {
+  position: sticky;
+  top: calc(var(--y-header-h) + 168px);
+}
+
+/* ---------- vault identity ----------
+   Expanded it sits above the KPI card with no surface of its own; compact it is
+   re-rendered inside the card's first cell (`yvusd-detail-sticky-compact-header-dark.png`). */
+
+.y-vd-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 4px;
+}
+
+.y-vd-identity__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.y-vd-identity.is-compact {
+  gap: 0;
+  padding: 0;
+}
+
+/* ---------- header card ---------- */
+
+.y-vd-header {
+  background: var(--y-surface);
+  border: 1px solid var(--y-border);
+  border-radius: var(--y-r-lg);
+  overflow: hidden;
+}
+
+.y-vd-header__top {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 74px;
+}
+
+.y-vd-header__identity {
+  display: flex;
+  align-items: center;
+  padding: 12px 24px;
+  min-width: 0;
+}
+
+.y-vd-header__name {
+  margin: 0;
+  font-size: 36px;
+  line-height: 40px;
+  font-weight: 900;
+  color: var(--y-text);
+  letter-spacing: -0.01em;
+}
+
+.y-vd-header.is-compact .y-vd-header__name {
+  font-size: 24px;
+  line-height: 32px;
+}
+
+.y-vd-header__explorer {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--y-text-2);
+  transition: color 0.15s ease;
+}
+
+.y-vd-header__explorer:hover {
+  color: var(--y-text);
+}
+
+.y-vd-header__chips {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  flex-basis: 100%;
+}
+
+/* Expanded, the three KPI cells split the card's full width (24px gutters and
+   no border before the first). Compact, they shrink to ~150px and the identity
+   cell takes the remaining space. */
+.y-vd-kpis {
+  display: flex;
+  align-items: stretch;
+  flex: 1;
+  min-width: 0;
+}
+
+.y-vd-kpi {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 12px 24px;
+  min-width: 0;
+  border-left: 1px solid var(--y-border);
+}
+
+.y-vd-kpi:first-child {
+  border-left: none;
+}
+
+.y-vd-header.is-compact .y-vd-kpis {
+  flex: 0 0 auto;
+}
+
+.y-vd-header.is-compact .y-vd-kpi {
+  flex: 0 0 auto;
+  min-width: 148px;
+  padding: 12px;
+  border-left: 1px solid var(--y-border);
+}
+
+.y-vd-header.is-compact .y-vd-header__identity {
+  flex: 1;
+  min-width: 0;
+}
+
+.y-vd-kpi__label {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  color: var(--y-text-2);
+  text-transform: uppercase;
+  border-bottom: 1px dotted var(--y-text-2);
+  align-self: flex-start;
+  cursor: help;
+}
+
+.y-vd-kpi__value {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 600;
+  color: var(--y-text);
+}
+
+.y-vd-kpi__lock {
+  color: var(--y-text-2);
+  flex-shrink: 0;
+}
+
+/* ---------- section tabs ---------- */
+
+.y-vd-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-top: 1px solid var(--y-border);
+}
+
+.y-vd-tab {
+  flex: 1;
+  height: 38px;
+  border: 1px solid transparent;
+  border-radius: var(--y-r-md);
+  background: transparent;
+  color: var(--y-text-2);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.y-vd-tab:hover {
+  color: var(--y-text);
+}
+
+.y-vd-tab.is-active {
+  background: var(--y-surface);
+  border-color: var(--y-border);
+  color: var(--y-text);
+}
+
+/* ---------- right column header ---------- */
+
+.y-vd-side {
+  background: var(--y-surface);
+  border: 1px solid var(--y-border);
+  border-radius: var(--y-r-lg);
+  overflow: hidden;
+}
+
+.y-vd-deposits {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 24px;
+  min-height: 74px;
+  justify-content: center;
+}
+
+.y-vd-deposits__label {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  color: var(--y-text-2);
+  text-transform: uppercase;
+  border-bottom: 1px dotted var(--y-text-2);
+  align-self: flex-start;
+}
+
+.y-vd-deposits__value {
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 600;
+  color: var(--y-text);
+}
+
+.y-vd-tabs--widget .y-vd-tab {
+  background: var(--y-surface-2);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.y-vd-tabs--widget .y-vd-tab.is-active {
+  background: var(--y-surface);
+  border-color: var(--y-border);
+}
+
+/* ---------- generic section card ---------- */
+
+.y-vd-card {
+  background: var(--y-surface);
+  border: 1px solid var(--y-border);
+  border-radius: var(--y-r-lg);
+  scroll-margin-top: calc(var(--y-header-h) + 180px);
+}
+
+.y-vd-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  padding: 24px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.y-vd-card__title {
+  margin: 0;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+  color: var(--y-text);
+}
+
+.y-vd-card__chevron {
+  color: var(--y-text-2);
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.y-vd-card__chevron.is-open {
+  transform: rotate(180deg);
+}
+
+.y-vd-card__body {
+  padding: 0 24px 24px;
+}
+
+/* ---------- chart card ---------- */
+
+.y-vd-card--chart {
+  padding: 16px 16px 12px;
+}
+
+.y-vd-chart__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.y-vd-chart__tabs {
+  display: inline-flex;
+  gap: 2px;
+  padding: 4px;
+  background: var(--y-app);
+  border-radius: var(--y-r-lg);
+}
+
+.y-vd-chart__tab {
+  padding: 6px 12px;
+  border: none;
+  border-radius: var(--y-r-sm);
+  background: transparent;
+  color: var(--y-text-2);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.y-vd-chart__tab:hover {
+  color: var(--y-text);
+}
+
+.y-vd-chart__tab.is-active {
+  background: var(--y-surface);
+  color: var(--y-text);
+}
+
+.y-vd-chart__period {
+  position: relative;
+}
+
+.y-vd-chart__period-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 72px;
+  height: 32px;
+  padding: 0 12px;
+  background: var(--y-surface);
+  border: 1px solid var(--y-border);
+  border-radius: var(--y-r-lg);
+  color: var(--y-text);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.y-vd-chart__period-btn:hover {
+  border-color: var(--y-border-hover);
+}
+
+.y-vd-chart__period-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+
+.y-vd-chart__period-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 41;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  min-width: 88px;
+  background: var(--y-surface);
+  border: 1px solid var(--y-border);
+  border-radius: var(--y-r-lg);
+  box-shadow: 0 12px 24px -8px rgb(0 0 0 / 0.6);
+}
+
+.y-vd-chart__period-item {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  border-radius: var(--y-r-sm);
+  background: transparent;
+  color: var(--y-text-2);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.y-vd-chart__period-item:hover {
+  background: var(--y-surface-2);
+  color: var(--y-text);
+}
+
+.y-vd-chart__period-item.is-active {
+  color: var(--y-text);
+}
+
+/* ---------- strategies ---------- */
+
+.y-strat {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.y-strat__allocation {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+.y-strat__legend {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.y-strat__legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--y-text);
+}
+
+.y-strat__legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.y-strat__table {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0 -24px;
+}
+
+.y-strat-head,
+.y-strat-row__head {
+  display: grid;
+  grid-template-columns: 11fr 12fr 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 32px;
+}
+
+.y-strat-head {
+  padding: 8px 32px;
+  gap: 0;
+  color: var(--y-text-2);
+}
+
+.y-strat-head__label,
+.y-strat-head__sort {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+}
+
+.y-strat-head__sorts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.y-strat-head__sort {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.y-strat-head__sort:hover,
+.y-strat-head__sort.is-active {
+  color: var(--y-text);
+}
+
+.y-strat-head__chevron {
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.y-strat-head__chevron.is-asc {
+  transform: rotate(180deg);
+}
+
+.y-strat-head__spacer {
+  display: block;
+}
+
+.y-strat-row__head {
+  width: 100%;
+  background: none;
+  border: none;
+  border-radius: var(--y-r-lg);
+  cursor: pointer;
+  text-align: left;
+  color: var(--y-text);
+  transition: background-color 0.2s ease;
+}
+
+.y-strat-row__head:hover {
+  background: color-mix(in srgb, var(--y-surface-2) 50%, transparent);
+}
+
+.y-strat-row__head--static,
+.y-strat-row__head--static:hover {
+  cursor: default;
+  background: none;
+}
+
+.y-strat-row__name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.y-strat-row__dot-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.y-strat-row__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--y-r-full);
+  background: var(--y-text-3);
+}
+
+.y-strat-row__dot.is-active {
+  background: var(--y-success);
+}
+
+.y-strat-row__label {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 700;
+  text-wrap: balance;
+  color: var(--y-text);
+}
+
+.y-strat-row__nums {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.y-strat-row__num {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.y-strat-row__chevron {
+  color: var(--y-text-2);
+  justify-self: end;
+  transition: transform 0.15s ease;
+}
+
+.y-strat-row.is-open .y-strat-row__chevron {
+  transform: rotate(180deg);
+}
+
+.y-strat-row {
+  display: flex;
+  flex-direction: column;
+}
+
+.y-strat-row__body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 0 16px 16px;
+}
+
+.y-strat-row__kv {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--y-text-2);
+}
+
+.y-strat-row__kv b {
+  color: var(--y-text);
+  font-weight: 600;
+}
+
+.y-strat__table--inactive {
+  margin: 0;
+  padding-bottom: 8px;
+}
+
+.y-strat__unallocated {
+  margin: 16px -24px -24px;
+}
+
+.y-strat__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  padding: 12px 32px;
+  border: none;
+  border-top: 1px solid var(--y-border);
+  background: none;
+  color: var(--y-text);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+.y-strat__toggle:hover {
+  color: var(--y-text);
+}
+
+.y-strat__toggle-count {
+  margin-left: 4px;
+  font-weight: 400;
+  color: var(--y-text-2);
+}
+
+.y-strat__toggle-chevron {
+  transition: transform 0.15s ease;
+}
+
+.y-strat__toggle-chevron.is-open {
+  transform: rotate(180deg);
+}
+
+/* ---------- risk ---------- */
+
+.y-vd-risk__score {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 32px;
+  margin-bottom: 8px;
+}
+
+.y-vd-risk__value {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-weight: 700;
+}
+
+.y-vd-risk__title,
+.y-vd-risk__level {
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 700;
+  color: var(--y-text);
+}
+
+.y-vd-risk__level {
+  margin-right: 8px;
+}
+
+.y-vd-risk__max {
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 700;
+  color: var(--y-text-3);
+}
+
+.y-vd-risk__text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--y-text-2);
+}
+
+/* ---------- more info ---------- */
+
+.y-vd-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.y-vd-info__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 18px;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.y-vd-info__label {
+  color: var(--y-text-2);
+}
+
+.y-vd-info__value {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--y-text);
+}
+
+.y-vd-info__addr {
+  font-family: var(--y-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.y-vd-info__icon {
+  display: inline-flex;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--y-text-2);
+  transition: color 0.15s ease;
+}
+
+.y-vd-info__icon:hover {
+  color: var(--y-text);
+}
+
+.y-vd-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--y-text);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.y-vd-link:hover {
+  text-decoration: underline;
+}
+
+/* ---------- scroll to top ---------- */
+
+.y-scroll-top {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--y-r-full);
+  background: var(--y-surface);
+  border: 1px solid var(--y-border);
+  color: var(--y-text);
+  cursor: pointer;
+}
+
+.y-scroll-top:hover {
+  border-color: var(--y-border-hover);
+}
+
+@media (max-width: 1074px) {
+  .y-vd__sticky,
+  .y-vd__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .y-vd__sticky {
+    position: static;
+  }
+
+  .y-vd__aside {
+    position: static;
+  }
+
+  .y-vd-header__top {
+    flex-direction: column;
+  }
+
+  .y-vd-kpis {
+    border-top: 1px solid var(--y-border);
+  }
+
+  .y-vd-kpi {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .y-vd-kpi:first-child {
+    border-left: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .y-vd-header__name {
+    font-size: 28px;
+    line-height: 32px;
+  }
+
+  /* Three KPI cells in ~370px: 24px gutters and a 22px value overflow. */
+  .y-vd-kpi {
+    padding: 12px;
+  }
+
+  .y-vd-kpi__value {
+    font-size: 18px;
+    line-height: 24px;
+  }
+
+  /* Below `md` the section tabs become a scrollable pill row, as on the site,
+     instead of squeezing five equal-width labels onto two lines each. */
+  .y-vd-tabs:not(.y-vd-tabs--widget) {
+    gap: 8px;
+    padding: 8px 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .y-vd-tabs:not(.y-vd-tabs--widget)::-webkit-scrollbar {
+    display: none;
+  }
+
+  .y-vd-tabs:not(.y-vd-tabs--widget) .y-vd-tab {
+    flex: 0 0 auto;
+    height: 32px;
+    padding: 0 16px;
+    border-color: var(--y-border);
+    border-radius: var(--y-r-full);
+    background: var(--y-surface-2);
+    white-space: nowrap;
+  }
+
+  /* The period picker drops to its own line so the metric labels stay unwrapped. */
+  .y-vd-chart__bar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .y-vd-chart__tab {
+    white-space: nowrap;
+  }
+
+  .y-strat-head,
+  .y-strat-row__head {
+    grid-template-columns: minmax(0, 1fr) 72px 72px 24px;
+  }
+
+  .y-strat-head__sort:nth-of-type(2),
+  .y-strat-row__num:nth-of-type(2) {
+    display: none;
+  }
+}

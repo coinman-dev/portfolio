@@ -3,9 +3,84 @@
 	<head>
 		<meta charset="UTF-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-		<title>My Crypto Portfolio</title>
+		<title>CoinMan Portfolio Tracker</title>
+		<meta property="og:site_name" content="CoinMan Portfolio Tracker"/>
+		<meta property="og:title" content="CoinMan Portfolio Tracker"/>
+		<meta name="description" content="CoinMan Cross-Chain Crypto Exchange & Portfolio Tracker"/>
 		<link rel="stylesheet" href="index.css"/>
+		<link rel="stylesheet" href="modules/modules.bundle.css"/>
 		<link rel="icon" type="image/webp" href="images/coinman.dev.webp"/>
+		<script>
+			(function () {
+				var originalOpen = window.open;
+				window.open = function (url, target, features) {
+					if (url) {
+						var urlStr = String(url);
+						var isInternal = /^(data:|blob:|about:|javascript:)/i.test(urlStr);
+						var isLocalApp = urlStr.startsWith("tauri://") ||
+							urlStr.startsWith("http://tauri.localhost") ||
+							urlStr.startsWith("https://tauri.localhost");
+
+						if (!isInternal && !isLocalApp) {
+							console.log("[CoinMan] Intercepted window.open -> open_url:", urlStr);
+							var invoke = (window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke) ||
+								(window.__TAURI_INTERNALS__ && window.__TAURI_INTERNALS__.invoke) ||
+								(window.AppBridge && window.AppBridge.invoke);
+							if (invoke) {
+								invoke("open_url", { url: urlStr }).catch(function (err) {
+									console.error("[CoinMan] open_url failed:", err);
+								});
+								return { closed: false, close: function () {}, focus: function () {} };
+							}
+						}
+					}
+					return originalOpen ? originalOpen.apply(this, arguments) : null;
+				};
+
+				window.addEventListener("message", function (event) {
+					if (event && event.data && typeof event.data === "object") {
+						if (event.data.method === "INTERCEPT_WINDOW_OPEN" && event.data.href) {
+							var targetUrl = String(event.data.href);
+							console.log("[CoinMan] Intercepted postMessage INTERCEPT_WINDOW_OPEN -> open_url:", targetUrl);
+							var invoke = (window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke) ||
+								(window.__TAURI_INTERNALS__ && window.__TAURI_INTERNALS__.invoke) ||
+								(window.AppBridge && window.AppBridge.invoke);
+							if (invoke) {
+								invoke("open_url", { url: targetUrl }).catch(function (err) {
+									console.error("[CoinMan] postMessage open_url failed:", err);
+								});
+							}
+						}
+					}
+				});
+
+				document.addEventListener("click", function (e) {
+					var anchor = e.target && e.target.closest ? e.target.closest("a") : null;
+					if (!anchor || !anchor.href) return;
+					var href = anchor.href;
+					var isInternal = /^(data:|blob:|about:|javascript:)/i.test(href);
+					var isLocalApp = href.startsWith("tauri://") ||
+						href.startsWith("http://tauri.localhost") ||
+						href.startsWith("https://tauri.localhost");
+
+					var isCustomScheme = !/^(http|https|file):/i.test(href);
+					var isExternalWeb = /^(http|https):/i.test(href) && (anchor.target === "_blank" || !isLocalApp);
+
+					if (!isInternal && !isLocalApp && (isCustomScheme || isExternalWeb)) {
+						e.preventDefault();
+						e.stopPropagation();
+						console.log("[CoinMan] Intercepted link click -> open_url:", href);
+						var invoke = (window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke) ||
+							(window.__TAURI_INTERNALS__ && window.__TAURI_INTERNALS__.invoke);
+						if (invoke) {
+							invoke("open_url", { url: href }).catch(function (err) {
+								console.error("[CoinMan] open_url link click failed:", err);
+							});
+						}
+					}
+				}, true);
+			})();
+		</script>
 	</head>
 	<body>
 		<div class="desktop-menu-bar">
@@ -29,6 +104,46 @@
 					<div class="dropdown-item dropdown-item-check" id="menu-toggle-table-footer" onclick="AppSettings.handleToggleTableFooter()"> Show table footer </div>
 					<div class="dropdown-separator"></div>
 					<div class="dropdown-item dropdown-item-check" id="menu-toggle-cmc" onclick="AppSettings.handleToggleCmc()"> Fetch prices from CoinMarketCap </div>
+					<div class="dropdown-separator"></div>
+					<div class="dropdown-item dropdown-item-check" id="menu-toggle-debug" onclick="AppSettings.handleToggleDebugMode()"> Debug mode (write log files) </div>
+					<div class="dropdown-item" onclick="AppSettings.handleOpenLogsFolder()"> Open logs folder </div>
+				</div>
+			</div>
+			<div class="menu-item" id="menu-item-exchange" onclick="toggleDropdown('exchange-dropdown', event)"> Exchange
+				<div class="dropdown-menu" id="exchange-dropdown">
+					<div class="dropdown-item dropdown-item-wallet" id="menu-exchange-wallet" onclick="AppExchange.handleWalletClick(event)">
+						<span class="wallet-menu-label">Wallet Connect</span>
+						<span class="wallet-menu-status" id="menu-wallet-status"></span>
+					</div>
+					<div class="dropdown-divider"></div>
+					<div class="dropdown-item" id="menu-exchange-bestrate" onclick="AppExchange.selectExchangeModule('bestrate')">
+						<span>Best Rate</span>
+					</div>
+					<div class="dropdown-item" id="menu-exchange-lifi" onclick="AppExchange.selectExchangeModule('lifi')">
+						<span>Li-Fi</span>
+					</div>
+					<div class="dropdown-item" id="menu-exchange-cowswap" onclick="AppExchange.selectExchangeModule('cowswap')">
+						<span>CoW Swap</span>
+					</div>
+					<div class="dropdown-item" id="menu-exchange-jumper" onclick="AppExchange.selectExchangeModule('jumper')">
+						<span>Jumper Exchange</span>
+					</div>
+					<div class="dropdown-divider"></div>
+					<div class="dropdown-item" id="menu-exchange-approvals" onclick="AppExchange.selectExchangeModule('approvals')">
+						<span>Approvals</span>
+					</div>
+				</div>
+			</div>
+			<div class="menu-item" id="menu-item-earn" onclick="toggleDropdown('earn-dropdown', event)"> Earn
+				<div class="dropdown-menu" id="earn-dropdown">
+					<div class="dropdown-item dropdown-item-wallet" id="menu-earn-wallet" onclick="AppEarn.handleWalletClick(event)">
+						<span class="wallet-menu-label">Wallet Connect</span>
+						<span class="wallet-menu-status" id="menu-earn-wallet-status"></span>
+					</div>
+					<div class="dropdown-divider"></div>
+					<div class="dropdown-item" id="menu-earn-yearn" onclick="AppEarn.selectEarnModule('yearn')">
+						<span>Yearn Finance</span>
+					</div>
 				</div>
 			</div>
 			<div class="menu-item menu-item-right" onclick="toggleDropdown('about-dropdown', event)"> About
@@ -37,7 +152,7 @@
 				</div>
 			</div>
 		</div>
-		<div class="container">
+		<div class="container" id="portfolio-view">
 			<!-- HEADER (табличная разметка для Dreamweaver) -->
 			<table id="brand-header-table" class="header-table">
 				<tr>
@@ -350,7 +465,77 @@
 </div>
 <div class="bottom-refresh-container"></div>
 </div>
+		<!-- EXCHANGE VIEW -->
+		<div id="exchange-view" class="container module-view" style="display: none;">
+			<table id="exchange-header-table" class="header-table">
+				<tr>
+					<td class="header-logo-cell">
+						<div class="header-logo-wrap">
+							<img src="images/coinman.dev.webp" alt=""/>
+							<span class="logo-text" id="exchange-header-title">CoinMan Cross-Chain Exchange</span>
+						</div>
+					</td>
+					<td class="header-actions-cell">
+						<button class="add-portfolio-btn" onclick="AppNavigation.switchView('portfolio')"> ← PORTFOLIO </button>
+					</td>
+				</tr>
+			</table>
+			<div id="exchange-widget-root" class="module-widget-root">
+				<div id="exchange-bestrate-container" style="display: none;"></div>
+				<div id="exchange-jumper-container" style="display: none;">
+					<div class="exchange-jumper-placeholder">Loading jumper.xyz…</div>
+				</div>
+				<div id="exchange-lifi-container" class="module-widget-body" style="display: none; width: 100%;"></div>
+				<div id="exchange-cowswap-container" style="display: none; width: 100%;"></div>
+				<div id="exchange-approvals-container" style="display: none;"></div>
+			</div>
+		</div>
+		<!-- EARN VIEW -->
+		<div id="earn-view" class="container module-view" style="display: none;">
+			<table id="earn-header-table" class="header-table">
+				<tr>
+					<td class="header-logo-cell">
+						<div class="header-logo-wrap">
+							<img src="images/coinman.dev.webp" alt=""/>
+							<span class="logo-text" id="earn-header-title">CoinMan DeFi Earn • Yearn Finance</span>
+						</div>
+					</td>
+					<td class="header-actions-cell">
+						<button class="add-portfolio-btn" onclick="AppNavigation.switchView('portfolio')"> ← PORTFOLIO </button>
+					</td>
+				</tr>
+			</table>
+			<div id="earn-widget-root" class="module-widget-root">
+				<div id="earn-yearn-container" class="module-widget-body" style="display: none; width: 100%;"></div>
+			</div>
+		</div>
 <!-- MODALS -->
+<div id="modal-wallet-connect" class="modal">
+	<div class="modal-content">
+		<div class="modal-header">
+			<span>Wallet Connect</span>
+			<span class="close-btn" onclick="AppExchange.closeWalletModal()">&times;</span>
+		</div>
+		<div class="modal-body">
+			<p class="wallet-modal-intro">
+				Connect your hardware wallet (OneKey HD) or mobile/desktop wallet via WalletConnect.
+				Wallets stay connected between launches. The selected wallet is used by all exchange and earn modules; click another one to switch.
+			</p>
+			<p class="wallet-modal-intro wallet-modal-note">
+				Click a wallet to switch to it at once — one that is not connected opens to view only (balances, Earn, approvals);
+				press Reconnect when it has to sign. OneKey keeps one connection per app: reconnecting one OneKey account ends another's,
+				or switch the account inside OneKey and CoinMan follows it.
+			</p>
+			<div id="wallet-modal-list" class="wallet-list"></div>
+			<div id="wallet-modal-error" class="wallet-modal-error hidden"></div>
+		</div>
+		<div class="modal-footer wallet-modal-footer">
+			<button id="wallet-modal-add-btn" class="btn btn-orange" onclick="AppExchange.handleAddWallet()">CONNECT ANOTHER WALLET</button>
+			<button id="wallet-modal-remove-btn" class="btn btn-red" onclick="AppExchange.handleRemoveSelectedWallet()">REMOVE SELECTED WALLET</button>
+			<button class="btn btn-outline" onclick="AppExchange.closeWalletModal()">CLOSE</button>
+		</div>
+	</div>
+</div>
 <div id="modal-create-portfolio" class="modal">
 	<div class="modal-content">
 		<div class="modal-header">
@@ -456,11 +641,11 @@
 				<div class="flex-1">
 					<label class="form-label">Buy Price <span class="form-hint inline-label-note">(per coin)</span>
 					</label>
-					<input type="number" id="add-coin-price" class="form-input" placeholder="0.00"/>
+					<input type="text" inputmode="decimal" id="add-coin-price" class="form-input" placeholder="0.00"/>
 				</div>
 				<div class="flex-1">
 					<label class="form-label">Amount</label>
-					<input type="number" id="add-coin-amount" class="form-input" placeholder="0.00"/>
+					<input type="text" inputmode="decimal" id="add-coin-amount" class="form-input" placeholder="0.00"/>
 				</div>
 			</div>
 			<div class="form-group date-time-group">
@@ -506,13 +691,13 @@
 				<div class="flex-1">
 					<label class="form-label">Sell Price <span class="form-hint inline-label-note">(per coin)</span>
 					</label>
-					<input type="number" id="bulk-sell-price" class="form-input" placeholder="0.00"/>
+					<input type="text" inputmode="decimal" id="bulk-sell-price" class="form-input" placeholder="0.00"/>
 				</div>
 				<div class="flex-1">
 					<!-- Перенесено: подсказка "Sell All" теперь справа от метки Sell Amount -->
 					<label class="form-label">Sell Amount <span id="bulk-sell-sell-all" class="form-hint inline-label-note form-hint-action">[sell all: 0]</span>
 					</label>
-					<input type="number" id="bulk-sell-amount" class="form-input" placeholder="0.00"/>
+					<input type="text" inputmode="decimal" id="bulk-sell-amount" class="form-input" placeholder="0.00"/>
 				</div>
 			</div>
 			<div class="form-group date-time-group">
@@ -638,11 +823,11 @@
 					<div class="flex-1">
 						<label class="form-label">Buy Price <span class="form-hint inline-label-note">(per coin)</span>
 						</label>
-						<input type="number" id="edit-coin-price" class="form-input"/>
+						<input type="text" inputmode="decimal" id="edit-coin-price" class="form-input"/>
 					</div>
 					<div class="flex-1">
 						<label class="form-label">Amount</label>
-						<input type="number" id="edit-coin-amount" class="form-input"/>
+						<input type="text" inputmode="decimal" id="edit-coin-amount" class="form-input"/>
 					</div>
 				</div>
 				<div class="form-group date-time-group">
@@ -676,11 +861,11 @@
 					<div class="flex-1">
 						<label class="form-label">Sell Price <span class="form-hint inline-label-note">(per coin)</span>
 						</label>
-						<input type="number" id="sell-coin-price" class="form-input" placeholder="0.00"/>
+						<input type="text" inputmode="decimal" id="sell-coin-price" class="form-input" placeholder="0.00"/>
 					</div>
 					<div class="flex-1">
 						<label class="form-label">Sell Amount</label>
-						<input type="number" id="sell-coin-amount" class="form-input" placeholder="0.00"/>
+						<input type="text" inputmode="decimal" id="sell-coin-amount" class="form-input" placeholder="0.00"/>
 					</div>
 				</div>
 				<div class="form-group date-time-group">
@@ -975,5 +1160,8 @@
 </div>
 <script src="coinman-tpl.js"></script>
 <script src="index.js"></script>
+<script src="modules-common.js"></script>
+<script src="exchange.js"></script>
+<script src="earn.js"></script>
 </body>
 </html>

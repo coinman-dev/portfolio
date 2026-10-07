@@ -1,0 +1,51 @@
+{
+  "name": "coinman-exchange-widgets",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "./node_modules/.bin/vite",
+    "build": "./node_modules/.bin/vite build"
+  },
+  "dependencies": {
+    "@cowprotocol/widget-lib": "^4.6.0",
+    "@lifi/sdk-provider-ethereum": "^4.2.4",
+    "@lifi/sdk-provider-tron": "^4.1.5",
+    "@lifi/widget": "^4.7.1",
+    "@lifi/widget-provider-ethereum": "^4.1.5",
+    "@lifi/widget-provider-tron": "^4.1.5",
+    "@noble/curves": "^1.9.1",
+    "@reown/appkit": "1.8.19",
+    "@tanstack/react-query": "^5.90.0",
+    "@tronweb3/tronwallet-adapter-react-hooks": "^1.1.14",
+    "@tronweb3/tronwallet-adapter-walletconnect": "^3.1.0",
+    "@wagmi/core": "^3.5.0",
+    "@walletconnect/ethereum-provider": "^2.24.0",
+    "@walletconnect/modal": "^2.6.2",
+    "@walletconnect/universal-provider": "^2.24.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "recharts": "^2.15.4",
+    "viem": "^2.52.0",
+    "wagmi": "^3.6.16"
+  },
+  "overrides": {
+    "@reown/appkit": "$@reown/appkit",
+    "@reown/appkit-common": "1.8.19",
+    "@reown/appkit-controllers": "1.8.19",
+    "@reown/appkit-pay": "1.8.19",
+    "@reown/appkit-polyfills": "1.8.19",
+    "@reown/appkit-scaffold-ui": "1.8.19",
+    "@reown/appkit-ui": "1.8.19",
+    "@reown/appkit-utils": "1.8.19",
+    "@reown/appkit-wallet": "1.8.19"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.1",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.7.0",
+    "vite": "^6.0.0"
+  }
+}

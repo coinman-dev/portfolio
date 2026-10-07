@@ -1,18 +1,21 @@
+mod approvals;
+mod diag_log;
+mod exchange_history;
+mod jumper;
+mod jumper_storage;
 mod settings;
 mod storage;
+mod wallet_store;
+mod webview_profile;
 
 use serde::Serialize;
-use std::fs;
-use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Mutex};
-use std::thread;
-use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 
 // ─── Default window dimensions (logical pixels) ─────────────────────────────
-const DEFAULT_WINDOW_WIDTH: f64 = 1220.0;
+const DEFAULT_WINDOW_WIDTH: f64 = 1200.0;
 const DEFAULT_WINDOW_HEIGHT: f64 = 700.0;
 
 #[derive(Default)]
@@ -45,11 +48,6 @@ impl Default for WindowSizeCalibration {
     }
 }
 
-#[derive(Clone)]
-struct RuntimePaths {
-    webview_data_dir: PathBuf,
-}
-
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct LoadResponse {
@@ -66,13 +64,11 @@ struct WriteResponse {
     saved_at: u64,
 }
 
-// ─── Tauri commands ───────────────────────────────────────────────────────────
+// ─── Tauri commands ─────────────────────────────────────────────────────────
 
 #[tauri::command]
 fn bootstrap_app(app: tauri::AppHandle) -> Result<storage::BootstrapConfig, String> {
-    let debug_mode = std::env::args()
-        .any(|a| a == "--debug" || a == "-debug" || a == "/debug");
-    storage::load_bootstrap(&app, debug_mode)
+    storage::load_bootstrap(&app, diag_log::is_enabled())
 }
 
 /// Load portfolios from disk.
@@ -96,11 +92,7 @@ fn load_portfolios(
     let user = storage::sanitize_user(user);
 
     // Resolve effective password: explicit > session
-    let session_pw = session
-        .0
-        .lock()
-        .ok()
-        .and_then(|g| g.clone());
+    let session_pw = session.0.lock().ok().and_then(|g| g.clone());
     let effective_pw = password.clone().or(session_pw);
 
     let data = storage::load_db(&app, &user, effective_pw.as_deref())?;
@@ -183,10 +175,7 @@ fn list_databases(app: tauri::AppHandle) -> Result<ListDatabasesResponse, String
 
 /// Check whether the given user's DB file is encrypted.
 #[tauri::command]
-fn check_db_encrypted(
-    app: tauri::AppHandle,
-    user: Option<String>,
-) -> Result<bool, String> {
+fn check_db_encrypted(app: tauri::AppHandle, user: Option<String>) -> Result<bool, String> {
     let user = storage::sanitize_user(user);
     storage::check_db_encrypted(&app, &user)
 }
@@ -263,7 +252,12 @@ fn load_app_settings(app: tauri::AppHandle, user: Option<String>) -> settings::A
 }
 
 #[tauri::command]
-fn save_market_cache(app: tauri::AppHandle, user: Option<String>, cache: serde_json::Value, saved_at: u64) {
+fn save_market_cache(
+    app: tauri::AppHandle,
+    user: Option<String>,
+    cache: serde_json::Value,
+    saved_at: u64,
+) {
     let user = storage::sanitize_user(user);
     settings::update_market_cache(&app, &user, cache, saved_at);
 }
@@ -300,7 +294,11 @@ fn save_is_collapsed(app: tauri::AppHandle, collapsed: bool) {
 }
 
 #[tauri::command]
-fn save_portfolio_order(app: tauri::AppHandle, user: Option<String>, order: Vec<serde_json::Value>) {
+fn save_portfolio_order(
+    app: tauri::AppHandle,
+    user: Option<String>,
+    order: Vec<serde_json::Value>,
+) {
     let user = storage::sanitize_user(user);
     settings::update_portfolio_order(&app, &user, order);
 }
@@ -321,7 +319,64 @@ fn save_last_update_check(app: tauri::AppHandle, timestamp: u64) {
 }
 
 #[tauri::command]
-async fn cmc_fetch_quotes(api_key: String, ids: String, convert: String) -> Result<serde_json::Value, String> {
+fn load_exchange_settings(app: tauri::AppHandle) -> serde_json::Value {
+    settings::load_exchange_settings(&app)
+}
+
+#[tauri::command]
+fn save_exchange_settings(app: tauri::AppHandle, settings: serde_json::Value) {
+    settings::update_exchange_settings(&app, settings);
+}
+
+#[tauri::command]
+fn load_wallet_store(app: tauri::AppHandle) -> serde_json::Map<String, serde_json::Value> {
+    wallet_store::load(&app)
+}
+
+#[tauri::command]
+fn save_wallet_store(
+    app: tauri::AppHandle,
+    items: serde_json::Map<String, serde_json::Value>,
+) -> Result<(), String> {
+    wallet_store::save_items(&app, items)
+}
+
+#[tauri::command]
+fn load_exchange_history(app: tauri::AppHandle) -> Vec<serde_json::Value> {
+    exchange_history::load(&app, exchange_history::SWAPS)
+}
+
+#[tauri::command]
+fn save_exchange_record(app: tauri::AppHandle, record: serde_json::Value) -> Result<(), String> {
+    exchange_history::save_record(&app, exchange_history::SWAPS, record)
+}
+
+#[tauri::command]
+fn load_revoke_history(app: tauri::AppHandle) -> Vec<serde_json::Value> {
+    exchange_history::load(&app, exchange_history::REVOKES)
+}
+
+#[tauri::command]
+fn save_revoke_record(app: tauri::AppHandle, record: serde_json::Value) -> Result<(), String> {
+    exchange_history::save_record(&app, exchange_history::REVOKES, record)
+}
+
+#[tauri::command]
+fn load_earn_settings(app: tauri::AppHandle) -> serde_json::Value {
+    settings::load_earn_settings(&app)
+}
+
+#[tauri::command]
+fn save_earn_settings(app: tauri::AppHandle, settings: serde_json::Value) {
+    settings::update_earn_settings(&app, settings);
+}
+
+#[tauri::command]
+async fn cmc_fetch_quotes(
+    api_key: String,
+    ids: String,
+    convert: String,
+) -> Result<serde_json::Value, String> {
     let url = format!(
         "https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest?id={}&convert={}",
         ids, convert
@@ -348,9 +403,37 @@ async fn cmc_fetch_quotes(api_key: String, ids: String, convert: String) -> Resu
         .map_err(|e| format!("Parse error: {}", e))
 }
 
+/// Frontend side of the diagnostic log; a no-op while debug mode is off.
 #[tauri::command]
-fn debug_log(message: String) {
-    log::info!("{}", message);
+fn debug_log(level: Option<String>, message: String) {
+    let level = match level.as_deref() {
+        Some("error") => log::Level::Error,
+        Some("warn") => log::Level::Warn,
+        Some("debug") => log::Level::Debug,
+        _ => log::Level::Info,
+    };
+    log::log!(target: diag_log::UI_TARGET, level, "{message}");
+}
+
+/// Settings → Debug mode. Takes effect at once and is remembered for the next start.
+#[tauri::command]
+fn set_debug_mode(app: tauri::AppHandle, enabled: bool) {
+    settings::update_debug_mode(&app, enabled);
+    if enabled && !diag_log::is_enabled() {
+        diag_log::set_enabled(true);
+        diag_log::write_session_header(&app, "turned on in Settings");
+    } else if !enabled && diag_log::is_enabled() {
+        log::info!("===== debug log off (turned off in Settings) =====");
+        diag_log::set_enabled(false);
+    }
+}
+
+#[tauri::command]
+fn open_logs_folder(app: tauri::AppHandle) -> Result<(), String> {
+    let dir = settings::logs_dir(&app);
+    std::fs::create_dir_all(&dir).map_err(|e| format!("Cannot create `{}`: {e}", dir.display()))?;
+    open_url(dir.to_string_lossy().into_owned());
+    Ok(())
 }
 
 #[tauri::command]
@@ -360,6 +443,7 @@ fn exit_app(app: tauri::AppHandle) {
 
 #[tauri::command]
 fn open_url(url: String) {
+    log::info!("[open_url] Request to open URL or protocol: {}", url);
     #[cfg(target_os = "windows")]
     {
         use std::ffi::OsStr;
@@ -376,7 +460,7 @@ fn open_url(url: String) {
         }
         let open: Vec<u16> = OsStr::new("open").encode_wide().chain(Some(0)).collect();
         let wide: Vec<u16> = OsStr::new(&url).encode_wide().chain(Some(0)).collect();
-        unsafe {
+        let res = unsafe {
             ShellExecuteW(
                 std::ptr::null_mut(),
                 open.as_ptr(),
@@ -384,13 +468,33 @@ fn open_url(url: String) {
                 std::ptr::null(),
                 std::ptr::null(),
                 1, // SW_SHOWNORMAL
+            )
+        };
+        let code = res as usize;
+        if code <= 32 {
+            log::error!(
+                "[open_url] ShellExecuteW failed for '{}' with code: {}",
+                url,
+                code
+            );
+        } else {
+            log::info!(
+                "[open_url] ShellExecuteW successfully launched for '{}'",
+                url
             );
         }
     }
-    #[cfg(target_os = "macos")]
-    std::process::Command::new("open").arg(&url).spawn().ok();
-    #[cfg(target_os = "linux")]
-    std::process::Command::new("xdg-open").arg(&url).spawn().ok();
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    {
+        let opener = if cfg!(target_os = "macos") {
+            "open"
+        } else {
+            "xdg-open"
+        };
+        if let Err(e) = std::process::Command::new(opener).arg(&url).spawn() {
+            log::error!("[open_url] {opener} failed for '{url}': {e}");
+        }
+    }
 }
 
 #[tauri::command]
@@ -431,7 +535,12 @@ async fn open_file_dialog(app: tauri::AppHandle) -> Result<Option<String>, Strin
     Ok(file.map(|f| f.to_string()))
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+/// `--debug` turns the diagnostic log on for one session and opens DevTools.
+fn cli_debug_flag() -> bool {
+    std::env::args().any(|a| a == "--debug" || a == "-debug" || a == "/debug")
+}
 
 fn now_unix_ms() -> u64 {
     SystemTime::now()
@@ -440,19 +549,15 @@ fn now_unix_ms() -> u64 {
         .as_millis() as u64
 }
 
-// ─── App setup ────────────────────────────────────────────────────────────────
+// ─── App setup ──────────────────────────────────────────────────────────────
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let webview_data_dir = prepare_webview_data_dir();
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(StorageLock::default())
         .manage(SessionPassword::default())
         .manage(WindowSizeCalibration::default())
-        .manage(RuntimePaths {
-            webview_data_dir: webview_data_dir.clone(),
-        })
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.unminimize();
@@ -479,6 +584,8 @@ pub fn run() {
             save_show_table_footer,
             save_is_collapsed,
             debug_log,
+            set_debug_mode,
+            open_logs_folder,
             exit_app,
             open_url,
             open_file_dialog,
@@ -487,37 +594,53 @@ pub fn run() {
             save_last_update_check,
             save_cmc_api_key,
             save_use_cmc,
-            cmc_fetch_quotes
+            cmc_fetch_quotes,
+            load_exchange_settings,
+            save_exchange_settings,
+            load_earn_settings,
+            save_earn_settings,
+            load_wallet_store,
+            save_wallet_store,
+            load_exchange_history,
+            save_exchange_record,
+            load_revoke_history,
+            save_revoke_record,
+            approvals::approvals_hypersync,
+            jumper::jumper_show,
+            jumper::jumper_hide,
+            jumper::jumper_wallet_response,
+            jumper::jumper_wallet_state
         ])
+        .register_asynchronous_uri_scheme_protocol(jumper::PROTOCOL, jumper::handle)
         .setup(|app| {
-            let debug_mode = std::env::args()
-                .any(|a| a == "--debug" || a == "-debug" || a == "/debug");
-            if debug_mode {
-                let log_dir = std::env::current_exe()
-                    .ok()
-                    .and_then(|p| p.parent().map(|d| d.to_path_buf()))
-                    .unwrap_or_else(|| std::path::PathBuf::from("."));
-                app.handle().plugin(
-                    tauri_plugin_log::Builder::new()
-                        .target(tauri_plugin_log::Target::new(
-                            tauri_plugin_log::TargetKind::Folder {
-                                path: log_dir,
-                                file_name: Some("portfolio.debug.log".to_string()),
-                            },
-                        ))
-                        .level(log::LevelFilter::Info)
-                        .build(),
-                )?;
-                log::info!("=== CoinMan Portfolio Tracker started ===");
+            let cli_debug = cli_debug_flag();
+            diag_log::init(settings::logs_dir(app.handle()));
+            let saved_debug = settings::load_global(app.handle())
+                .debug_mode
+                .unwrap_or(false);
+            if cli_debug || saved_debug {
+                diag_log::set_enabled(true);
+                diag_log::write_session_header(
+                    app.handle(),
+                    if cli_debug {
+                        "--debug flag"
+                    } else {
+                        "Settings"
+                    },
+                );
             }
-            create_main_window(app, debug_mode)?;
+            if let Err(e) = create_main_window(app, cli_debug) {
+                log::error!("Cannot create the main window: {e}");
+                return Err(e.into());
+            }
             Ok(())
         })
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
 
     let exit_code = app.run_return(|_, _| {});
-    cleanup_webview_data_dir(&webview_data_dir);
+    log::info!("Exit, code {exit_code}");
+    webview_profile::remove();
     if exit_code != 0 {
         std::process::exit(exit_code);
     }
@@ -561,7 +684,10 @@ fn detect_x11_dpi_scale() -> f64 {
     1.0
 }
 
-fn create_main_window<R: tauri::Runtime>(app: &mut tauri::App<R>, debug_mode: bool) -> tauri::Result<()> {
+fn create_main_window<R: tauri::Runtime>(
+    app: &mut tauri::App<R>,
+    debug_mode: bool,
+) -> tauri::Result<()> {
     if app.get_webview_window("main").is_some() {
         return Ok(());
     }
@@ -570,29 +696,306 @@ fn create_main_window<R: tauri::Runtime>(app: &mut tauri::App<R>, debug_mode: bo
     let mut height = DEFAULT_WINDOW_HEIGHT;
     let mut position = None;
 
-    // Prefer settings-cache.json for window state (works even when DB is encrypted).
+    // Prefer data/settings.json for window state (works even when DB is encrypted).
     // Fall back to DB window_state for backward compatibility with older installs.
     let app_settings = settings::load_global(app.handle());
     if let Some(ws) = app_settings.window_state {
-        width = ws.width;
-        height = ws.height;
-        position = Some((ws.x, ws.y));
-    } else if let Ok(db) = storage::load_db(app.handle(), "default", None) {
-        if let Some(ws) = db.window_state {
+        if ws.width >= 500.0 && ws.height >= 400.0 {
             width = ws.width;
             height = ws.height;
             position = Some((ws.x, ws.y));
         }
+    } else if let Ok(db) = storage::load_db(app.handle(), "default", None) {
+        if let Some(ws) = db.window_state {
+            if ws.width >= 500.0 && ws.height >= 400.0 {
+                width = ws.width;
+                height = ws.height;
+                position = Some((ws.x, ws.y));
+            }
+        }
     }
 
-    let runtime_paths = app.state::<RuntimePaths>();
+    let cowswap_dark_init_script = r##"
+(function() {
+    var observerStarted = false;
+
+    // CoW decides whether the orders/history panel is a side column or a modal
+    // with matchMedia("(max-width: 1280px)"). The app window is at least 1200px
+    // wide, so the iframe lands just under that and always got the modal.
+    // Serve that one query from a lower threshold; every other query, and the
+    // live `change` events, keep coming from the real MediaQueryList.
+    (function() {
+        var PANEL_QUERY = "(max-width: 1280px)";
+        var PANEL_QUERY_OVERRIDE = "(max-width: 900px)";
+        try {
+            if (!window.matchMedia) return;
+            var native = window.matchMedia.bind(window);
+            window.matchMedia = function(query) {
+                return native(
+                    String(query).replace(/\s+/g, " ").trim() === PANEL_QUERY
+                        ? PANEL_QUERY_OVERRIDE
+                        : query
+                );
+            };
+        } catch (e) {}
+    })();
+
+    function applyDarkAndTabs() {
+        try {
+            if (!document.location || !document.location.href.includes("cow.fi")) return;
+
+            // 1. Inject Styles
+            var styleId = "coinman-cow-custom-styles";
+            if (!document.getElementById(styleId)) {
+                var style = document.createElement("style");
+                style.id = styleId;
+                style.textContent = `
+                    :root {
+                        color-scheme: dark !important;
+                        --cow-color-background: #121212 !important;
+                    }
+                    html, body, #root, #bodyWrapper {
+                        background-color: #121212 !important;
+                        background: #121212 !important;
+                        min-height: 100% !important;
+                        height: 100% !important;
+                        color-scheme: dark !important;
+                    }
+                    /* Trade card width, to match the LI.FI widget.
+                       #card has no width of its own — it is capped by two
+                       ancestors that both carry max-width: 470px, so those are
+                       what has to be widened. The token picker, network list
+                       and history render position:fixed outside #card, so they
+                       keep using the full iframe. */
+                    [class*="TradePageLayout__PrimaryWrapper"],
+                    div:has(> #card) {
+                        width: 100% !important;
+                        max-width: 580px !important;
+                    }
+                    /* Companion to the matchMedia override above: that makes
+                       CoW render the orders panel, this lays it out beside the
+                       card. CoW's own two-column rule sits behind a CSS media
+                       query, which JS cannot reach.
+                       A second grid child means the panel is there; Swap mode
+                       has none and keeps CoW's own single-column layout. */
+                    @media (min-width: 901px) {
+                        /* The card gets a fixed 500px column; the orders panel
+                           takes the rest of the iframe, past CoW's own 1500px
+                           page cap. */
+                        [class*="TradePageLayout__PageWrapper"]:has(> :nth-child(2)) {
+                            grid-template-areas: "primary secondary" !important;
+                            grid-template-columns: minmax(0, 500px) minmax(0, 1fr) !important;
+                            max-width: none !important;
+                        }
+                        /* Alone in the row, the card is centred rather than pinned left. */
+                        [class*="TradePageLayout__PageWrapper"]:not(:has(> :nth-child(2)))
+                            [class*="TradePageLayout__PrimaryWrapper"] {
+                            margin-inline: auto !important;
+                        }
+                    }
+                    /* Hide dropdown trigger button and full-card select menu */
+                    div[class*="styled__DropdownButton"],
+                    div[class*="sc-f5oezr-1"],
+                    div[class*="sc-f5oezr-3"] {
+                        display: none !important;
+                    }
+                    div[class*="styled__SelectMenu"],
+                    div[class*="sc-f5oezr-4"] {
+                        display: none !important;
+                    }
+                    /* Horizontal Tabs Bar */
+                    .coinman-cow-tabs {
+                        display: inline-flex !important;
+                        align-items: center !important;
+                        gap: 3px !important;
+                        background: rgba(0, 0, 0, 0.3) !important;
+                        padding: 3px !important;
+                        border-radius: 12px !important;
+                        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+                        margin: 0 !important;
+                    }
+                    .coinman-cow-tab {
+                        font-family: inherit !important;
+                        font-size: 13.5px !important;
+                        font-weight: 600 !important;
+                        padding: 5px 14px !important;
+                        border-radius: 9px !important;
+                        cursor: pointer !important;
+                        color: #8e96a8 !important;
+                        background: transparent !important;
+                        transition: all 0.15s ease !important;
+                        user-select: none !important;
+                        border: none !important;
+                        outline: none !important;
+                        line-height: 1.2 !important;
+                        box-shadow: none !important;
+                    }
+                    .coinman-cow-tab:hover {
+                        color: #ffffff !important;
+                        background: rgba(255, 255, 255, 0.08) !important;
+                    }
+                    .coinman-cow-tab.active {
+                        color: #ffffff !important;
+                        background: #232d42 !important;
+                        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35) !important;
+                    }
+                `;
+                var target = document.head || document.documentElement;
+                if (target) {
+                    target.appendChild(style);
+                }
+            }
+
+            // 2. Render Tabs
+            updateTabs();
+            ensureObserver();
+        } catch (e) {}
+    }
+
+    function getActiveMode() {
+        var h = window.location.hash || "";
+        if (h.indexOf("/advanced") !== -1) return "advanced";
+        if (h.indexOf("/limit") !== -1) return "limit";
+        return "swap";
+    }
+
+    function navigateToMode(mode) {
+        try {
+            var hash = window.location.hash || "";
+            var match = hash.match(/^#\/([^\/]+)\/widget\/(swap|limit|advanced)(.*)$/);
+            var newHash;
+            if (match) {
+                newHash = "#/" + match[1] + "/widget/" + mode + match[3];
+            } else {
+                var chainMatch = hash.match(/^#\/([^\/]+)/);
+                var chain = (chainMatch && chainMatch[1]) ? chainMatch[1] : "1";
+                newHash = "#/" + chain + "/widget/" + mode;
+            }
+            if (window.location.hash !== newHash) {
+                window.location.hash = newHash;
+                try { window.dispatchEvent(new Event("hashchange")); } catch (_) {}
+            }
+            updateTabs();
+        } catch (err) {
+            console.warn("[CoinMan CoW] navigateToMode error:", err);
+        }
+    }
+
+    function updateTabs() {
+        try {
+            if (!document.location || !document.location.href.includes("cow.fi")) return;
+
+            var card = document.querySelector("#card");
+            if (!card) return;
+            var header = card.firstElementChild;
+            if (!header) return;
+
+            var activeMode = getActiveMode();
+            var tabsContainer = header.querySelector(".coinman-cow-tabs");
+
+            if (!tabsContainer) {
+                tabsContainer = document.createElement("div");
+                tabsContainer.className = "coinman-cow-tabs";
+
+                var tabs = [
+                    { id: "swap", label: "Swap" },
+                    { id: "limit", label: "Limit" },
+                    { id: "advanced", label: "TWAP" }
+                ];
+
+                tabs.forEach(function(tab) {
+                    var btn = document.createElement("button");
+                    btn.type = "button";
+                    btn.className = "coinman-cow-tab" + (activeMode === tab.id ? " active" : "");
+                    btn.setAttribute("data-mode", tab.id);
+                    btn.textContent = tab.label;
+                    btn.onclick = function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        navigateToMode(tab.id);
+                    };
+                    tabsContainer.appendChild(btn);
+                });
+
+                header.insertBefore(tabsContainer, header.firstElementChild);
+            } else {
+                var buttons = tabsContainer.querySelectorAll(".coinman-cow-tab");
+                buttons.forEach(function(btn) {
+                    var mode = btn.getAttribute("data-mode");
+                    if (mode === activeMode) {
+                        btn.classList.add("active");
+                    } else {
+                        btn.classList.remove("active");
+                    }
+                });
+            }
+        } catch (e) {}
+    }
+
+    function ensureObserver() {
+        if (observerStarted) return;
+        var target = document.body || document.documentElement;
+        if (target) {
+            // CoW re-renders constantly (live prices), so a subtree observer
+            // fires in bursts. Coalesce them into one update per frame.
+            var scheduled = false;
+            var observer = new MutationObserver(function() {
+                if (scheduled) return;
+                scheduled = true;
+                requestAnimationFrame(function() {
+                    scheduled = false;
+                    updateTabs();
+                });
+            });
+            observer.observe(target, { childList: true, subtree: true });
+            observerStarted = true;
+        }
+    }
+
+    applyDarkAndTabs();
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", applyDarkAndTabs);
+    }
+
+    window.addEventListener("hashchange", function() {
+        setTimeout(updateTabs, 10);
+    });
+
+    // Safety net for routes the observer misses. This script is injected into
+    // every frame, so in the app's own window it would otherwise poll forever
+    // for a CoW card that will never exist — give up there after a few seconds.
+    var idleTicks = 0;
+    var timer = setInterval(function() {
+        if (!document.location || document.location.href.indexOf("cow.fi") === -1) {
+            if (++idleTicks > 20) clearInterval(timer);
+            return;
+        }
+        idleTicks = 0;
+        updateTabs();
+        ensureObserver();
+    }, 250);
+})();
+"##;
+
     let mut builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
         .title("CoinMan Portfolio Tracker")
         .inner_size(width, height)
         .min_inner_size(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT)
         .resizable(true)
         .fullscreen(false)
-        .data_directory(runtime_paths.webview_data_dir.clone());
+        .theme(Some(tauri::Theme::Dark))
+        .background_color(tauri::utils::config::Color(18, 18, 18, 255))
+        .initialization_script(cowswap_dark_init_script)
+        .use_https_scheme(true)
+        .incognito(true);
+    let profile = webview_profile::prepare().inspect_err(|e| {
+        log::error!("Cannot prepare the webview profile folder: {e}");
+    })?;
+    if let Some(dir) = profile {
+        log::debug!("Webview profile: {}", dir.display());
+        builder = builder.data_directory(dir);
+    }
 
     if let Some((x, y)) = position {
         builder = builder.position(x, y);
@@ -606,7 +1009,34 @@ fn create_main_window<R: tauri::Runtime>(app: &mut tauri::App<R>, debug_mode: bo
         *cal.intended.lock().unwrap() = (width, height);
     }
 
+    let builder = builder.on_new_window(|url, _features| {
+        let url_str = url.as_str();
+        log::info!(
+            "[on_new_window] Intercepted new window request: {}",
+            url_str
+        );
+        if !url_str.is_empty()
+            && url_str != "about:blank"
+            && !url_str.starts_with("javascript:")
+            && !url_str.starts_with("data:")
+        {
+            open_url(url_str.to_string());
+        }
+        tauri::webview::NewWindowResponse::Deny
+    });
+
+    let builder = builder.on_page_load(|_, payload| {
+        log::debug!("[page] {:?} {}", payload.event(), payload.url());
+    });
+
     let window = builder.build()?;
+    log::info!(
+        "Main window {}x{} at {:?}, scale {}",
+        width,
+        height,
+        position,
+        window.scale_factor().unwrap_or(1.0)
+    );
 
     if debug_mode {
         window.open_devtools();
@@ -667,74 +1097,101 @@ fn create_main_window<R: tauri::Runtime>(app: &mut tauri::App<R>, debug_mode: bo
                         *cal.offset.lock().unwrap() = (ow, oh);
                     }
                 }
+
+                // If window is in normal state (not minimized and not maximized), persist size
+                if !w.is_minimized().unwrap_or(false) && !w.is_maximized().unwrap_or(false) {
+                    if let Ok(sf) = w.scale_factor() {
+                        let logical = phys_size.to_logical::<f64>(sf);
+                        let (ow, oh) = *cal.offset.lock().unwrap();
+                        let dpi_mm = *cal.dpi_mismatch.lock().unwrap();
+                        let calc_w = ((logical.width - ow) / dpi_mm).round();
+                        let calc_h = ((logical.height - oh) / dpi_mm).round();
+                        if calc_w >= 500.0 && calc_h >= 400.0 {
+                            let s = settings::load_global(&app_handle);
+                            let cur_pos =
+                                s.window_state.map(|ws| (ws.x, ws.y)).unwrap_or((0.0, 0.0));
+                            let updated = settings::WinState {
+                                width: calc_w,
+                                height: calc_h,
+                                x: cur_pos.0,
+                                y: cur_pos.1,
+                            };
+                            settings::update_window_state(app_handle, updated);
+                        }
+                    }
+                }
+            }
+            tauri::WindowEvent::Moved(phys_pos) => {
+                // If window is in normal state (not minimized and not maximized), persist position
+                if !w.is_minimized().unwrap_or(false) && !w.is_maximized().unwrap_or(false) {
+                    if let Ok(sf) = w.scale_factor() {
+                        let logical = phys_pos.to_logical::<f64>(sf);
+                        if logical.x > -2000.0 && logical.y > -2000.0 {
+                            let app_handle = w.app_handle();
+                            let mut s = settings::load_global(&app_handle);
+                            if let Some(ws) = &mut s.window_state {
+                                ws.x = logical.x;
+                                ws.y = logical.y;
+                                settings::update_window_state(app_handle, ws.clone());
+                            }
+                        }
+                    }
+                }
             }
             tauri::WindowEvent::CloseRequested { .. } => {
+                log::info!("Main window close requested");
                 let app_handle = w.app_handle();
                 let cal = app_handle.state::<WindowSizeCalibration>();
                 let (ow, oh) = *cal.offset.lock().unwrap();
 
-                // Try to preserve previous x and y in case outer_position fails (e.g. on Wayland)
-                let (prev_x, prev_y) = settings::load_global(&app_handle)
-                    .window_state
-                    .map(|ws| (ws.x, ws.y))
-                    .unwrap_or((0.0, 0.0));
+                // Never overwrite with defaults if minimized or maximized!
+                if !w.is_minimized().unwrap_or(false) && !w.is_maximized().unwrap_or(false) {
+                    let prev_state = settings::load_global(&app_handle).window_state;
+                    let (prev_w, prev_h, prev_x, prev_y) = prev_state
+                        .map(|ws| (ws.width, ws.height, ws.x, ws.y))
+                        .unwrap_or((DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT, 0.0, 0.0));
 
-                let mut win_state = settings::WinState {
-                    width: DEFAULT_WINDOW_WIDTH,
-                    height: DEFAULT_WINDOW_HEIGHT,
-                    x: prev_x,
-                    y: prev_y,
-                };
+                    let mut new_w = prev_w;
+                    let mut new_h = prev_h;
+                    let mut new_x = prev_x;
+                    let mut new_y = prev_y;
 
-                let dpi_mm = *cal.dpi_mismatch.lock().unwrap();
-                if let Ok(size) = w.inner_size() {
-                    if let Ok(scale_factor) = w.scale_factor() {
-                        let logical_size = size.to_logical::<f64>(scale_factor);
-                        // Divide by dpi_mismatch to convert back to "app-logical"
-                        // coordinates (the size before X11 DPI compensation).
-                        win_state.width = ((logical_size.width - ow) / dpi_mm).max(DEFAULT_WINDOW_WIDTH);
-                        win_state.height = ((logical_size.height - oh) / dpi_mm).max(DEFAULT_WINDOW_HEIGHT);
+                    let dpi_mm = *cal.dpi_mismatch.lock().unwrap();
+                    if let Ok(size) = w.inner_size() {
+                        if let Ok(scale_factor) = w.scale_factor() {
+                            let logical_size = size.to_logical::<f64>(scale_factor);
+                            let calc_w = ((logical_size.width - ow) / dpi_mm).round();
+                            let calc_h = ((logical_size.height - oh) / dpi_mm).round();
+                            if calc_w >= 500.0 && calc_h >= 400.0 {
+                                new_w = calc_w;
+                                new_h = calc_h;
+                            }
+                        }
                     }
-                }
-                if let Ok(pos) = w.outer_position() {
-                    if let Ok(scale_factor) = w.scale_factor() {
-                        let logical_pos = pos.to_logical::<f64>(scale_factor);
-                        win_state.x = logical_pos.x;
-                        win_state.y = logical_pos.y;
+                    if let Ok(pos) = w.outer_position() {
+                        if let Ok(scale_factor) = w.scale_factor() {
+                            let logical_pos = pos.to_logical::<f64>(scale_factor);
+                            if logical_pos.x > -2000.0 && logical_pos.y > -2000.0 {
+                                new_x = logical_pos.x;
+                                new_y = logical_pos.y;
+                            }
+                        }
                     }
-                }
 
-                settings::update_window_state(app_handle, win_state);
+                    settings::update_window_state(
+                        app_handle,
+                        settings::WinState {
+                            width: new_w,
+                            height: new_h,
+                            x: new_x,
+                            y: new_y,
+                        },
+                    );
+                }
             }
             _ => {}
         }
     });
 
     Ok(())
-}
-
-fn prepare_webview_data_dir() -> PathBuf {
-    let dir = std::env::temp_dir().join(format!(
-        "coinman-portfolio-ebwebview-{}",
-        std::process::id()
-    ));
-    if dir.is_dir() {
-        let _ = fs::remove_dir_all(&dir);
-    }
-    let _ = fs::create_dir_all(&dir);
-    dir
-}
-
-fn cleanup_webview_data_dir(path: &Path) {
-    for delay_ms in [0_u64, 100, 250, 500, 1000] {
-        if delay_ms > 0 {
-            thread::sleep(Duration::from_millis(delay_ms));
-        }
-
-        match fs::remove_dir_all(path) {
-            Ok(_) => return,
-            Err(err) if err.kind() == std::io::ErrorKind::NotFound => return,
-            Err(_) => continue,
-        }
-    }
 }

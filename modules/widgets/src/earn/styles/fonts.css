@@ -1,0 +1,36 @@
+/*
+ * Yearn uses the commercial Aeonik / Aeonik Mono families (CoType Foundry).
+ * CoinMan has no license for them, so the font files are not shipped.
+ * We reproduce the site's own fallback chain, which uses local Arial with
+ * metric overrides so that line boxes and advance widths match yearn.fi
+ * exactly (this is what yearn.fi itself renders before the webfont loads).
+ *
+ * If a license is ever obtained, drop Aeonik_*.woff2 into frontend/fonts/
+ * and uncomment the @font-face blocks below.
+ */
+
+/*
+@font-face { font-family: aeonik; src: url(../../../../frontend/fonts/Aeonik_Regular.woff2) format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: aeonik; src: url(../../../../frontend/fonts/Aeonik_Bold.woff2) format('woff2'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: aeonik; src: url(../../../../frontend/fonts/Aeonik_Black.woff2) format('woff2'); font-weight: 900; font-style: normal; font-display: swap; }
+@font-face { font-family: aeonikMono; src: url(../../../../frontend/fonts/AeonikMono_Regular.woff2) format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: aeonikMono; src: url(../../../../frontend/fonts/AeonikMono_Bold.woff2) format('woff2'); font-weight: 700; font-style: normal; font-display: swap; }
+*/
+
+@font-face {
+  font-family: 'aeonik Fallback';
+  src: local('Arial');
+  ascent-override: 91.8%;
+  descent-override: 20.72%;
+  line-gap-override: 0%;
+  size-adjust: 101.32%;
+}
+
+@font-face {
+  font-family: 'aeonikMono Fallback';
+  src: local('Arial');
+  ascent-override: 68.45%;
+  descent-override: 15.46%;
+  line-gap-override: 0%;
+  size-adjust: 135.87%;
+}
