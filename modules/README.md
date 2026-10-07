@@ -4,17 +4,20 @@
 
 ## Структура
 - `widgets/` — Единый модуль сборки всех виджетов:
-  - `src/wallet/wallet.ts` — Универсальный слой подключения кошелька **OneKey HD** через **WalletConnect** (Reown Cloud) и Wagmi (EIP-1193). Сети: Ethereum, Arbitrum, Optimism, Polygon, BSC, Base, Avalanche, **Katana**.
-  - `src/LiFiApp.tsx` — Модуль cross-chain обмена и мостов на базе **LI.FI Widget** (`@lifi/widget`).
-  - `src/cowswap.ts` — Модуль DEX-обмена на базе **CoW Protocol** (`@cowprotocol/widget-lib`).
+  - `src/wallet/` — Несколько сохранённых кошельков через **WalletConnect**, общий выбранный кошелёк для Exchange и Earn, отдельные подключения EVM, Tron и Solana. Список 16 EVM-сетей находится в `chains.ts`; отключённый кошелёк доступен для просмотра, для подписи требуется переподключение.
+  - `src/exchange/LiFiApp.tsx` — Cross-chain обмен и мосты на базе **LI.FI Widget** (`@lifi/widget`), включая Tron; `lifiGuard.ts` проверяет транзакции перед подписью.
+  - `src/exchange/cowswap.ts` — DEX-обмен на базе **CoW Protocol** (`@cowprotocol/widget-lib`) и панель ордеров.
+  - `src/exchange/bestrate/` — Сравнение маршрутов семи сервисов, выполнение поддерживаемых обменов, отдельный получатель, настройки slippage и история обменов.
+  - `src/exchange/jumperBridge.ts` — Связь встроенного `jumper.xyz` с выбранным кошельком; нативный webview реализован в `src-tauri/src/jumper.rs`.
+  - `src/exchange/approvals/` — Поиск и отзыв разрешений токенов в 16 EVM-сетях, Tron и Solana. Для истории части EVM-сетей нужен ключ HyperSync.
   - `src/earn/` — Страница **Earn • Yearn Finance**, перенесённая 1:1 с `yearn.fi` (тёмная тема `soft-dark`). См. ниже.
-  - `src/index.tsx` — Единая точка экспорта для фронтенда (`CoinmanExchangeLiFi`, `CoinmanExchangeCowSwap`, `CoinmanWallet`, `mountYearn`).
+  - `src/index.tsx` — Единая точка экспорта для фронтенда (`CoinmanExchangeLiFi`, `CoinmanExchangeCowSwap`, `CoinmanExchangeBestRate`, `CoinmanJumper`, `CoinmanApprovals`, `CoinmanWallet`, `CoinmanEarnYearn`).
   - Сборка: `npm run build` компилирует автономный бандл в `../../frontend/modules/modules.bundle.{js,css}` и синхронизирует копию в `../../frontend/exchange/`.
 
 ## Модуль Earn (`widgets/src/earn/`)
 
 Реализация страницы Yearn Finance: список vaults, детальная страница vault и portfolio.
-План и журнал реализации — `.ai/yearn-1to1-redesign-plan.md` и `.ai/yearn-1to1-progress.md`.
+Также доступны история портфеля и операций, yvUSD unlocked/locked, стейкинг yBOLD, Enso zaps и миграция подходящих retired vaults.
 
 ```
 earn/
@@ -29,15 +32,16 @@ earn/
 ├── openExternal.ts       # внешние ссылки через Tauri open_url
 ├── assets/               # логотип и wordmark Yearn
 ├── hooks/                # useVaultActions (depozit/withdraw/zap/cooldown), useVaultChart,
-│                         # useVaultStrategies, usePortfolioHoldings (мультиколл-скан балансов)
+│                         # useVaultStrategies, usePortfolioHoldings, usePortfolioHistory, useActivity, useZap
 ├── components/
 │   ├── shell/            # TopNav (+ мобильное меню), Breadcrumbs, PageContainer, ConnectWalletButton
 │   ├── ui/               # icons.tsx
 │   ├── list/             # фильтр-бар, заголовок, строки, раскрытие, Compare, модалки
 │   ├── detail/           # шапка, KPI, sticky-табы, графики, Vault Info, Strategies, Risk, More Info
 │   ├── charts/           # VaultChart, AllocationDonut (recharts)
-│   ├── widget/           # Deposit/Withdraw/My Info, AmountInput, InfoPopover
-│   ├── portfolio/        # PortfolioPage, PortfolioTabs, PortfolioMetrics, PortfolioHoldings, EmptySectionCard
+│   ├── widget/           # Deposit/Withdraw/My Info, TokenPicker, MigratePanel, RecentTransactions
+│   ├── portfolio/        # PortfolioPage, Holdings, PortfolioHistoryChart, PortfolioActivity
+│   ├── activity/         # строки истории операций
 │   ├── shared/           # VaultAboutSection, Markdown, RiskScoreTag
 │   └── TokenIcon.tsx
 └── styles/               # tokens, fonts, ui, shell, vault-list, vault-detail, charts, widget, portfolio
@@ -53,8 +57,16 @@ cd modules/widgets && npx tsc --noEmit   # строгий TS: noUnusedLocals/Par
 cd modules/widgets && npm run build      # обновляет frontend/modules/* и копию frontend/exchange/*
 ```
 
-Визуальная сверка с сайтом — через dev-харнесс `frontend/__earn-harness.html` и Playwright-скрипты
-в `.ai/yearn-research/impl-scripts/` (методика описана в `.ai/yearn-1to1-progress.md`).
+Перед первой проверкой установите зависимости: `cd modules/widgets && npm ci`.
+Обновлённые бандлы в `frontend/modules/` и `frontend/exchange/` коммитятся вместе с исходниками.
+Для визуальной проверки Earn доступен dev-харнесс `frontend/__earn-harness.html`.
 
 ## Сохранение состояния
-Сессии кошельков и пользовательские настройки сохраняются в общем файле `settings-cache.json` через Tauri IPC (`save_exchange_settings` / `load_exchange_settings`), что обеспечивает их сохранность при перезапуске программы. Настройки Earn (`vaultsList`, `portfolioTab`) приходят через `initialSettings` / `onSettingsChange` при монтировании модуля.
+Файлы находятся в `data/` рядом с исполняемым файлом:
+
+- `settings.json` — настройки Exchange и Earn через `save_exchange_settings` / `load_exchange_settings` и `save_earn_settings` / `load_earn_settings`. Настройки Earn приходят через `initialSettings` / `onSettingsChange` при монтировании.
+- `wallets.json` — список кошельков и WalletConnect-сессии через `load_wallet_store` / `save_wallet_store`; каждый кошелёк имеет отдельное пространство ключей.
+- `exchange-history.json` и `revoke-history.json` — истории Best Rate и Approvals.
+- `jumper-storage.json` — сохраняемые настройки Jumper.
+
+Webview-профиль временный. Перечисленные файлы сохраняются между запусками и не шифруются паролем базы портфеля; `wallets.json` содержит ключи сессий и требует такого же бережного обращения, как другие приватные данные.

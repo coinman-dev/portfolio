@@ -15,7 +15,7 @@ window.DEBUG_MODE = false;
 var ENC_V1 = 1;
 
 var CONFIG = {
-    APP_VERSION: "0.6.0-alpha",
+    APP_VERSION: "0.8.0-beta",
     AUTO_ALIGN_RIGHT_MARGIN: 20, // Distance between Change column and right edge
     AUTO_ALIGN_MIN_COIN_WIDTH: 80, // Minimum width for Coin/Date column
     AUTO_ALIGN_COL_PADDING: {
