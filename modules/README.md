@@ -57,7 +57,8 @@ cd modules/widgets && npx tsc --noEmit   # строгий TS: noUnusedLocals/Par
 cd modules/widgets && npm run build      # обновляет frontend/modules/* и копию frontend/exchange/*
 ```
 
-Перед первой проверкой установите зависимости: `cd modules/widgets && npm ci`.
+Перед первой проверкой установите зависимости: `cd modules/widgets && npm ci --legacy-peer-deps`.
+Текущий lock-файл требует legacy-разрешения peer dependencies; без этого флага новый npm отклоняет установку.
 Обновлённые бандлы в `frontend/modules/` и `frontend/exchange/` коммитятся вместе с исходниками.
 Для визуальной проверки Earn доступен dev-харнесс `frontend/__earn-harness.html`.
 

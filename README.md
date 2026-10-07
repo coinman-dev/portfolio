@@ -156,12 +156,12 @@ To edit Exchange/Earn modules, install Node.js and rebuild the React/TypeScript 
 
 ```bash
 cd modules/widgets
-npm ci
+npm ci --legacy-peer-deps
 npx tsc --noEmit
 npm run build
 ```
 
-Commit updated bundles in `frontend/modules/` and `frontend/exchange/` together with module source changes. See [modules/README.md](modules/README.md) for the module layout.
+The current module lockfile uses legacy peer dependency resolution, so keep `--legacy-peer-deps` when installing it. Commit updated bundles in `frontend/modules/` and `frontend/exchange/` together with module source changes. See [modules/README.md](modules/README.md) for the module layout.
 
 Backend validation:
 
