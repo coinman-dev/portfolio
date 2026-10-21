@@ -3,14 +3,21 @@ import { numberToHex } from 'viem';
 import { getEthereumProvider, getWalletStatus, subscribeWalletStatus, wagmiConfig } from '../wallet/wallet';
 import { onOverlayChange, overlayHeld } from '../wallet/overlay';
 import { diag } from '../diag';
-import { checkEvmCall } from './lifiGuard';
+import { checkEvmCall, checkPermitSignature } from './lifiGuard';
 
 /**
  * The main window's half of Jumper Exchange: jumper.xyz (in a native view
  * over the Exchange area) sends EIP-1193 calls here through the app, and they get the
  * same treatment as the LI.FI tab's — transactions only to LI.FI's Diamond or
- * approvals for it, no message signing — before WalletConnect sees them.
+ * approvals for it — before WalletConnect sees them. The one message the site
+ * may have signed is a LI.FI transfer permit (see `checkPermitSignature`).
+ *
+ * A refusal goes back as 4100, not 4001: to the site 4001 means the user
+ * declined, and it would show "Signature required" instead of the reason.
  */
+
+/** Code for a call the safety check refused (EIP-1193 "unauthorized"). */
+const BLOCKED = 4100;
 
 const WALLET_CHAINS = wagmiConfig.chains.map((c) => c.id as number);
 
@@ -102,11 +109,27 @@ async function handle(method: string, params: any): Promise<unknown> {
       try {
         checkEvmCall(chainId, tx);
       } catch (err: any) {
-        throw new RpcError(4001, err?.message ?? 'Blocked by CoinMan safety check');
+        throw new RpcError(BLOCKED, err?.message ?? 'Blocked by CoinMan safety check');
       }
       const provider = await getEthereumProvider();
       if (!provider) throw new RpcError(4900, 'The wallet is not connected.');
       diag('info', 'JUMPER', `sending transaction to ${tx.to} on chain ${chainId}`);
+      return provider.request({ method, params });
+    }
+    case 'eth_signTypedData_v4': {
+      const [signer, typedData] = Array.isArray(params) ? params : [];
+      if (!account || String(signer ?? '').toLowerCase() !== account.toLowerCase()) {
+        throw new RpcError(4100, 'The permit is not for the connected CoinMan wallet.');
+      }
+      const chainId = status.chainId ?? 0;
+      try {
+        checkPermitSignature(chainId, account, typedData);
+      } catch (err: any) {
+        throw new RpcError(BLOCKED, err?.message ?? 'Blocked by CoinMan safety check');
+      }
+      const provider = await getEthereumProvider();
+      if (!provider) throw new RpcError(4900, 'The wallet is not connected.');
+      diag('info', 'JUMPER', `signing a LI.FI permit on chain ${chainId}`);
       return provider.request({ method, params });
     }
   }
@@ -115,7 +138,7 @@ async function handle(method: string, params: any): Promise<unknown> {
     return client.request({ method, params } as any);
   }
   diag('warn', 'JUMPER', `refused ${method}`);
-  throw new RpcError(4200, `CoinMan does not allow ${method} for Jumper — only LI.FI transactions are signed.`);
+  throw new RpcError(4200, `CoinMan does not allow ${method} for Jumper — only LI.FI transactions and permits are signed.`);
 }
 
 function pushState(): void {
