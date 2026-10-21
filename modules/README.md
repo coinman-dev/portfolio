@@ -8,7 +8,7 @@
   - `src/exchange/LiFiApp.tsx` — Cross-chain обмен и мосты на базе **LI.FI Widget** (`@lifi/widget`), включая Tron; `lifiGuard.ts` проверяет транзакции перед подписью.
   - `src/exchange/cowswap.ts` — DEX-обмен на базе **CoW Protocol** (`@cowprotocol/widget-lib`) и панель ордеров.
   - `src/exchange/bestrate/` — Сравнение маршрутов семи сервисов, выполнение поддерживаемых обменов, отдельный получатель, настройки slippage и история обменов.
-  - `src/exchange/jumperBridge.ts` — Связь встроенного `jumper.xyz` с выбранным кошельком; нативный webview реализован в `src-tauri/src/jumper.rs`.
+  - `src/exchange/jumperBridge.ts` — Связь встроенного `jumper.xyz` с выбранным кошельком; нативный webview реализован в `src-tauri/src/jumper.rs`. `jumperGuard.ts` пропускает только контракты из белого списка (LI.FI, Uniswap, CoW, Velora Delta, FYND) и ограничивает approve, permit и ордера суммой обмена; адреса и источники для повторной проверки — в `docs/jumper-whitelist.md`.
   - `src/exchange/approvals/` — Поиск и отзыв разрешений токенов в 16 EVM-сетях, Tron и Solana. Для истории части EVM-сетей нужен ключ HyperSync.
   - `src/earn/` — Страница **Earn • Yearn Finance**, перенесённая 1:1 с `yearn.fi` (тёмная тема `soft-dark`). См. ниже.
   - `src/index.tsx` — Единая точка экспорта для фронтенда (`CoinmanExchangeLiFi`, `CoinmanExchangeCowSwap`, `CoinmanExchangeBestRate`, `CoinmanJumper`, `CoinmanApprovals`, `CoinmanWallet`, `CoinmanEarnYearn`).

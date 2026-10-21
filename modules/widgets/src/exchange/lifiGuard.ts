@@ -118,8 +118,14 @@ const PERMIT2_PROXY_CHAINS: Record<string, number[]> = {
   '0x9C1D1db1CD3EbE4727c2a4208Ca5D65624cC9b4D': [98866],
 };
 
-const PERMIT2 =byChain(PERMIT2_CHAINS);
+const PERMIT2 = byChain(PERMIT2_CHAINS);
 const PERMIT2_PROXIES = byChain(PERMIT2_PROXY_CHAINS);
+
+/** Permit2 on an EVM chain where LI.FI runs a Permit2Proxy, lowercase. */
+export const lifiPermit2 = (chainId: number): string | undefined => PERMIT2.get(chainId);
+
+/** LI.FI Permit2Proxy on an EVM chain, lowercase. */
+export const lifiPermit2Proxy = (chainId: number): string | undefined => PERMIT2_PROXIES.get(chainId);
 
 /** The Permit2Proxy calls that hand a permit and calldata on to the Diamond. */
 const PROXY_SELECTORS = new Set([
@@ -158,20 +164,20 @@ export function onGuardBlock(listener: BlockListener): () => void {
   };
 }
 
-function block(reason: string): never {
+export function block(reason: string): never {
   diag('error', 'LIFI', `blocked: ${reason}`);
   listeners.forEach((listener) => listener(reason));
   throw new Error(`Blocked by CoinMan safety check: ${reason}`);
 }
 
 /** Spender and amount of an `approve(address,uint256)` call, from bare hex data. */
-function decodeApprove(hexData: string): { spender: string; amount: bigint } | null {
+export function decodeApprove(hexData: string): { spender: string; amount: bigint } | null {
   const data = hexData.toLowerCase().replace(/^0x/, '');
   if (!data.startsWith(APPROVE_SELECTOR) || data.length < 136) return null;
   return { spender: data.slice(32, 72), amount: BigInt(`0x${data.slice(72, 136)}`) };
 }
 
-const hasValue = (value: unknown) => value != null && BigInt(value as string | number) > 0n;
+export const hasValue = (value: unknown) => value != null && BigInt(value as string | number) > 0n;
 
 interface EvmCall {
   to?: string;
@@ -205,11 +211,11 @@ export function checkEvmCall(chainId: number, call: EvmCall): void {
   );
 }
 
-const sameAddress = (a: unknown, b: string | undefined) =>
+export const sameAddress = (a: unknown, b: string | undefined) =>
   typeof a === 'string' && !!b && a.toLowerCase() === b.toLowerCase();
 
 /** Field names of `types[name]`, in order, joined with commas. */
-const fieldsOf = (types: any, name: string) =>
+export const fieldsOf = (types: any, name: string) =>
   Array.isArray(types?.[name]) ? types[name].map((f: any) => `${f?.name} ${f?.type}`).join(',') : '';
 
 const PERMIT2_FIELDS = 'permitted TokenPermissions,spender address,nonce uint256,deadline uint256';

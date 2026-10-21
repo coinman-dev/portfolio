@@ -210,7 +210,13 @@ pub fn handle<R: Runtime>(ctx: UriSchemeContext<'_, R>, request: Request<Vec<u8>
                 return;
             };
             let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
-            let payload = json!({ "id": id, "method": method, "params": call.get("params").cloned().unwrap_or(json!([])) });
+            // `hints`: swap amounts from the site's routes, so approvals can be held to them.
+            let payload = json!({
+                "id": id,
+                "method": method,
+                "params": call.get("params").cloned().unwrap_or(json!([])),
+                "hints": call.get("hints").cloned().unwrap_or(Value::Null),
+            });
             PENDING.lock().unwrap_or_else(|p| p.into_inner()).insert(id, responder);
             if let Err(e) = ctx.app_handle().emit_to(EventTarget::webview("main"), "jumper-wallet-request", payload) {
                 log::error!("[jumper] cannot reach the main window: {e}");
