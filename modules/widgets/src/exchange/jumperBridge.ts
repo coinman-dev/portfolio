@@ -14,10 +14,30 @@ import { checkEvmCall, checkPermitSignature } from './lifiGuard';
  *
  * A refusal goes back as 4100, not 4001: to the site 4001 means the user
  * declined, and it would show "Signature required" instead of the reason.
+ * Jumper also offers intent routes (Velora/Portikus, LI.FI Intents, Relay…)
+ * that a solver fills outside LI.FI's contracts; those stay refused, and the
+ * message says to pick another route.
  */
 
 /** Code for a call the safety check refused (EIP-1193 "unauthorized"). */
 const BLOCKED = 4100;
+
+/** Known spenders of intent routes, named in the refusal. */
+const INTENT_SPENDERS: Record<string, string> = {
+  '0x0000000000bbf5c5fd284e657f01bd000933c96d': 'Velora/Portikus intents',
+};
+
+/** The guard's refusal, with what it was and what to do instead. */
+function blocked(err: any): RpcError {
+  const reason = String(err?.message ?? 'Blocked by CoinMan safety check');
+  const spender = /approval for (0x[0-9a-f]{40})/i.exec(reason)?.[1]?.toLowerCase();
+  const known = spender && INTENT_SPENDERS[spender];
+  return new RpcError(
+    BLOCKED,
+    `${reason}${known ? ` (${known})` : ''}. CoinMan signs only routes through LI.FI's own contracts — ` +
+      'pick another route in the route list, not a gasless or intent one.'
+  );
+}
 
 const WALLET_CHAINS = wagmiConfig.chains.map((c) => c.id as number);
 
@@ -109,7 +129,7 @@ async function handle(method: string, params: any): Promise<unknown> {
       try {
         checkEvmCall(chainId, tx);
       } catch (err: any) {
-        throw new RpcError(BLOCKED, err?.message ?? 'Blocked by CoinMan safety check');
+        throw blocked(err);
       }
       const provider = await getEthereumProvider();
       if (!provider) throw new RpcError(4900, 'The wallet is not connected.');
@@ -125,7 +145,9 @@ async function handle(method: string, params: any): Promise<unknown> {
       try {
         checkPermitSignature(chainId, account, typedData);
       } catch (err: any) {
-        throw new RpcError(BLOCKED, err?.message ?? 'Blocked by CoinMan safety check');
+        // The whole request, so the log shows what the site wanted signed.
+        diag('warn', 'JUMPER', 'refused typed data', typedData);
+        throw blocked(err);
       }
       const provider = await getEthereumProvider();
       if (!provider) throw new RpcError(4900, 'The wallet is not connected.');

@@ -234,6 +234,9 @@ export function checkPermitSignature(chainId: number, account: string, typedData
   const proxy = PERMIT2_PROXIES.get(chainId);
   if (!proxy) block(`LI.FI has no permit contract on chain ${chainId}`);
   const { domain, types, message, primaryType } = data ?? {};
+  if (!['Permit', 'PermitTransferFrom', 'PermitWitnessTransferFrom'].includes(primaryType)) {
+    block(`${domain?.name ?? 'unknown'} ${primaryType ?? 'message'} is not a LI.FI permit`);
+  }
   // A few tokens (USDC and DAI on Polygon) carry the chain as the domain's salt.
   const domainChainRaw = domain?.chainId ?? (primaryType === 'Permit' ? domain?.salt : undefined);
   let domainChain: number | undefined;
