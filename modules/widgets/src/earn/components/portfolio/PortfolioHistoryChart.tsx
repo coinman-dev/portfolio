@@ -21,6 +21,7 @@ import {
 import { formatAxisDate, formatTooltipDate, formatUSDCents, shortenAddress } from '../../format';
 import { ChartDropdown, ChartDropdownOption } from '../charts/ChartDropdown';
 import { CHART_PERIODS, formatTick, pickTicks } from '../charts/VaultChart';
+import { tr, useT } from '../../i18n';
 
 /** Port of yearn.fi's `PortfolioHistoryChart` + `PortfolioVaultGrowthChart`. */
 
@@ -174,7 +175,7 @@ function vaultLabel(vaults: YearnVault[], chainId: number, address: string, symb
   for (const vault of vaults) {
     if (vault.chainID !== chainId) continue;
     if (vault.address.toLowerCase() === addr) return vault.name;
-    if (vault.dataAddress?.toLowerCase() === addr) return `${vault.name} (staked)`;
+    if (vault.dataAddress?.toLowerCase() === addr) return `${vault.name} (${tr('staked')})`;
   }
   return symbol || shortenAddress(address);
 }
@@ -315,6 +316,7 @@ export const PortfolioHistoryChart: React.FC<PortfolioHistoryChartProps> = ({
   vaults,
   liveTotalUsd,
 }) => {
+  const t = useT();
   const [tab, setTab] = useState<ChartTab>('balance');
   const [timeframe, setTimeframe] = useState<ChartPeriod>('1y');
   const [chosen, setChosen] = useState<Partial<Record<ChartTab, ValueType>>>({});
@@ -349,7 +351,7 @@ export const PortfolioHistoryChart: React.FC<PortfolioHistoryChartProps> = ({
     if (tab === 'growth') return growthModel(protocol.data, valueType, limit);
     if (tab === 'annualized') return annualizedModel(protocol.data, limit);
     return vaultsModel(protocol.data, vaults, valueType, limit);
-  }, [tab, balance.data, protocol.data, denomination, liveTotalUsd, limit, valueType, vaults]);
+  }, [tab, balance.data, protocol.data, denomination, liveTotalUsd, limit, valueType, vaults, t]);
 
   const renderBody = () => {
     if (query.isLoading) {
@@ -358,16 +360,16 @@ export const PortfolioHistoryChart: React.FC<PortfolioHistoryChartProps> = ({
     if (query.isError) {
       return (
         <div className="y-chart-empty" style={{ height: CHART_HEIGHT }}>
-          <p>Chart unavailable</p>
-          <span>Unable to load your portfolio history right now.</span>
+          <p>{t('Chart unavailable')}</p>
+          <span>{t('Unable to load your portfolio history right now.')}</span>
         </div>
       );
     }
     if (!model || model.rows.length === 0) {
       return (
         <div className="y-chart-empty" style={{ height: CHART_HEIGHT }}>
-          <p>No history yet</p>
-          <span>Once you have a deposit, your portfolio history will appear here.</span>
+          <p>{t('No history yet')}</p>
+          <span>{t('Once you have a deposit, your portfolio history will appear here.')}</span>
         </div>
       );
     }
@@ -458,7 +460,7 @@ export const PortfolioHistoryChart: React.FC<PortfolioHistoryChartProps> = ({
   return (
     <div className="y-pf-chart">
       <div className="y-vd-chart__bar">
-        <div className="y-vd-chart__tabs" role="tablist" aria-label="Portfolio chart">
+        <div className="y-vd-chart__tabs" role="tablist" aria-label={t('Portfolio chart')}>
           {CHART_TABS.map((item) => (
             <button
               key={item.id}
@@ -468,7 +470,7 @@ export const PortfolioHistoryChart: React.FC<PortfolioHistoryChartProps> = ({
               className={`y-vd-chart__tab${tab === item.id ? ' is-active' : ''}`}
               onClick={() => setTab(item.id)}
             >
-              {item.label}
+              {t(item.label)}
             </button>
           ))}
         </div>
@@ -477,14 +479,14 @@ export const PortfolioHistoryChart: React.FC<PortfolioHistoryChartProps> = ({
             value={timeframe}
             options={CHART_PERIODS}
             onChange={setTimeframe}
-            ariaLabel="Chart timeframe"
+            ariaLabel={t('Chart timeframe')}
           />
           {valueOptions.length > 0 && (
             <ChartDropdown
               value={valueType}
               options={valueOptions}
               onChange={(next) => setChosen((prev) => ({ ...prev, [tab]: next }))}
-              ariaLabel="Asset value type"
+              ariaLabel={t('Asset value type')}
             />
           )}
         </div>

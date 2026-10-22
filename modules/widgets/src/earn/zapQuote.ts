@@ -13,6 +13,7 @@
 
 import { EnsoRoute, fetchEnsoRoute, fetchSpotPrices } from './ensoApi';
 import { ZAP_MAX_PRICE_IMPACT } from './constants';
+import { tr } from './i18n';
 
 /** How to price the route's output: vault shares (valued through the deposit
  *  asset) or a plain token. */
@@ -95,7 +96,7 @@ export async function quoteZap(request: ZapRequest): Promise<ZapQuote> {
       amountIn: request.amountIn,
       estImpact: null,
       worstImpact: null,
-      blocked: 'Unable to estimate zap price impact.',
+      blocked: tr('Unable to estimate zap price impact.'),
     };
   }
   const remaining = est >= tol ? 0 : Math.floor(((tol - est) / (100 - est)) * 100 * 100) / 100;
@@ -105,7 +106,7 @@ export async function quoteZap(request: ZapRequest): Promise<ZapQuote> {
       amountIn: request.amountIn,
       estImpact: est,
       worstImpact: est,
-      blocked: `No protected slippage remains after the estimated ${est.toFixed(2)}% price impact.`,
+      blocked: tr('No protected slippage remains after the estimated {est}% price impact.', { est: est.toFixed(2) }),
     };
   }
 
@@ -113,9 +114,9 @@ export async function quoteZap(request: ZapRequest): Promise<ZapQuote> {
   const worst = maxKnown(localImpact(route.minAmountOut), route.priceImpactPct ?? enso);
   let blocked: string | null = null;
   if (worst !== null && worst >= ZAP_MAX_PRICE_IMPACT) {
-    blocked = `Price impact is too high (${worst.toFixed(2)}%).`;
+    blocked = tr('Price impact is too high ({worst}%).', { worst: worst.toFixed(2) });
   } else if (worst !== null && worst > tol) {
-    blocked = `Worst-case route impact is ${worst.toFixed(2)}%, above your ${tol}% slippage.`;
+    blocked = tr('Worst-case route impact is {worst}%, above your {tol}% slippage.', { worst: worst.toFixed(2), tol });
   }
   return { route, amountIn: request.amountIn, estImpact: est, worstImpact: worst, blocked };
 }

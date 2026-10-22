@@ -3,6 +3,7 @@ import { formatAPY, formatUSDCents } from '../../format';
 import { PortfolioPosition } from '../../hooks/usePortfolioHoldings';
 import { useProtocolReturnHistory } from '../../hooks/usePortfolioHistory';
 import { getHeadlineAPY, getMonthAgoAPY } from '../../vaultMeta';
+import { useT } from '../../i18n';
 
 interface PortfolioMetricsProps {
   address: string;
@@ -34,7 +35,7 @@ function weightedRate(
   return weighted / totalUsd;
 }
 
-/** `+4.66%` — the site signs the all-time return. */
+/** `+4.66%` - the site signs the all-time return. */
 function formatSignedPercent(value: number): string {
   return `${value > 0 ? '+' : value < 0 ? '-' : ''}${Math.abs(value).toFixed(2)}%`;
 }
@@ -45,6 +46,7 @@ export const PortfolioMetrics: React.FC<PortfolioMetricsProps> = ({
   totalUsd,
   isLoading,
 }) => {
+  const t = useT();
   const currentAPY = weightedRate(positions, totalUsd, (p) => getHeadlineAPY(p.vault));
   const monthAPY = weightedRate(positions, totalUsd, (p) => getMonthAgoAPY(p.vault));
   const annualReturn = currentAPY === null ? null : totalUsd * currentAPY;
@@ -68,28 +70,28 @@ export const PortfolioMetrics: React.FC<PortfolioMetricsProps> = ({
       key: 'est-annual',
       label: 'Est. Annual Return',
       tooltip: 'Projects potential returns based on your blended current APY.',
-      value: annualReturn === null ? '—' : formatUSDCents(annualReturn),
+      value: annualReturn === null ? '-' : formatUSDCents(annualReturn),
       isLoading,
     },
     {
       key: 'current-apy',
       label: 'Current APY',
       tooltip: 'Weighted by your total deposits across all Yearn vaults.',
-      value: currentAPY === null ? '—' : formatAPY(currentAPY),
+      value: currentAPY === null ? '-' : formatAPY(currentAPY),
       isLoading,
     },
     {
       key: 'month-apy',
       label: '30-day APY',
       tooltip: 'Blended 30-day performance using your current positions.',
-      value: monthAPY === null ? '—' : formatAPY(monthAPY),
+      value: monthAPY === null ? '-' : formatAPY(monthAPY),
       isLoading,
     },
     {
       key: 'all-time',
       label: 'All-Time Annualized Return',
       tooltip: 'Yield earned since your first deposit, annualized. Token price moves are excluded.',
-      value: allTime === undefined ? '—' : formatSignedPercent(allTime),
+      value: allTime === undefined ? '-' : formatSignedPercent(allTime),
       isLoading: protocolReturn.isLoading,
     },
   ];
@@ -98,8 +100,8 @@ export const PortfolioMetrics: React.FC<PortfolioMetricsProps> = ({
     <div className="y-pf-metrics">
       {metrics.map((metric) => (
         <div className="y-pf-metric" key={metric.key}>
-          <span className="y-pf-metric__label y-link-dots" title={metric.tooltip}>
-            {metric.label}
+          <span className="y-pf-metric__label y-link-dots" title={t(metric.tooltip)}>
+            {t(metric.label)}
           </span>
           <span className="y-pf-metric__value">
             {metric.isLoading ? <span className="y-skeleton y-pf-metric__skeleton" /> : metric.value}

@@ -34,6 +34,7 @@ import {
 } from '@wagmi/core';
 import { wagmiConfig } from '../wallet/wallet';
 import { YearnVault } from './types';
+import { tr } from './i18n';
 import { EnsoRoute, isNativeToken } from './ensoApi';
 import {
   MAX_LOSS_BPS,
@@ -526,7 +527,7 @@ export async function planWithdraw(
   }
 
   const staking = getStaking(vault);
-  if (!staking) throw new Error('This vault has no staking contract.');
+  if (!staking) throw new Error(tr('This vault has no staking contract.'));
   const stakedMax = maxStakingShares(position);
 
   if (staking.kind === 'ybold') {

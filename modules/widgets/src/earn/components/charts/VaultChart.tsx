@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 import { ChartKind, ChartPeriod, ChartPoint } from '../../hooks/useVaultChart';
 import { formatUSDFull, formatTooltipDate } from '../../format';
+import { useT } from '../../i18n';
 
 interface VaultChartProps {
   points: ChartPoint[];
@@ -54,6 +55,10 @@ const pad = (value: number) => String(value).padStart(2, '0');
 
 /** `07/26` for long ranges, `07/28/26` for short ones — matches yearn.fi's tick formatters. */
 export function formatTick(date: string, isShort: boolean): string {
+  if (date.includes('.')) {
+    const [day, month, year] = date.split('.');
+    return isShort ? `${day}.${month}.${year}` : `${month}.${year}`;
+  }
   const [month, day, year] = date.split('/');
   return isShort ? `${month}/${day}/${year}` : `${month}/${year}`;
 }
@@ -106,14 +111,15 @@ export const VaultChart: React.FC<VaultChartProps> = ({
   height = 230,
   isLoading = false,
 }) => {
+  const t = useT();
   if (isLoading) {
     return <div className="y-chart-loading" style={{ height }} />;
   }
   if (!points.length) {
     return (
       <div className="y-chart-empty" style={{ height }}>
-        <p>Chart unavailable</p>
-        <span>Unable to render chart data right now.</span>
+        <p>{t('Chart unavailable')}</p>
+        <span>{t('Unable to render chart data right now.')}</span>
       </div>
     );
   }
@@ -156,7 +162,7 @@ export const VaultChart: React.FC<VaultChartProps> = ({
             <Area
               type="monotone"
               dataKey="unlocked"
-              name="Historical APY"
+              name={t('Historical APY')}
               stroke="none"
               fill={`url(#${gradientId})`}
               fillOpacity={1}
@@ -168,7 +174,7 @@ export const VaultChart: React.FC<VaultChartProps> = ({
           <Line
             type="monotone"
             dataKey="unlocked"
-            name={hasLocked ? 'Unlocked' : 'Historical APY'}
+            name={hasLocked ? t('Unlocked') : t('Historical APY')}
             stroke={COLOR_UNLOCKED}
             strokeWidth={hasLocked ? 2 : 1.5}
             dot={false}
@@ -179,7 +185,7 @@ export const VaultChart: React.FC<VaultChartProps> = ({
             <Line
               type="monotone"
               dataKey="locked"
-              name="Locked"
+              name={t('Locked')}
               stroke={COLOR_LOCKED}
               strokeWidth={2}
               strokeDasharray="4 3"
@@ -194,14 +200,14 @@ export const VaultChart: React.FC<VaultChartProps> = ({
         <div className="y-chart-legend">
           <span className="y-chart-legend__item">
             <span className="y-chart-legend__line" style={{ borderColor: COLOR_UNLOCKED }} />
-            Unlocked
+            {t('Unlocked')}
           </span>
           <span className="y-chart-legend__item">
             <span
               className="y-chart-legend__line is-dashed"
               style={{ borderColor: COLOR_LOCKED }}
             />
-            Locked
+            {t('Locked')}
           </span>
         </div>
       )}

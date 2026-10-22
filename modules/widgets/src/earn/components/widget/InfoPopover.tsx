@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Close } from '../ui/icons';
+import { useT } from '../../i18n';
 
 interface InfoPopoverProps {
   label: string;
@@ -9,6 +10,7 @@ interface InfoPopoverProps {
 
 /** Dotted-underline label that opens yearn.fi's explanation card. */
 export const InfoPopover: React.FC<InfoPopoverProps> = ({ label, title, children }) => {
+  const t = useT();
   const [isOpen, setIsOpen] = useState(false);
   const anchorRef = useRef<HTMLDivElement>(null);
 
@@ -40,7 +42,7 @@ export const InfoPopover: React.FC<InfoPopoverProps> = ({ label, title, children
               <button
                 type="button"
                 className="y-info-pop__close"
-                aria-label="Close"
+                aria-label={t('Close')}
                 onClick={() => setIsOpen(false)}
               >
                 <Close size={14} />
@@ -48,7 +50,7 @@ export const InfoPopover: React.FC<InfoPopoverProps> = ({ label, title, children
             </div>
             <div className="y-info-pop__body">{children}</div>
             <button type="button" className="y-btn y-btn--light" onClick={() => setIsOpen(false)}>
-              Got it
+              {t('Got it')}
             </button>
           </div>
         </>

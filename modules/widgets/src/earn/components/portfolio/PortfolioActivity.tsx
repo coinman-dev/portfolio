@@ -14,6 +14,7 @@ import { useActivity, useActivityChainIds, useKongVaultIndex } from '../../hooks
 import { YearnMark } from '../../assets/YearnLogo';
 import { CalendarIcon, Check, ChevronDown, Close, Search as SearchIcon } from '../ui/icons';
 import { ActivityChip, ActivityRow } from '../activity/ActivityRow';
+import { intlLocale, useT } from '../../i18n';
 
 /** `YYYY-MM-DD`, local calendar days as picked in the date inputs. */
 interface DateRange {
@@ -29,8 +30,12 @@ const parseDay = (day: string) => {
   return new Date(year, month - 1, date);
 };
 const formatDay = (day: string) =>
-  parseDay(day).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-/** Local calendar day of an entry — what its date chip filters on. */
+  parseDay(day).toLocaleDateString(intlLocale(), {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+/** Local calendar day of an entry - what its date chip filters on. */
 const dayOfTimestamp = (timestamp: number) => toDayString(new Date(timestamp * 1000));
 
 /** Local 00:00:00 to 23:59:59, as yearn.fi sends it; an end of "today" is left open. */
@@ -62,13 +67,14 @@ const TypeFilter: React.FC<{
   selected: ActivityAction[];
   onChange: (next: ActivityAction[]) => void;
 }> = ({ selected, onChange }) => {
+  const t = useT();
   const [isOpen, setIsOpen] = useState(false);
   const ref = useDismiss(isOpen, () => setIsOpen(false));
   const label = selected.length
     ? ACTIVITY_TYPES.filter((type) => selected.includes(type.id))
-        .map((type) => type.label)
+        .map((type) => t(type.label))
         .join(', ')
-    : 'Transaction type';
+    : t('Transaction type');
 
   return (
     <div className="y-act-filter" ref={ref}>
@@ -99,7 +105,7 @@ const TypeFilter: React.FC<{
                 }
               >
                 <span className="y-act-menu__check">{isOn && <Check size={12} />}</span>
-                {type.label}
+                {t(type.label)}
               </button>
             );
           })}
@@ -113,6 +119,7 @@ const DateRangeFilter: React.FC<{
   range: DateRange;
   onChange: (next: DateRange) => void;
 }> = ({ range, onChange }) => {
+  const t = useT();
   const [isOpen, setIsOpen] = useState(false);
   const [draft, setDraft] = useState<DateRange>(range);
   const ref = useDismiss(isOpen, () => setIsOpen(false));
@@ -120,8 +127,8 @@ const DateRangeFilter: React.FC<{
   const isSet = Boolean(range.start || range.end);
 
   const label = isSet
-    ? `${range.start ? formatDay(range.start) : '…'} – ${range.end ? formatDay(range.end) : 'Today'}`
-    : 'Select date range';
+    ? `${range.start ? formatDay(range.start) : '\u2026'} - ${range.end ? formatDay(range.end) : t('Today')}`
+    : t('Select date range');
 
   const save = () => {
     // yearn.fi swaps a start that lands after the end instead of rejecting it.
@@ -145,24 +152,28 @@ const DateRangeFilter: React.FC<{
         <span className="y-act-filter__label">{label}</span>
       </button>
       {isOpen && (
-        <div className="y-act-menu y-act-dates" role="dialog" aria-label="Date range">
-          <p className="y-act-dates__title">Date range</p>
+        <div className="y-act-menu y-act-dates" role="dialog" aria-label={t('Date range')}>
+          <p className="y-act-dates__title">{t('Date range')}</p>
           <label className="y-act-dates__field">
-            <span>Start date</span>
+            <span>{t('Start date')}</span>
             <input
               type="date"
               max={today}
               value={draft.start ?? ''}
-              onChange={(event) => setDraft((prev) => ({ ...prev, start: event.target.value || undefined }))}
+              onChange={(event) =>
+                setDraft((prev) => ({ ...prev, start: event.target.value || undefined }))
+              }
             />
           </label>
           <label className="y-act-dates__field">
-            <span>End date</span>
+            <span>{t('End date')}</span>
             <input
               type="date"
               max={today}
               value={draft.end ?? ''}
-              onChange={(event) => setDraft((prev) => ({ ...prev, end: event.target.value || undefined }))}
+              onChange={(event) =>
+                setDraft((prev) => ({ ...prev, end: event.target.value || undefined }))
+              }
             />
           </label>
           <div className="y-act-dates__actions">
@@ -174,10 +185,10 @@ const DateRangeFilter: React.FC<{
                 setIsOpen(false);
               }}
             >
-              Clear
+              {t('Clear')}
             </button>
             <button type="button" className="y-btn y-btn--light" onClick={save}>
-              Save
+              {t('Save')}
             </button>
           </div>
         </div>
@@ -198,23 +209,20 @@ export const PortfolioActivity: React.FC<PortfolioActivityProps> = ({
   vaults,
   onSelectVault,
 }) => {
+  const t = useT();
   const [chainId, setChainId] = useState<number | null>(null);
   const [types, setTypes] = useState<ActivityAction[]>([]);
   const [range, setRange] = useState<DateRange>({});
   const [search, setSearch] = useState('');
   const [zapOnly, setZapOnly] = useState(false);
-  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
-  // The API takes one type; with several selected it returns all and the
-  // list is narrowed here.
-  const filters = useMemo<ActivityFilters>(
-    () => ({
-      type: types.length === 1 ? types[0] : undefined,
-      chainId: chainId ?? undefined,
-      ...rangeToTimestamps(range),
-    }),
-    [types, chainId, range]
-  );
+  const filters = useMemo<ActivityFilters>(() => {
+    const next: ActivityFilters = { ...rangeToTimestamps(range) };
+    if (chainId !== null) next.chainId = chainId;
+    if (types.length === 1) next.type = types[0];
+    return next;
+  }, [chainId, types, range]);
 
   const activity = useActivity(address, filters);
   const facets = useActivityChainIds(address);
@@ -258,7 +266,7 @@ export const PortfolioActivity: React.FC<PortfolioActivityProps> = ({
     return (
       <div className="y-pf-loading">
         <span className="y-pf-loading__spinner" />
-        Loading activity...
+        {t('Loading activity...')}
       </div>
     );
   }
@@ -266,20 +274,20 @@ export const PortfolioActivity: React.FC<PortfolioActivityProps> = ({
   if (activity.isError) {
     return (
       <div className="y-act-state">
-        <p className="y-act-state__error">Error loading activity</p>
+        <p className="y-act-state__error">{t('Error loading activity')}</p>
         <span>{activity.error instanceof Error ? activity.error.message : String(activity.error)}</span>
       </div>
     );
   }
 
   if (loadedCount === 0 && !hasFilters) {
-    return <div className="y-act-state">No transactions to show.</div>;
+    return <div className="y-act-state">{t('No transactions to show.')}</div>;
   }
 
   return (
     <section className="y-act">
       <div className="y-act-filters">
-        <div className="y-segmented" role="group" aria-label="Chains">
+        <div className="y-segmented" role="group" aria-label={t('Chains')}>
           <button
             type="button"
             className={`y-segmented__item${chainId === null ? ' is-active' : ''}`}
@@ -287,7 +295,7 @@ export const PortfolioActivity: React.FC<PortfolioActivityProps> = ({
             onClick={() => setChainId(null)}
           >
             <YearnMark size={16} />
-            All Chains
+            {t('All Chains')}
           </button>
           {chainIds.map((id) => {
             const isActive = chainId === id;
@@ -316,7 +324,7 @@ export const PortfolioActivity: React.FC<PortfolioActivityProps> = ({
           <input
             className="y-search__input"
             type="text"
-            placeholder="Search activity"
+            placeholder={t('Search activity')}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
@@ -324,7 +332,7 @@ export const PortfolioActivity: React.FC<PortfolioActivityProps> = ({
             <button
               type="button"
               className="y-search__clear"
-              aria-label="Clear search"
+              aria-label={t('Clear search')}
               onClick={() => setSearch('')}
             >
               <Close size={14} />
@@ -338,7 +346,7 @@ export const PortfolioActivity: React.FC<PortfolioActivityProps> = ({
 
       {rows.length === 0 ? (
         <div className="y-act-state">
-          {hasFilters ? 'No activity matches these filters.' : 'No activity to show.'}
+          {hasFilters ? t('No activity matches these filters.') : t('No activity to show.')}
         </div>
       ) : (
         <div className="y-act-list">
@@ -380,7 +388,7 @@ export const PortfolioActivity: React.FC<PortfolioActivityProps> = ({
           disabled={activity.isFetchingNextPage}
           onClick={() => activity.fetchNextPage()}
         >
-          {activity.isFetchingNextPage ? 'Loading more...' : 'Load more'}
+          {activity.isFetchingNextPage ? t('Loading more...') : t('Load more')}
         </button>
       )}
     </section>

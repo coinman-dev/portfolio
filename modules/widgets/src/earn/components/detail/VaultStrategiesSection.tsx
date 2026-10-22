@@ -8,6 +8,7 @@ import { AllocationDonut, ALLOCATION_COLORS } from '../charts/AllocationDonut';
 import { TokenIcon } from '../TokenIcon';
 import { StrategyRow, useVaultStrategies } from '../../hooks/useVaultStrategies';
 import { SectionCard } from './SectionCard';
+import { useT } from '../../i18n';
 
 type StrategySort = 'allocation' | 'amount' | 'apy';
 type SortDirection = 'asc' | 'desc';
@@ -18,6 +19,7 @@ interface StrategyTableRowProps {
 }
 
 const StrategyTableRow: React.FC<StrategyTableRowProps> = ({ row, vault }) => {
+  const t = useT();
   const [isOpen, setIsOpen] = useState(false);
   const chain = getChain(vault.chainID);
 
@@ -56,7 +58,7 @@ const StrategyTableRow: React.FC<StrategyTableRowProps> = ({ row, vault }) => {
       {isOpen && (
         <div className="y-strat-row__body">
           <div className="y-strat-row__kv">
-            <span>Address</span>
+            <span>{t('Address')}</span>
             <button
               type="button"
               className="y-vd-link"
@@ -68,12 +70,12 @@ const StrategyTableRow: React.FC<StrategyTableRowProps> = ({ row, vault }) => {
           </div>
           {row.lastReport > 0 && (
             <div className="y-strat-row__kv">
-              <span>Last report</span>
+              <span>{t('Last report')}</span>
               <b>{formatLongDate(row.lastReport * 1000)}</b>
             </div>
           )}
           <div className="y-strat-row__kv">
-            <span>Performance fee</span>
+            <span>{t('Performance fee')}</span>
             <b>{formatPercent(row.performanceFee / 100)}</b>
           </div>
         </div>
@@ -91,6 +93,7 @@ export const VaultStrategiesSection: React.FC<VaultStrategiesSectionProps> = ({
   vault,
   sectionRef,
 }) => {
+  const t = useT();
   const [sortBy, setSortBy] = useState<StrategySort>('allocation');
   const [direction, setDirection] = useState<SortDirection>('desc');
   const [showInactive, setShowInactive] = useState(false);
@@ -127,10 +130,10 @@ export const VaultStrategiesSection: React.FC<VaultStrategiesSectionProps> = ({
     <button
       type="button"
       className={`y-strat-head__sort${sortBy === id ? ' is-active' : ''}`}
-      aria-label={`Sort by ${label}`}
+      aria-label={t('Sort by {label}', { label: t(label) })}
       onClick={() => toggleSort(id)}
     >
-      {label}
+      {t(label)}
       <ChevronDown
         size={16}
         className={`y-strat-head__chevron${sortBy === id && direction === 'asc' ? ' is-asc' : ''}`}
@@ -141,7 +144,7 @@ export const VaultStrategiesSection: React.FC<VaultStrategiesSectionProps> = ({
   if (!isLoading && !strategies.length) return null;
 
   return (
-    <SectionCard id="strategies" title="Strategies" sectionRef={sectionRef} bodyClassName="y-strat">
+    <SectionCard id="strategies" title={t('Strategies')} sectionRef={sectionRef} bodyClassName="y-strat">
       {slices.length > 0 && (
         <div className="y-strat__allocation">
           <AllocationDonut data={slices} size={150} />
@@ -152,7 +155,7 @@ export const VaultStrategiesSection: React.FC<VaultStrategiesSectionProps> = ({
                   className="y-strat__legend-dot"
                   style={{ background: ALLOCATION_COLORS[index % ALLOCATION_COLORS.length] }}
                 />
-                {slice.name}
+                {t(slice.name)}
               </li>
             ))}
           </ul>
@@ -161,7 +164,7 @@ export const VaultStrategiesSection: React.FC<VaultStrategiesSectionProps> = ({
 
       <div className="y-strat__table">
         <div className="y-strat-head">
-          <span className="y-strat-head__label">Strategy</span>
+          <span className="y-strat-head__label">{t('Strategy')}</span>
           <span className="y-strat-head__sorts">
             {sortButton('allocation', 'Allocation %')}
             {sortButton('amount', 'Amount')}
@@ -179,7 +182,7 @@ export const VaultStrategiesSection: React.FC<VaultStrategiesSectionProps> = ({
                 <span className="y-strat-row__dot-slot" aria-hidden="true">
                   <span className="y-strat-row__dot" />
                 </span>
-                <span className="y-strat-row__label">Unallocated</span>
+                <span className="y-strat-row__label">{t('Unallocated')}</span>
               </span>
               <span className="y-strat-row__nums">
                 <span className="y-strat-row__num">
@@ -203,7 +206,7 @@ export const VaultStrategiesSection: React.FC<VaultStrategiesSectionProps> = ({
             onClick={() => setShowInactive((open) => !open)}
           >
             <span>
-              {`${showInactive ? 'Hide' : 'Show'} Unallocated Strategies`}
+              {t(showInactive ? 'Hide Unallocated Strategies' : 'Show Unallocated Strategies')}
               <span className="y-strat__toggle-count">{` (${inactive.length})`}</span>
             </span>
             <ChevronDown

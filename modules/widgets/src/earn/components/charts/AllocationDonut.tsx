@@ -1,5 +1,6 @@
 import React from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { useT } from '../../i18n';
 
 /** DARK_MODE_COLORS from yearn.fi's AllocationChart. */
 export const ALLOCATION_COLORS = [
@@ -22,6 +23,7 @@ interface AllocationDonutProps {
 }
 
 export const AllocationDonut: React.FC<AllocationDonutProps> = ({ data, size = 150 }) => {
+  const t = useT();
   if (!data.length) return null;
   const inner = (size / 150) * 50;
   const outer = (size / 150) * 75;
@@ -49,7 +51,7 @@ export const AllocationDonut: React.FC<AllocationDonutProps> = ({ data, size = 1
           </Pie>
         </PieChart>
       </ResponsiveContainer>
-      <span className="y-allocation__label">allocation %</span>
+      <span className="y-allocation__label">{t('allocation %')}</span>
     </div>
   );
 };

@@ -3,6 +3,7 @@ import { YearnLogo } from '../../assets/YearnLogo';
 import { SHOW_YEARN_BRAND } from '../../constants';
 import { Menu, Sun } from '../ui/icons';
 import { Breadcrumbs, Crumb } from './Breadcrumbs';
+import { useT, useLang, setLang, Lang } from '../../i18n';
 
 export interface TopNavProps {
   activeView: 'vaults' | 'vault-detail' | 'portfolio';
@@ -11,7 +12,30 @@ export interface TopNavProps {
   breadcrumbs: Crumb[];
 }
 
+const LANGS: Lang[] = ['ru', 'en'];
+
+const LangSwitch: React.FC = () => {
+  const t = useT();
+  const lang = useLang();
+  return (
+    <div className="y-lang" role="group" aria-label={t('Switch language')}>
+      {LANGS.map((code) => (
+        <button
+          key={code}
+          type="button"
+          className={`y-lang__btn${lang === code ? ' is-active' : ''}`}
+          aria-pressed={lang === code}
+          onClick={() => setLang(code)}
+        >
+          {code.toUpperCase()}
+        </button>
+      ))}
+    </div>
+  );
+};
+
 export const TopNav: React.FC<TopNavProps> = ({ activeView, onNavigate, breadcrumbs }) => {
+  const t = useT();
   const [isMobileOpen, setMobileOpen] = useState(false);
 
   const go = (view: 'vaults' | 'portfolio') => {
@@ -40,7 +64,7 @@ export const TopNav: React.FC<TopNavProps> = ({ activeView, onNavigate, breadcru
         <button
           type="button"
           className="y-topnav__burger"
-          aria-label="Menu"
+          aria-label={t('Menu')}
           aria-expanded={isMobileOpen}
           onClick={() => setMobileOpen((prev) => !prev)}
         >
@@ -54,16 +78,17 @@ export const TopNav: React.FC<TopNavProps> = ({ activeView, onNavigate, breadcru
               className={`y-topnav__link${activeView !== 'portfolio' ? ' is-active' : ''}`}
               onClick={() => onNavigate('vaults')}
             >
-              Vaults
+              {t('Vaults')}
             </button>
             <button
               type="button"
               className={`y-topnav__link${activeView === 'portfolio' ? ' is-active' : ''}`}
               onClick={() => onNavigate('portfolio')}
             >
-              Portfolio
+              {t('Portfolio')}
             </button>
           </div>
+          <LangSwitch />
           {/* The CoinMan Earn page is dark-only; the control mirrors yearn.fi's layout.
               Connecting a wallet happens through the app's own Wallet Connect menu,
               so yearn.fi's Connect wallet button is intentionally not reproduced. */}
@@ -80,15 +105,16 @@ export const TopNav: React.FC<TopNavProps> = ({ activeView, onNavigate, breadcru
             className={`y-topnav__mobile-link${activeView !== 'portfolio' ? ' is-active' : ''}`}
             onClick={() => go('vaults')}
           >
-            Vaults
+            {t('Vaults')}
           </button>
           <button
             type="button"
             className={`y-topnav__mobile-link${activeView === 'portfolio' ? ' is-active' : ''}`}
             onClick={() => go('portfolio')}
           >
-            Portfolio
+            {t('Portfolio')}
           </button>
+          <LangSwitch />
         </div>
       )}
     </div>

@@ -11,11 +11,12 @@ import { canStakeOnDeposit, isRetiredVault } from '../../vaultTx';
 import { ZAP_SLIPPAGE_DEFAULT, ZAP_SLIPPAGE_PRESETS } from '../../constants';
 import { ZapToken, useZapTokens } from '../../hooks/useZap';
 import { TokenPicker } from './TokenPicker';
-import { MigratePanel } from './MigratePanel';
+import { formatStepLabel, MigratePanel } from './MigratePanel';
 import { getHeadlineAPY, RETIRED_TAG_DESCRIPTION } from '../../vaultMeta';
 import { AmountInput } from './AmountInput';
 import { InfoPopover } from './InfoPopover';
 import { RecentTransactions } from './RecentTransactions';
+import { useT } from '../../i18n';
 
 type WalletTabId = 'balances' | 'transactions';
 
@@ -48,7 +49,7 @@ interface VaultWidgetProps {
   /** Portfolio-scan position; My Info shows it so merged contracts count. */
   position?: PortfolioPosition;
   onConnectWallet: () => void;
-  /** "All activity": Portfolio → Activity. */
+  /** "All activity": Portfolio -> Activity. */
   onOpenActivity?: () => void;
   onBalancesChanged?: () => void;
   /** For the Migrate tab's destination link. */
@@ -69,6 +70,7 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
   vaults = [],
   onSelectVault,
 }) => {
+  const t = useT();
   const [infoTab, setInfoTab] = useState<WalletTabId>('balances');
   const mode: WidgetMode = tab === 'withdraw' ? 'withdraw' : 'deposit';
   const hasLockedVariant = Boolean(vault.lockedTwin);
@@ -142,7 +144,7 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
   const price = vault.tvl?.price || 0;
   const lockedVariant = variant === 'locked';
 
-  // Unstaked yBOLD earns nothing — its yield accrues in st-yBOLD.
+  // Unstaked yBOLD earns nothing - its yield accrues in st-yBOLD.
   const earnsYield = !(stakesOnDeposit && variant !== 'staked');
   const amountNumber = Number(formatUnits(actions.parsedAmount, actions.inputDecimals));
   const zap = actions.zap;
@@ -200,8 +202,8 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
     return (
       <div className="y-widget y-wallet">
         <div className="y-wallet__head">
-          <h3 className="y-wallet__title">Wallet</h3>
-          <div className="y-variant" role="tablist" aria-label="Wallet section">
+          <h3 className="y-wallet__title">{t('Wallet')}</h3>
+          <div className="y-variant" role="tablist" aria-label={t('Wallet section')}>
             {WALLET_TABS.map((walletTab) => (
               <button
                 key={walletTab.id}
@@ -211,7 +213,7 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
                 className={`y-variant__btn${infoTab === walletTab.id ? ' is-active' : ''}`}
                 onClick={() => setInfoTab(walletTab.id)}
               >
-                {walletTab.label}
+                {t(walletTab.label)}
               </button>
             ))}
           </div>
@@ -221,25 +223,25 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
           {!walletAddress ? (
             <div className="y-wallet__empty">
               <Wallet size={24} />
-              <p>Connect a wallet to view balances and transactions.</p>
+              <p>{t('Connect a wallet to view balances and transactions.')}</p>
               <button type="button" className="y-btn y-btn--contrast" onClick={onConnectWallet}>
-                Connect Wallet
+                {t('Connect Wallet')}
               </button>
             </div>
           ) : infoTab === 'balances' ? (
             <>
               <section className="y-wallet__section">
-                <h4 className="y-wallet__section-title">Your Vault balances</h4>
+                <h4 className="y-wallet__section-title">{t('Your Vault balances')}</h4>
                 <div className="y-wallet__rows">
                   <div className="y-wallet__row">
-                    <span className="y-wallet__row-label">Deposited value</span>
+                    <span className="y-wallet__row-label">{t('Deposited value')}</span>
                     <span className="y-wallet__row-value">
                       {`${formatAmount(depositedAssets)} ${symbol}`}
                       <span className="y-wallet__row-usd">{` (${formatUSD(depositedAssets * price)})`}</span>
                     </span>
                   </div>
                   <div className="y-wallet__row">
-                    <span className="y-wallet__row-label">Deposited shares</span>
+                    <span className="y-wallet__row-label">{t('Deposited shares')}</span>
                     <span className="y-wallet__row-value">
                       {formatAmount(shares)}
                       <span className="y-wallet__row-usd">{` (${formatUSD(depositedAssets * price)})`}</span>
@@ -249,10 +251,12 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
               </section>
 
               <section className="y-wallet__section">
-                <h4 className="y-wallet__section-title">Wallet balances</h4>
+                <h4 className="y-wallet__section-title">{t('Wallet balances')}</h4>
                 <div className="y-wallet__rows">
                   <div className="y-wallet__row">
-                    <span className="y-wallet__row-label">{`Available ${symbol}`}</span>
+                    <span className="y-wallet__row-label">
+                      {t('Available {symbol}', { symbol })}
+                    </span>
                     <span className="y-wallet__row-value">
                       {formatAmount(walletAssets)}
                       <span className="y-wallet__row-usd">{` (${formatUSD(walletAssets * price)})`}</span>
@@ -289,22 +293,29 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
   const step = actions.status.step;
   const stepSuffix = step && step.total > 1 ? ` (${step.index + 1}/${step.total})` : '';
 
-  let buttonLabel = isDeposit ? 'Deposit' : 'Withdraw';
-  if (needsCooldown) buttonLabel = locked.phase === 'expired' ? 'Restart Cooldown' : 'Start Cooldown';
-  if (isCoolingDown) buttonLabel = `Cooldown ${formatDuration(locked.secondsLeft)}`;
-  if (!walletAddress) buttonLabel = 'Connect Wallet';
-  else if (!canSign) buttonLabel = 'Reconnect wallet to sign';
-  else if (actions.isWrongChain) buttonLabel = `Switch to ${chain.name}`;
-  else if (actions.blockedReason && actions.parsedAmount > 0n) buttonLabel = actions.blockedReason;
-  else if (zap && actions.parsedAmount > 0n && zap.minOut === null) buttonLabel = 'Fetching route…';
+  let buttonLabel = isDeposit ? t('Deposit') : t('Withdraw');
+  if (needsCooldown) {
+    buttonLabel = locked.phase === 'expired' ? t('Restart Cooldown') : t('Start Cooldown');
+  }
+  if (isCoolingDown) {
+    buttonLabel = t('Cooldown {time}', { time: formatDuration(locked.secondsLeft) });
+  }
+  if (!walletAddress) buttonLabel = t('Connect Wallet');
+  else if (!canSign) buttonLabel = t('Reconnect wallet to sign');
+  else if (actions.isWrongChain) buttonLabel = t('Switch to {chain}', { chain: chain.name });
+  else if (actions.blockedReason && actions.parsedAmount > 0n) {
+    buttonLabel = t(actions.blockedReason);
+  } else if (zap && actions.parsedAmount > 0n && zap.minOut === null) {
+    buttonLabel = t('Fetching route...');
+  }
   if (isBusy) {
     buttonLabel = step
-      ? `${step.label}…${stepSuffix}`
+      ? `${formatStepLabel(step.label, t)}...${stepSuffix}`
       : needsCooldown
-        ? 'Starting cooldown…'
+        ? t('Starting cooldown...')
         : isDeposit
-          ? 'Depositing…'
-          : 'Withdrawing…';
+          ? t('Depositing...')
+          : t('Withdrawing...');
   }
 
   const handleAction = () => {
@@ -337,30 +348,37 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
     ? null
     : zap.minOut === null
       ? zap.isQuoting
-        ? 'Fetching route…'
-        : '—'
-      : `at least ${formatAmount(Number(formatUnits(zap.minOut, zap.outDecimals)))} ${zap.outSymbol}`;
+        ? t('Fetching route...')
+        : '-'
+      : t('at least {amount} {symbol}', {
+          amount: formatAmount(Number(formatUnits(zap.minOut, zap.outDecimals))),
+          symbol: zap.outSymbol,
+        });
   const showTokenPicker = canZap && zapTokens.length > 1;
 
   const zapRows = zap ? (
     <>
       <SummaryRow
         label={
-          <InfoPopover label="Price impact" title="Price impact">
+          <InfoPopover label={t('Price impact')} title={t('Price impact')}>
             <p>
-              The zap swaps through Enso. Estimated impact is what the route is expected to cost;
-              worst case is what it may cost at the minimum it guarantees.
+              {t(
+                'The zap swaps through Enso. Estimated impact is what the route is expected to cost; worst case is what it may cost at the minimum it guarantees.'
+              )}
             </p>
           </InfoPopover>
         }
         value={
           zap.estImpact === null
-            ? '—'
-            : `${zap.estImpact.toFixed(2)}% (worst ${(zap.worstImpact ?? zap.estImpact).toFixed(2)}%)`
+            ? '-'
+            : t('{est}% (worst {worst}%)', {
+                est: zap.estImpact.toFixed(2),
+                worst: (zap.worstImpact ?? zap.estImpact).toFixed(2),
+              })
         }
       />
       <SummaryRow
-        label="Slippage tolerance"
+        label={t('Slippage tolerance')}
         value={
           <span className="y-slippage">
             {ZAP_SLIPPAGE_PRESETS.map((preset) => (
@@ -382,13 +400,18 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
   const hasUnstakedYBold =
     isDeposit && stakesOnDeposit && (actions.position?.vaultShares ?? 0n) > 0n;
 
+  const shareVariantSuffix = [
+    hasLockedVariant ? ` (${lockedVariant ? t('Locked') : t('Unlocked')})` : '',
+    variant === 'staked' ? ` (${t('staked')})` : '',
+  ].join('');
+
   return (
     <div className="y-widget">
       <div className="y-widget__inner">
         <div className="y-widget__head">
-          <h3 className="y-widget__title">{isDeposit ? 'Deposit' : 'Withdraw'}</h3>
+          <h3 className="y-widget__title">{isDeposit ? t('Deposit') : t('Withdraw')}</h3>
           {variantOptions.length > 0 && (
-            <div className="y-variant" role="group" aria-label="Vault share variant">
+            <div className="y-variant" role="group" aria-label={t('Vault share variant')}>
               {variantOptions.map((option) => (
                 <button
                   key={option.id}
@@ -397,7 +420,7 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
                   onClick={() => setVariant(option.id)}
                 >
                   {option.icon}
-                  {option.label}
+                  {t(option.label)}
                 </button>
               ))}
             </div>
@@ -405,18 +428,22 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
         </div>
 
         {isRetired && !isDeposit && (
-          <p className="y-widget__warning">{`This vault is retired. ${RETIRED_TAG_DESCRIPTION}`}</p>
+          <p className="y-widget__warning">
+            {`${t('This vault is retired.')} ${t(RETIRED_TAG_DESCRIPTION)}`}
+          </p>
         )}
 
         {hasUnstakedYBold && (
           <div className="y-widget__stake">
             <div>
-              <p className="y-widget__stake-title">You have unstaked yBOLD.</p>
+              <p className="y-widget__stake-title">{t('You have unstaked yBOLD.')}</p>
               <p
                 className="y-widget__stake-text"
-                title="In order to earn yield, BOLD needs to be deposited and staked into ysyBOLD. It always makes sense to stake yBOLD and there is no lockup or fee."
+                title={t(
+                  'In order to earn yield, BOLD needs to be deposited and staked into ysyBOLD. It always makes sense to stake yBOLD and there is no lockup or fee.'
+                )}
               >
-                Click the button to the right to stake your yBOLD to earn yield.
+                {t('Click the button to the right to stake your yBOLD to earn yield.')}
               </p>
             </div>
             <button
@@ -425,7 +452,7 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
               disabled={isBusy || actions.isWrongChain}
               onClick={() => void actions.stakeShares()}
             >
-              Stake
+              {t('Stake')}
             </button>
           </div>
         )}
@@ -446,7 +473,7 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
                 selected={depositToken ?? zapTokens[0]}
                 onSelect={selectToken}
                 disabled={isBusy}
-                ariaLabel="Deposit token"
+                ariaLabel={t('Deposit token')}
               />
             ) : undefined
           }
@@ -457,13 +484,16 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
                 className="y-amount__balance"
                 onClick={() => actions.setPercent(100)}
               >
-                {`Balance: ${formatAmount(
-                  Number(formatUnits(available, isDeposit ? actions.inputDecimals : decimals))
-                )} ${inputSymbol}`}
+                {t('Balance: {amount} {symbol}', {
+                  amount: formatAmount(
+                    Number(formatUnits(available, isDeposit ? actions.inputDecimals : decimals))
+                  ),
+                  symbol: inputSymbol,
+                })}
               </button>
             ) : (
               <button type="button" className="y-amount__balance" onClick={onConnectWallet}>
-                Connect wallet
+                {t('Connect wallet')}
               </button>
             )
           }
@@ -471,14 +501,14 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
 
         {!isDeposit && showTokenPicker && (
           <div className="y-widget__receive">
-            <span className="y-summary__label">Receive</span>
+            <span className="y-summary__label">{t('Receive')}</span>
             <TokenPicker
               chainId={vault.chainID}
               tokens={zapTokens}
               selected={withdrawToken ?? zapTokens[0]}
               onSelect={selectToken}
               disabled={isBusy}
-              ariaLabel="Withdrawal token"
+              ariaLabel={t('Withdrawal token')}
             />
           </div>
         )}
@@ -487,65 +517,81 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
           {isDeposit ? (
             <>
               <SummaryRow
-                label="You Will Deposit"
+                label={t('You Will Deposit')}
                 value={`${formatAmount(amountNumber)} ${inputSymbol}`}
               />
               <SummaryRow
                 label={
-                  <InfoPopover label="You Will Receive" title="Vault Shares">
+                  <InfoPopover label={t('You Will Receive')} title={t('Vault Shares')}>
                     <p>
-                      <b>What you'll receive</b>
-                    </p>
-                    <p>{`You're depositing ${symbol} into the vault. You'll receive ${vault.name}${
-                      hasLockedVariant ? ` (${lockedVariant ? 'Locked' : 'Unlocked'})` : ''
-                    }${variant === 'staked' ? ' (staked)' : ''} shares.`}</p>
-                    <p>
-                      <b>How vault shares work</b>
+                      <b>{t("What you'll receive")}</b>
                     </p>
                     <p>
-                      Vault shares represent your deposit. Their value grows automatically as the
-                      vault earns yield — you don't need to do anything. When you withdraw, your
-                      shares are exchanged back for the underlying asset plus any earnings.
+                      {t("You're depositing {symbol} into the vault. You'll receive {vault} shares.", {
+                        symbol,
+                        vault: `${vault.name}${shareVariantSuffix}`,
+                      })}
+                    </p>
+                    <p>
+                      <b>{t('How vault shares work')}</b>
+                    </p>
+                    <p>
+                      {t(
+                        "Vault shares represent your deposit. Their value grows automatically as the vault earns yield - you don't need to do anything. When you withdraw, your shares are exchanged back for the underlying asset plus any earnings."
+                      )}
                     </p>
                   </InfoPopover>
                 }
                 value={zapReceive ?? `${formatAmount(sharesPreview)} ${actions.sharesSymbol}`}
               />
               {!zap && (
-              <SummaryRow
-                label={
-                  <InfoPopover label="Vault share value" title="Vault Share Value">
-                    <p>
-                      <b>What this value means</b>
-                    </p>
-                    <p>
-                      {`This is the amount of ${vault.name} you could redeem immediately after depositing. It represents the value of the shares you will receive converted to the underlying asset.`}
-                    </p>
-                  </InfoPopover>
-                }
-                value={`${formatAmount(amountNumber)} ${vault.name} (${formatUSDFull(
-                  amountNumber * price
-                )})`}
-              />
+                <SummaryRow
+                  label={
+                    <InfoPopover label={t('Vault share value')} title={t('Vault Share Value')}>
+                      <p>
+                        <b>{t('What this value means')}</b>
+                      </p>
+                      <p>
+                        {t(
+                          'This is the amount of {vault} you could redeem immediately after depositing. It represents the value of the shares you will receive converted to the underlying asset.',
+                          { vault: vault.name }
+                        )}
+                      </p>
+                    </InfoPopover>
+                  }
+                  value={`${formatAmount(amountNumber)} ${vault.name} (${formatUSDFull(
+                    amountNumber * price
+                  )})`}
+                />
               )}
               <SummaryRow
                 label={
-                  <InfoPopover label="Est. Annual Return" title="Estimated Annual Return">
+                  <InfoPopover label={t('Est. Annual Return')} title={t('Estimated Annual Return')}>
                     <p>
-                      The estimated annual return is calculated based on the vault's historical
-                      performance and current market conditions.
+                      {t(
+                        "The estimated annual return is calculated based on the vault's historical performance and current market conditions."
+                      )}
                     </p>
                     <p>
-                      <b>Calculation factors:</b>
+                      <b>{t('Calculation factors:')}</b>
                     </p>
-                    <p>{`Current APR: ${formatAPY(apy)}`}</p>
-                    <p>{`Your deposit: ${formatAmount(amountNumber)} ${inputSymbol}`}</p>
-                    <p>{`Expected annual yield: ${formatAmount(
-                      amountNumber * (apy || 0)
-                    )} ${inputSymbol}`}</p>
+                    <p>{t('Current APR: {apr}', { apr: formatAPY(apy) })}</p>
                     <p>
-                      Please note that past performance does not guarantee future results. Actual
-                      returns may vary based on market volatility and vault strategy adjustments.
+                      {t('Your deposit: {amount} {symbol}', {
+                        amount: formatAmount(amountNumber),
+                        symbol: inputSymbol,
+                      })}
+                    </p>
+                    <p>
+                      {t('Expected annual yield: {amount} {symbol}', {
+                        amount: formatAmount(amountNumber * (apy || 0)),
+                        symbol: inputSymbol,
+                      })}
+                    </p>
+                    <p>
+                      {t(
+                        'Please note that past performance does not guarantee future results. Actual returns may vary based on market volatility and vault strategy adjustments.'
+                      )}
                     </p>
                   </InfoPopover>
                 }
@@ -554,12 +600,18 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
               {approval && (
                 <SummaryRow
                   label={
-                    <InfoPopover label={`Existing Approval (${approval.spender})`} title="Manage approval">
+                    <InfoPopover
+                      label={t('Existing Approval ({spender})', { spender: approval.spender })}
+                      title={t('Manage approval')}
+                    >
                       <p>
-                        <b>What is this?</b>
+                        <b>{t('What is this?')}</b>
                       </p>
                       <p>
-                        {`Token approval allows a smart contract to transfer your ${approval.symbol} up to a set limit. Deposits approve exactly the amount being deposited.`}
+                        {t(
+                          'Token approval allows a smart contract to transfer your {symbol} up to a set limit. Deposits approve exactly the amount being deposited.',
+                          { symbol: approval.symbol }
+                        )}
                       </p>
                     </InfoPopover>
                   }
@@ -574,29 +626,36 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
             <>
               <SummaryRow
                 label={
-                  <InfoPopover label="You will redeem" title="Vault Shares">
+                  <InfoPopover label={t('You will redeem')} title={t('Vault Shares')}>
                     <p>
-                      Vault shares represent your deposit. Redeeming exchanges them back for the
-                      underlying asset plus any earnings.
+                      {t(
+                        'Vault shares represent your deposit. Redeeming exchanges them back for the underlying asset plus any earnings.'
+                      )}
                     </p>
                   </InfoPopover>
                 }
                 value={`${formatAmount(sharesPreview)} ${actions.sharesSymbol}`}
               />
               <SummaryRow
-                label="You will receive"
+                label={t('You will receive')}
                 value={zapReceive ?? `${formatAmount(receiveAmount)} ${symbol}`}
               />
               {zapRows}
               {approval && (
                 <SummaryRow
                   label={
-                    <InfoPopover label={`Existing Approval (${approval.spender})`} title="Manage approval">
+                    <InfoPopover
+                      label={t('Existing Approval ({spender})', { spender: approval.spender })}
+                      title={t('Manage approval')}
+                    >
                       <p>
-                        <b>What is this?</b>
+                        <b>{t('What is this?')}</b>
                       </p>
                       <p>
-                        {`This withdrawal routes through the ${approval.spender} contract, which needs approval to spend your ${approval.symbol}.`}
+                        {t(
+                          'This withdrawal routes through the {spender} contract, which needs approval to spend your {symbol}.',
+                          { spender: approval.spender, symbol: approval.symbol }
+                        )}
                       </p>
                     </InfoPopover>
                   }
@@ -611,16 +670,17 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
 
         {isDeposit && !earnsYield && (
           <p className="y-widget__warning">
-            Automatic staking is off. Unstaked yBOLD does not earn yield — its yield accrues to
-            staked yBOLD.
+            {t(
+              'Automatic staking is off. Unstaked yBOLD does not earn yield - its yield accrues to staked yBOLD.'
+            )}
           </p>
         )}
 
         {hasLockedVariant && lockedVariant && isDeposit && (
           <ul className="y-widget__notice">
-            <li>{`${locked.cooldownDays} day cooldown`}</li>
-            <li>{`${locked.windowDays} day withdrawal window`}</li>
-            <li>Higher yield</li>
+            <li>{t('{days} day cooldown', { days: locked.cooldownDays })}</li>
+            <li>{t('{days} day withdrawal window', { days: locked.windowDays })}</li>
+            <li>{t('Higher yield')}</li>
           </ul>
         )}
 
@@ -628,15 +688,20 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
           <div className="y-widget__cooldown">
             <p className="y-widget__cooldown-text">
               {locked.phase === 'idle' &&
-                `Locked shares need a ${locked.cooldownDays} day cooldown before they can be withdrawn.`}
+                t('Locked shares need a {days} day cooldown before they can be withdrawn.', {
+                  days: locked.cooldownDays,
+                })}
               {locked.phase === 'cooling' &&
-                `Cooldown ends in ${formatDuration(locked.secondsLeft)}, then you have ${
-                  locked.windowDays
-                } days to withdraw.`}
+                t('Cooldown ends in {time}, then you have {days} days to withdraw.', {
+                  time: formatDuration(locked.secondsLeft),
+                  days: locked.windowDays,
+                })}
               {locked.phase === 'ready' &&
-                `Ready to withdraw — ${formatDuration(locked.secondsLeft)} left in the window.`}
+                t('Ready to withdraw - {time} left in the window.', {
+                  time: formatDuration(locked.secondsLeft),
+                })}
               {locked.phase === 'expired' &&
-                'The withdrawal window closed. Start a new cooldown to withdraw.'}
+                t('The withdrawal window closed. Start a new cooldown to withdraw.')}
             </p>
             {locked.cooldownShares > 0n && (
               <button
@@ -645,7 +710,7 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
                 disabled={isBusy}
                 onClick={() => void actions.cancelCooldown()}
               >
-                Cancel cooldown
+                {t('Cancel cooldown')}
               </button>
             )}
           </div>
@@ -661,7 +726,7 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
         </button>
 
         {actions.status.stage === 'error' && actions.status.message && (
-          <p className="y-widget__error">{actions.status.message}</p>
+          <p className="y-widget__error">{t(actions.status.message)}</p>
         )}
         {actions.status.stage === 'success' && (
           <button
@@ -672,7 +737,7 @@ export const VaultWidget: React.FC<VaultWidgetProps> = ({
               openExternal(`${chain.blockExplorer}/tx/${actions.status.txHash}`)
             }
           >
-            Transaction confirmed ↗
+            {t('Transaction confirmed')} &#8599;
           </button>
         )}
       </div>

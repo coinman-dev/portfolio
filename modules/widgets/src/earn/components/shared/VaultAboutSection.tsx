@@ -12,13 +12,15 @@ import {
   getChainWebsite,
   getKindDescription,
   getProductTypeDescription,
+  getProductTypeInfo,
   getStrategyKind,
   getStrategyKindLabel,
-  getVaultTypeLabel,
   NO_DESCRIPTION_TEXT,
 } from '../../vaultMeta';
 import { ChevronDown, Copy, Check, ExternalLink, Lock, Unlock } from '../ui/icons';
 import { YVUSD_COOLDOWN_DAYS } from '../../constants';
+import { useT } from '../../i18n';
+import { translateVaultDescription } from '../../i18n/descriptions';
 
 interface AccordionProps {
   label: string;
@@ -68,15 +70,17 @@ interface AddressRowProps {
 }
 
 const AddressRow: React.FC<AddressRowProps> = ({ label, address, explorer }) => {
+  const t = useT();
+  const labelText = t(label);
   const [copied, setCopied] = useState(false);
   return (
     <div className="y-addr-row">
-      <p className="y-addr-row__label">{label}</p>
+      <p className="y-addr-row__label">{labelText}</p>
       <div className="y-addr-row__value">
         <button
           type="button"
           className="y-addr-row__link"
-          aria-label="View on block explorer"
+          aria-label={t('View on block explorer')}
           onClick={(event) => {
             event.stopPropagation();
             openExternal(`${explorer}/address/${address}`);
@@ -88,7 +92,7 @@ const AddressRow: React.FC<AddressRowProps> = ({ label, address, explorer }) => 
         <button
           type="button"
           className="y-addr-row__copy"
-          aria-label={`Copy ${label.toLowerCase()}`}
+          aria-label={t('Copy {label}', { label: labelText.toLowerCase() })}
           onClick={(event) => {
             event.stopPropagation();
             void navigator.clipboard?.writeText(address);
@@ -109,15 +113,24 @@ interface VaultAboutSectionProps {
   showKind?: boolean;
 }
 
-/** Left column of the expanded row / vault detail — 1:1 with yearn.fi's VaultAboutSection. */
+/** Left column of the expanded row / vault detail - 1:1 with yearn.fi's VaultAboutSection. */
 export const VaultAboutSection: React.FC<VaultAboutSectionProps> = ({ vault, showKind = true }) => {
+  const t = useT();
   const chain = getChain(vault.chainID);
   const chainWebsite = getChainWebsite(vault.chainID);
   const listKind = deriveListKind(vault);
   const strategyKind = getStrategyKind(vault);
   const strategyKindLabel = showKind ? getStrategyKindLabel(vault) : undefined;
+  const productInfo = getProductTypeInfo(vault);
+  const vaultTypeText = [t(productInfo.label), strategyKindLabel ? t(strategyKindLabel) : undefined]
+    .filter(Boolean)
+    .join(' | ');
   const fees = formatFeeDetailLabel(vault.apr.fees);
   const unlockedApy = vault.apr.forwardAPR?.netAPR || vault.apr.netAPR;
+  const rawDescription = vault.description || vault.token?.description;
+  const descriptionText = rawDescription
+    ? translateVaultDescription(rawDescription, vault.token?.symbol || vault.symbol)
+    : '';
 
   const addresses: { label: string; address: string }[] = vault.lockedTwin
     ? [
@@ -137,41 +150,47 @@ export const VaultAboutSection: React.FC<VaultAboutSectionProps> = ({ vault, sho
   return (
     <div className="y-about">
       <div className="y-about__description">
-        {vault.description ? <Markdown content={vault.description} /> : NO_DESCRIPTION_TEXT}
+        {descriptionText ? <Markdown content={descriptionText} /> : t(NO_DESCRIPTION_TEXT)}
       </div>
 
       <div className="y-about__list">
         {vault.lockedTwin && (
-          <Accordion label="Additional Features" value="Additional Features" isOpenByDefault>
+          <Accordion
+            label={t('Additional Features')}
+            value={t('Additional Features')}
+            isOpenByDefault
+          >
             <div className="y-about__features">
               <div className="y-kv">
                 <span className="y-kv__label">
                   <Lock size={12} />
-                  Locked APY
+                  {t('Locked APY')}
                 </span>
                 <span className="y-kv__value">{formatAPY(vault.lockedTwin.netAPR)}</span>
               </div>
               <div className="y-kv">
                 <span className="y-kv__label">
                   <Unlock size={12} />
-                  Unlocked APY
+                  {t('Unlocked APY')}
                 </span>
                 <span className="y-kv__value">{formatAPY(unlockedApy)}</span>
               </div>
               <div className="y-about__notes">
                 <p>
-                  <b>Locked:</b>{' '}
-                  {`Shares require a ${YVUSD_COOLDOWN_DAYS}-day cooldown before withdrawal.`}
+                  <b>{t('Locked:')}</b>{' '}
+                  {t('Shares require a {days}-day cooldown before withdrawal.', {
+                    days: YVUSD_COOLDOWN_DAYS,
+                  })}
                 </p>
                 <p>
-                  <b>Unlocked:</b> Shares can be withdrawn without a cooldown.
+                  <b>{t('Unlocked:')}</b> {t('Shares can be withdrawn without a cooldown.')}
                 </p>
               </div>
             </div>
           </Accordion>
         )}
 
-        <Accordion label="Addresses" value="Addresses">
+        <Accordion label={t('Addresses')} value={t('Addresses')}>
           <div className="y-about__addresses">
             {addresses.map((item) => (
               <AddressRow
@@ -185,16 +204,16 @@ export const VaultAboutSection: React.FC<VaultAboutSectionProps> = ({ vault, sho
         </Accordion>
 
         <Accordion
-          label="Chain"
+          label={t('Chain')}
           value={chain.name}
           icon={<img src={chain.icon} alt="" width={16} height={16} />}
         >
           <p>
-            {getChainDescription(vault.chainID)}
+            {t(getChainDescription(vault.chainID))}
             {chainWebsite ? (
               <>
                 {' '}
-                Learn more about {chain.name} at{' '}
+                {t('Learn more about {chain} at', { chain: chain.name })}{' '}
                 <button
                   type="button"
                   className="y-about__link"
@@ -211,33 +230,41 @@ export const VaultAboutSection: React.FC<VaultAboutSectionProps> = ({ vault, sho
           </p>
         </Accordion>
 
-        <Accordion label="Asset Type" value={vault.category || 'Not specified'}>
-          <p>{getCategoryDescription(vault.category) || 'No asset category provided.'}</p>
+        <Accordion
+          label={t('Asset Type')}
+          value={vault.category ? t(vault.category) : t('Not specified')}
+        >
+          <p>{t(getCategoryDescription(vault.category) || 'No asset category provided.')}</p>
         </Accordion>
 
-        <Accordion label="Vault Type" value={getVaultTypeLabel(vault, showKind)}>
+        <Accordion label={t('Vault Type')} value={vaultTypeText}>
           <div className="y-about__stack">
-            <p>{getProductTypeDescription(listKind)}</p>
-            {strategyKindLabel && <p>{getKindDescription(strategyKind, strategyKindLabel)}</p>}
+            <p>{t(getProductTypeDescription(listKind))}</p>
+            {strategyKindLabel && (
+              <p>{t(getKindDescription(strategyKind, strategyKindLabel))}</p>
+            )}
           </div>
         </Accordion>
 
         <Accordion
-          label="Fees"
+          label={t('Fees')}
           value={
             <>
-              <b>{fees.management}</b> Management Fee | <b>{fees.performance}</b> Performance Fee
+              <b>{fees.management}</b> {t('Management Fee')} | <b>{fees.performance}</b>{' '}
+              {t('Performance Fee')}
             </>
           }
         >
           <div className="y-about__stack">
             <p>
-              <b>Management fees</b> are claimed from earned yield, pro-rated and up to the stated
-              percentage of principal.
+              <b>{t('Management fees')}</b>{' '}
+              {t(
+                'are claimed from earned yield, pro-rated and up to the stated percentage of principal.'
+              )}
             </p>
             <p>
-              <b>Performance fees</b> are claimed from earned yield, up to the stated percentage of
-              yield earned.
+              <b>{t('Performance fees')}</b>{' '}
+              {t('are claimed from earned yield, up to the stated percentage of yield earned.')}
             </p>
           </div>
         </Accordion>

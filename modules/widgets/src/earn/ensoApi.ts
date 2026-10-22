@@ -15,6 +15,7 @@ import {
   WRAPPED_NATIVE,
   YEARN_API,
 } from './constants';
+import { tr } from './i18n';
 
 type Hex = `0x${string}`;
 
@@ -71,28 +72,28 @@ export async function fetchEnsoRoute(request: EnsoRouteRequest): Promise<EnsoRou
   try {
     res = await fetch(`${YEARN_API}/enso/route?${query}`);
   } catch (err) {
-    throw new EnsoError(`Could not reach the zap service: ${err instanceof Error ? err.message : err}`);
+    throw new EnsoError(tr('Could not reach the zap service: {error}', { error: err instanceof Error ? err.message : String(err) }));
   }
   const body = await res.json().catch(() => null);
   if (!res.ok || !body?.tx) {
     const message = Array.isArray(body?.message) ? body.message.join(', ') : body?.message || body?.error;
-    throw new EnsoError(message || `No route available (${res.status}).`);
+    throw new EnsoError(message || tr('No route available ({status}).', { status: res.status }));
   }
 
   const tx = body.tx;
   const router = ENSO_ROUTERS[request.chainId];
   if (!router || String(tx.to).toLowerCase() !== router.toLowerCase()) {
-    throw new EnsoError('This approval address is not a known Enso router address.');
+    throw new EnsoError(tr('This approval address is not a known Enso router address.'));
   }
   if (tx.chainId !== undefined && Number(tx.chainId) !== request.chainId) {
-    throw new EnsoError('The route runs on another chain.');
+    throw new EnsoError(tr('The route runs on another chain.'));
   }
   if (tx.operationType !== undefined && Number(tx.operationType) !== 0) {
-    throw new EnsoError('Unsupported route type.');
+    throw new EnsoError(tr('Unsupported route type.'));
   }
   const steps: any[] = Array.isArray(body.route) ? body.route : [];
   if (steps.some((step) => String(step?.action || '').toLowerCase().includes('bridge'))) {
-    throw new EnsoError('Cross-chain routes are not supported.');
+    throw new EnsoError(tr('Cross-chain routes are not supported.'));
   }
 
   const impact = Number(body.priceImpact);

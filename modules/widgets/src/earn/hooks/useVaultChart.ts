@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { YearnVault } from '../types';
 import { fetchApyTimeseries, fetchPpsTimeseries, fetchTvlTimeseries } from '../kongApi';
 import { formatAxisDate } from '../format';
+import { useLang } from '../i18n';
 
 export type ChartKind = 'apy' | 'performance' | 'tvl';
 export type ChartPeriod = '30d' | '90d' | '1y' | 'all';
@@ -130,6 +131,7 @@ export function useVaultChart(
   kind: ChartKind,
   period: ChartPeriod = 'all'
 ): VaultChartData {
+  const lang = useLang();
   const [points, setPoints] = useState<ChartPoint[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -169,7 +171,7 @@ export function useVaultChart(
     return () => {
       cancelled = true;
     };
-  }, [chainId, address, lockedAddress, kind]);
+  }, [chainId, address, lockedAddress, kind, lang]);
 
   const limit = TIMEFRAME_LIMITS[period] ?? Number.MAX_SAFE_INTEGER;
   const filtered = limit >= points.length ? points : points.slice(-limit);

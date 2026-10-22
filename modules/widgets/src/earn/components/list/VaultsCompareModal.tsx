@@ -10,6 +10,7 @@ import { TokenIcon } from '../TokenIcon';
 import { RiskScoreTag } from '../shared/RiskScoreTag';
 import { ApyValue } from './ApyCell';
 import { getActiveStrategies } from './VaultRowExpanded';
+import { useT } from '../../i18n';
 
 interface VaultsCompareModalProps {
   isOpen: boolean;
@@ -38,6 +39,7 @@ const CompareCard: React.FC<{ vault: YearnVault; onRemove: (key: string) => void
   vault,
   onRemove,
 }) => {
+  const t = useT();
   const chain = getChain(vault.chainID);
   const key = getVaultKey(vault);
   const strategies = getActiveStrategies(vault);
@@ -51,7 +53,7 @@ const CompareCard: React.FC<{ vault: YearnVault; onRemove: (key: string) => void
         <button
           type="button"
           className="y-compare-card__remove"
-          aria-label={`Remove ${vault.name} from comparison`}
+          aria-label={t('Remove {name} from comparison', { name: vault.name })}
           onClick={() => onRemove(key)}
         >
           <Close size={16} />
@@ -59,7 +61,7 @@ const CompareCard: React.FC<{ vault: YearnVault; onRemove: (key: string) => void
         <button
           type="button"
           className="y-compare-card__identity"
-          aria-label={`Open ${vault.name} vault in a new tab`}
+          aria-label={t('Open {name} vault in a new tab', { name: vault.name })}
           onClick={() => openExternal(`https://yearn.fi/vaults/${vault.chainID}/${vault.address}`)}
         >
           <span className="y-compare-card__identity-main">
@@ -81,47 +83,49 @@ const CompareCard: React.FC<{ vault: YearnVault; onRemove: (key: string) => void
       </div>
 
       <div className="y-compare-card__body">
-        <CompareRow label="Est. APY" sublabel="Forward net APR">
+        <CompareRow label={t('Est. APY')} sublabel={t('Forward net APR')}>
           <ApyValue vault={vault} align="left" />
         </CompareRow>
-        <CompareRow label="Historical APY" sublabel="Average realized">
+        <CompareRow label={t('Historical APY')} sublabel={t('Average realized')}>
           {formatPercent((vault.apr?.netAPR ?? 0) * 100)}
         </CompareRow>
-        <CompareRow label="TVL" sublabel="Total value locked">
+        <CompareRow label={t('TVL')} sublabel={t('Total value locked')}>
           <span className="y-compare-row__strong">{formatUSDFull(vault.tvl?.tvl)}</span>
         </CompareRow>
-        <CompareRow label="Fees" sublabel="Mgmt / Perf">
+        <CompareRow label={t('Fees')} sublabel={t('Mgmt / Perf')}>
           <div className="y-compare-fees">
             <span>
-              <span className="y-compare-fees__label">Management:</span>{' '}
+              <span className="y-compare-fees__label">{t('Management:')}</span>{' '}
               <span>{formatFeePercent(vault.apr?.fees?.management)}</span>
             </span>
             <span>
-              <span className="y-compare-fees__label">Performance:</span>{' '}
+              <span className="y-compare-fees__label">{t('Performance:')}</span>{' '}
               <span>{formatFeePercent(vault.apr?.fees?.performance)}</span>
             </span>
           </div>
         </CompareRow>
-        <CompareRow label="Risk" sublabel="Security score">
+        <CompareRow label={t('Risk')} sublabel={t('Security score')}>
           <div className="y-compare-risk">
             <RiskScoreTag riskLevel={riskLevel} />
-            <span className="y-compare-row__sublabel">{`Level ${clampedRisk} / 5`}</span>
+            <span className="y-compare-row__sublabel">
+              {t('Level {level} / 5', { level: clampedRisk })}
+            </span>
           </div>
         </CompareRow>
-        <CompareRow label="Type" sublabel="Vault structure">
+        <CompareRow label={t('Type')} sublabel={t('Vault structure')}>
           <div className="y-compare-type">
-            <span className="y-compare-type__main">{productLabel}</span>
-            <span className="y-compare-row__sublabel">{vault.kind}</span>
+            <span className="y-compare-type__main">{t(productLabel)}</span>
+            <span className="y-compare-row__sublabel">{vault.kind ? t(vault.kind) : ''}</span>
           </div>
         </CompareRow>
 
         <div className="y-compare-card__strategies">
           <div className="y-compare-row__labels">
-            <span className="y-compare-row__label">Strategies</span>
-            <span className="y-compare-row__sublabel">Underlying positions</span>
+            <span className="y-compare-row__label">{t('Strategies')}</span>
+            <span className="y-compare-row__sublabel">{t('Underlying positions')}</span>
           </div>
           {strategies.length === 0 ? (
-            <span className="y-compare-card__dash">—</span>
+            <span className="y-compare-card__dash">-</span>
           ) : (
             <div className="y-compare-card__strategy-list">
               {strategies.map((strategy) => {
@@ -151,6 +155,7 @@ export const VaultsCompareModal: React.FC<VaultsCompareModalProps> = ({
   onClose,
   onRemove,
 }) => {
+  const t = useT();
   useCloseOnEscape(isOpen, onClose);
 
   if (!isOpen) return null;
@@ -164,16 +169,21 @@ export const VaultsCompareModal: React.FC<VaultsCompareModalProps> = ({
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <div className="y-compare-modal" role="dialog" aria-modal="true" aria-label="Compare vaults">
+      <div
+        className="y-compare-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('Compare vaults')}
+      >
         <div className="y-compare-modal__head">
           <div>
-            <h2 className="y-compare-modal__title">Compare vaults</h2>
-            <p className="y-compare-modal__subtitle">Review key metrics side-by-side.</p>
+            <h2 className="y-compare-modal__title">{t('Compare vaults')}</h2>
+            <p className="y-compare-modal__subtitle">{t('Review key metrics side-by-side.')}</p>
           </div>
           <button
             type="button"
             className="y-compare-modal__close"
-            aria-label="Close comparison"
+            aria-label={t('Close comparison')}
             onClick={onClose}
           >
             <Close size={16} />
@@ -189,7 +199,7 @@ export const VaultsCompareModal: React.FC<VaultsCompareModalProps> = ({
             </div>
           ) : (
             <div className="y-compare-modal__empty">
-              <p>Select at least two vaults to compare.</p>
+              <p>{t('Select at least two vaults to compare.')}</p>
             </div>
           )}
         </div>

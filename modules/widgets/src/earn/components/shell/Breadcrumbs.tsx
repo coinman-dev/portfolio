@@ -1,12 +1,15 @@
 import React from 'react';
+import { useT } from '../../i18n';
 
 export interface Crumb {
   label: string;
   onClick?: () => void;
 }
 
-export const Breadcrumbs: React.FC<{ items: Crumb[] }> = ({ items }) => (
-  <nav className="y-breadcrumbs" aria-label="Breadcrumb">
+export const Breadcrumbs: React.FC<{ items: Crumb[] }> = ({ items }) => {
+  const t = useT();
+  return (
+  <nav className="y-breadcrumbs" aria-label={t('Breadcrumb')}>
     {items.map((crumb, index) => {
       const isLast = index === items.length - 1;
       return (
@@ -29,4 +32,5 @@ export const Breadcrumbs: React.FC<{ items: Crumb[] }> = ({ items }) => (
       );
     })}
   </nav>
-);
+  );
+};

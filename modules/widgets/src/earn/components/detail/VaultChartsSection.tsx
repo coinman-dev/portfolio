@@ -3,6 +3,7 @@ import { YearnVault } from '../../types';
 import { ChartKind, ChartPeriod, useVaultChart } from '../../hooks/useVaultChart';
 import { ChartDropdown } from '../charts/ChartDropdown';
 import { CHART_PERIODS, VaultChart } from '../charts/VaultChart';
+import { useT } from '../../i18n';
 
 const CHART_TABS: { id: ChartKind; label: string }[] = [
   { id: 'apy', label: '30-Day APY' },
@@ -16,6 +17,7 @@ interface VaultChartsSectionProps {
 }
 
 export const VaultChartsSection: React.FC<VaultChartsSectionProps> = ({ vault, sectionRef }) => {
+  const t = useT();
   const [kind, setKind] = useState<ChartKind>('apy');
   // yvUSD only has a few months of history, so the site opens it on 90D.
   const [period, setPeriod] = useState<ChartPeriod>(vault.lockedTwin ? '90d' : '1y');
@@ -24,7 +26,7 @@ export const VaultChartsSection: React.FC<VaultChartsSectionProps> = ({ vault, s
   return (
     <section className="y-vd-card y-vd-card--chart" id="performance" ref={sectionRef}>
       <div className="y-vd-chart__bar">
-        <div className="y-vd-chart__tabs" role="tablist" aria-label="Chart metric">
+        <div className="y-vd-chart__tabs" role="tablist" aria-label={t('Chart metric')}>
           {CHART_TABS.map((tab) => (
             <button
               key={tab.id}
@@ -34,7 +36,7 @@ export const VaultChartsSection: React.FC<VaultChartsSectionProps> = ({ vault, s
               className={`y-vd-chart__tab${kind === tab.id ? ' is-active' : ''}`}
               onClick={() => setKind(tab.id)}
             >
-              {tab.label}
+              {t(tab.label)}
             </button>
           ))}
         </div>
@@ -43,7 +45,7 @@ export const VaultChartsSection: React.FC<VaultChartsSectionProps> = ({ vault, s
           value={period}
           options={CHART_PERIODS}
           onChange={setPeriod}
-          ariaLabel="Chart timeframe"
+          ariaLabel={t('Chart timeframe')}
         />
       </div>
 

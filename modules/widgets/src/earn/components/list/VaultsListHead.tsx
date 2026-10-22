@@ -1,5 +1,6 @@
 import React from 'react';
 import { ChevronDown } from '../ui/icons';
+import { useT } from '../../i18n';
 
 export type SortKey = 'featuring' | 'estAPY' | 'tvl' | 'deposited';
 export type SortDir = 'asc' | 'desc' | '';
@@ -15,7 +16,7 @@ interface VaultsListHeadProps {
   holdingsLabel?: string;
 }
 
-/** yearn.fi cycles desc → asc → unsorted for columns that allow it. */
+/** yearn.fi cycles desc -> asc -> unsorted for columns that allow it. */
 export function getNextSortDirection(
   activeSortBy: SortKey,
   activeSortDir: SortDir,
@@ -36,17 +37,19 @@ export const VaultsListHead: React.FC<VaultsListHeadProps> = ({
   vaultLabel = 'Vault',
   holdingsLabel = 'Holdings',
 }) => {
+  const t = useT();
   const renderButton = (key: SortKey, label: string, span: number) => {
     const isActive = sortBy === key && sortDir !== '';
+    const translated = t(label);
     return (
       <button
         type="button"
         className={`y-list-head__btn y-span-${span}${isActive ? ' is-active' : ''}`}
         datatype="number"
-        aria-label={`Sort by ${label}`}
+        aria-label={t('Sort by {label}', { label: translated })}
         onClick={() => onSort(key, getNextSortDirection(sortBy, sortDir, key, true))}
       >
-        <p className="yearn--table-head-label">{label}</p>
+        <p className="yearn--table-head-label">{translated}</p>
         <span className="y-list-head__sort-wrap">
           <ChevronDown
             size={16}
@@ -61,7 +64,7 @@ export const VaultsListHead: React.FC<VaultsListHeadProps> = ({
     <div className="y-list-head">
       <div className="y-list-head__left">
         <button type="button" className="y-list-head__btn" disabled>
-          <p className="yearn--table-head-label">{vaultLabel}</p>
+          <p className="yearn--table-head-label">{t(vaultLabel)}</p>
         </button>
       </div>
       <div className="y-list-head__right">

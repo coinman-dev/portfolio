@@ -62,6 +62,7 @@ interface MarkdownProps {
 
 export const Markdown: React.FC<MarkdownProps> = ({ content, className }) => {
   const paragraphs = content
+    .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<[^>]*>/g, '')
     .split(/\n{2,}/)
     .map((block) => block.replace(/\s+/g, ' ').trim())

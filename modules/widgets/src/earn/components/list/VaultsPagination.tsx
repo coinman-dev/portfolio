@@ -1,6 +1,8 @@
 import React from 'react';
 import { ChevronLeft } from '../ui/icons';
 import { VAULTS_PER_PAGE } from './VaultsListView';
+import { useT } from '../../i18n';
+import { plural } from '../../i18n/plural';
 
 interface VaultsPaginationProps {
   currentPage: number;
@@ -22,19 +24,26 @@ export const VaultsPagination: React.FC<VaultsPaginationProps> = ({
   total,
   onPageChange,
 }) => {
+  const t = useT();
   const first = (currentPage - 1) * VAULTS_PER_PAGE + 1;
   const last = Math.min(currentPage * VAULTS_PER_PAGE, total);
   const pages = pageWindow(currentPage, totalPages);
+  const showingKey = plural(
+    total,
+    'Showing {first}-{last} of {total} vault_one',
+    'Showing {first}-{last} of {total} vaults_few',
+    'Showing {first}-{last} of {total} vaults_many'
+  );
 
   return (
-    <nav className="y-pager" aria-label="Vault list pages">
-      <p className="y-pager__info">{`Showing ${first}–${last} of ${total} vaults`}</p>
+    <nav className="y-pager" aria-label={t('Vault list pages')}>
+      <p className="y-pager__info">{t(showingKey, { first, last, total })}</p>
 
       <div className="y-pager__controls">
         <button
           type="button"
           className="y-pager__btn y-pager__btn--step"
-          aria-label="Previous page"
+          aria-label={t('Previous page')}
           disabled={currentPage <= 1}
           onClick={() => onPageChange(currentPage - 1)}
         >
@@ -45,13 +54,13 @@ export const VaultsPagination: React.FC<VaultsPaginationProps> = ({
           <React.Fragment key={page}>
             {index > 0 && page - pages[index - 1] > 1 && (
               <span className="y-pager__dots" aria-hidden="true">
-                …
+                {'\u2026'}
               </span>
             )}
             <button
               type="button"
               className={`y-pager__btn${page === currentPage ? ' is-active' : ''}`}
-              aria-label={`Page ${page}`}
+              aria-label={t('Page {page}', { page })}
               aria-current={page === currentPage ? 'page' : undefined}
               onClick={() => onPageChange(page)}
             >
@@ -63,7 +72,7 @@ export const VaultsPagination: React.FC<VaultsPaginationProps> = ({
         <button
           type="button"
           className="y-pager__btn y-pager__btn--step y-pager__btn--next"
-          aria-label="Next page"
+          aria-label={t('Next page')}
           disabled={currentPage >= totalPages}
           onClick={() => onPageChange(currentPage + 1)}
         >

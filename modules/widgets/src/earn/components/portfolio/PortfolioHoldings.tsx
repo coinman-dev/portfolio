@@ -1,10 +1,11 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { YearnVault } from '../../types';
-import { getHeadlineAPY, getVaultKey } from '../../vaultMeta';
 import { PortfolioPosition } from '../../hooks/usePortfolioHoldings';
+import { getHeadlineAPY, getVaultKey } from '../../vaultMeta';
 import { SortDir, SortKey, VaultsListHead } from '../list/VaultsListHead';
 import { VaultsListRow } from '../list/VaultsListRow';
 import { EmptySectionCard } from './EmptySectionCard';
+import { useT } from '../../i18n';
 
 interface PortfolioHoldingsProps {
   positions: PortfolioPosition[];
@@ -34,6 +35,7 @@ export const PortfolioHoldings: React.FC<PortfolioHoldingsProps> = ({
   onSelectVault,
   onExploreVaults,
 }) => {
+  const t = useT();
   const [sortBy, setSortBy] = useState<SortKey>('deposited');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -59,7 +61,7 @@ export const PortfolioHoldings: React.FC<PortfolioHoldingsProps> = ({
     return (
       <div className="y-pf-loading">
         <span className="y-pf-loading__spinner" aria-hidden="true" />
-        <span>Searching for portfolio balances...</span>
+        <span>{t('Searching for portfolio balances...')}</span>
       </div>
     );
   }
@@ -67,9 +69,9 @@ export const PortfolioHoldings: React.FC<PortfolioHoldingsProps> = ({
   if (positions.length === 0) {
     return (
       <EmptySectionCard
-        title="No portfolio positions yet"
-        description="Deposit into a Yearn vault to see it here."
-        ctaLabel="Explore Vaults"
+        title={t('No portfolio positions yet')}
+        description={t('Deposit into a Yearn vault to see it here.')}
+        ctaLabel={t('Explore Vaults')}
         onCta={onExploreVaults}
       />
     );
@@ -77,7 +79,7 @@ export const PortfolioHoldings: React.FC<PortfolioHoldingsProps> = ({
 
   return (
     <section className="y-pf-section">
-      <h2 className="y-pf-section__title">Vaults</h2>
+      <h2 className="y-pf-section__title">{t('Vaults')}</h2>
       <div className="y-vaults-view">
         <VaultsListHead
           sortBy={sortBy}
