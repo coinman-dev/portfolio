@@ -6,6 +6,7 @@ import { KongVaultIndex, kongVaultKey } from './kongApi';
 import { shortenAddress } from './format';
 import { SUPPORTED_CHAINS } from './yearnApi';
 import { SupportedChain, YearnVault } from './types';
+import { intlLocale, tr } from './i18n';
 
 export const ACTIVITY_TYPES: { id: ActivityAction; label: string }[] = [
   { id: 'deposit', label: 'Deposit' },
@@ -18,12 +19,13 @@ export const ACTIVITY_TYPES: { id: ActivityAction; label: string }[] = [
 
 export type ActivityIconKind = 'deposit' | 'withdraw' | 'stake' | 'unstake' | 'transfer' | 'reward';
 
-/** Activity can reach chains the vaults list does not offer (old Fantom vaults…). */
+/** Activity can reach chains the vaults list does not offer (old Fantom vaults...). */
 export function findChain(chainId: number): SupportedChain | undefined {
   return SUPPORTED_CHAINS.find((chain) => chain.id === chainId);
 }
 
-export const chainName = (chainId: number) => findChain(chainId)?.name ?? `Chain ${chainId}`;
+export const chainName = (chainId: number) =>
+  findChain(chainId)?.name ?? tr('Chain {id}', { id: chainId });
 
 const hasInputToken = (entry: ActivityEntry) =>
   Boolean(entry.inputTokenAddress && entry.inputTokenAmount);
@@ -38,12 +40,13 @@ export function isZapEntry(entry: ActivityEntry): boolean {
 const isRewardClaim = (entry: ActivityEntry) => entry.displayType === 'reward_claim';
 
 export function activityTitle(entry: ActivityEntry): string {
-  if (isRewardClaim(entry)) return 'Reward Claim';
+  if (isRewardClaim(entry)) return tr('Reward Claim');
   if (entry.action === 'transfer') {
     if (hasInputToken(entry) && hasOutputToken(entry)) return 'Zap';
-    return entry.transferDirection === 'in' ? 'Transfer in' : 'Transfer out';
+    return entry.transferDirection === 'in' ? tr('Transfer in') : tr('Transfer out');
   }
-  return ACTIVITY_TYPES.find((type) => type.id === entry.action)?.label ?? entry.action;
+  const raw = ACTIVITY_TYPES.find((type) => type.id === entry.action)?.label ?? entry.action;
+  return tr(raw);
 }
 
 export function activityIconKind(entry: ActivityEntry): ActivityIconKind {
@@ -53,9 +56,9 @@ export function activityIconKind(entry: ActivityEntry): ActivityIconKind {
 }
 
 export interface ActivityLabels {
-  /** "DAI-1 yVault", "Staked yBOLD" — Kong's name for the vault family. */
+  /** "DAI-1 yVault", "Staked yBOLD" - Kong's name for the vault family. */
   vaultName: string;
-  /** "yvDAI-1", "ysyBOLD" — the shares the entry moved. */
+  /** "yvDAI-1", "ysyBOLD" - the shares the entry moved. */
   shareSymbol: string;
   /** Deposit asset of the vault family; drives the row's token logo. */
   iconAddress: string;
@@ -90,10 +93,10 @@ export function findListedVault(entry: ActivityEntry, vaults: YearnVault[]): Yea
 
 /**
  * yearn.fi's `formatActivityFixedValue`: at most four digits including the
- * suffix — `48.6K`, `99.0K`, `500K`, `1.23M`, `999.8`, `5,000`.
+ * suffix - `48.6K`, `99.0K`, `500K`, `1.23M`, `999.8`, `5,000`.
  */
 export function formatActivityAmount(value: number | null): string {
-  if (value === null || !Number.isFinite(value)) return 'Unknown';
+  if (value === null || !Number.isFinite(value)) return tr('Unknown');
   const abs = Math.abs(value);
   const withSuffix = (scaled: number, suffix: string) => {
     const digits = Math.floor(Math.log10(scaled)) + 1;
@@ -102,7 +105,7 @@ export function formatActivityAmount(value: number | null): string {
   if (abs >= 1e9) return withSuffix(abs / 1e9, 'B');
   if (abs >= 1e6) return withSuffix(abs / 1e6, 'M');
   if (abs >= 1e4) return withSuffix(abs / 1e3, 'K');
-  if (abs >= 1000) return Math.round(abs).toLocaleString('en-US');
+  if (abs >= 1000) return Math.round(abs).toLocaleString(intlLocale());
   if (abs === 0) return '0';
   const digits = abs < 1 ? 1 : Math.floor(Math.log10(abs)) + 1;
   return abs.toFixed(Math.min(3, 4 - digits));
@@ -110,13 +113,13 @@ export function formatActivityAmount(value: number | null): string {
 
 /** Expanded panel: full precision, up to six decimals. */
 export function formatActivityExact(value: number | null): string {
-  if (value === null || !Number.isFinite(value)) return 'Unknown';
-  return value.toLocaleString('en-US', { maximumFractionDigits: 6 });
+  if (value === null || !Number.isFinite(value)) return tr('Unknown');
+  return value.toLocaleString(intlLocale(), { maximumFractionDigits: 6 });
 }
 
 /** `Sep 29, 2026` */
 export function formatActivityDate(timestamp: number): string {
-  return new Date(timestamp * 1000).toLocaleDateString('en-US', {
+  return new Date(timestamp * 1000).toLocaleDateString(intlLocale(), {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -125,7 +128,7 @@ export function formatActivityDate(timestamp: number): string {
 
 /** `Sep 29, 2026, 1:05 PM` */
 export function formatActivityDateTime(timestamp: number): string {
-  return new Date(timestamp * 1000).toLocaleString('en-US', {
+  return new Date(timestamp * 1000).toLocaleString(intlLocale(), {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -201,37 +204,37 @@ export function activityAmountDetails(entry: ActivityEntry, labels: ActivityLabe
     case 'withdraw':
     case 'unstake':
       return [
-        { label: 'Vault shares redeemed', value: shares },
+        { label: tr('Vault shares redeemed'), value: shares },
         {
-          label: entry.outputTokenSymbol ? 'Token received' : 'Asset received',
+          label: entry.outputTokenSymbol ? tr('Token received') : tr('Asset received'),
           value: exact(f.received, f.receivedSymbol),
         },
       ];
     case 'swap':
       return [
-        { label: 'Vault shares sent', value: exact(f.deposited, f.depositedSymbol) },
-        { label: 'Vault shares received', value: shares },
+        { label: tr('Vault shares sent'), value: exact(f.deposited, f.depositedSymbol) },
+        { label: tr('Vault shares received'), value: shares },
       ];
     case 'transfer': {
       const rows: DetailRow[] = [
         {
           label: isRewardClaim(entry)
-            ? 'Reward claimed'
+            ? tr('Reward claimed')
             : entry.transferDirection === 'out'
-              ? 'Vault shares sent'
-              : 'Vault shares received',
+              ? tr('Vault shares sent')
+              : tr('Vault shares received'),
           value: shares,
         },
       ];
       if (hasInputToken(entry)) {
         rows.push({
-          label: 'Token zapped',
+          label: tr('Token zapped'),
           value: exact(entry.inputTokenAmountFormatted, entry.inputTokenSymbol ?? ''),
         });
       }
       if (hasOutputToken(entry)) {
         rows.push({
-          label: 'Zapped to',
+          label: tr('Zapped to'),
           value: exact(entry.outputTokenAmountFormatted, entry.outputTokenSymbol ?? ''),
         });
       }
@@ -241,18 +244,18 @@ export function activityAmountDetails(entry: ActivityEntry, labels: ActivityLabe
       if (isStakeZap(entry)) {
         return [
           {
-            label: 'Token staked',
+            label: tr('Token staked'),
             value: exact(entry.inputTokenAmountFormatted, entry.inputTokenSymbol ?? ''),
           },
-          { label: 'Staked in', value: labels.vaultName },
+          { label: tr('Staked in'), value: labels.vaultName },
         ];
       }
       return [
         {
-          label: isZapEntry(entry) ? 'Token zapped' : 'Token deposited',
+          label: isZapEntry(entry) ? tr('Token zapped') : tr('Token deposited'),
           value: exact(f.deposited, f.depositedSymbol),
         },
-        { label: 'Vault shares received', value: shares },
+        { label: tr('Vault shares received'), value: shares },
       ];
   }
 }

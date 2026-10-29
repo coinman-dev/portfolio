@@ -4,6 +4,7 @@ import { formatUSD } from '../../format';
 import { PortfolioPosition } from '../../hooks/usePortfolioHoldings';
 import { isDepositClosed } from '../../vaultTx';
 import { ArrowUp } from '../ui/icons';
+import { useT } from '../../i18n';
 import { VaultWidget, WidgetTab } from '../widget/VaultWidget';
 import { DetailSection, VaultDetailHeader, VaultIdentity } from './VaultDetailHeader';
 import { VaultChartsSection } from './VaultChartsSection';
@@ -48,6 +49,7 @@ export const VaultDetailPage: React.FC<VaultDetailPageProps> = ({
   vaults,
   onSelectVault,
 }) => {
+  const t = useT();
   const [activeSection, setActiveSection] = useState<DetailSection>('performance');
   // Retired and shut-down vaults lose the Deposit tab, as on yearn.fi.
   const depositClosed = isDepositClosed(vault);
@@ -156,10 +158,10 @@ export const VaultDetailPage: React.FC<VaultDetailPageProps> = ({
 
         <div className="y-vd-side">
           <div className="y-vd-deposits">
-            <span className="y-vd-deposits__label">Your Deposits</span>
+            <span className="y-vd-deposits__label">{t('Your Deposits')}</span>
             <span className="y-vd-deposits__value">{formatUSD(deposits)}</span>
           </div>
-          <div className="y-vd-tabs y-vd-tabs--widget" role="tablist" aria-label="Vault actions">
+          <div className="y-vd-tabs y-vd-tabs--widget" role="tablist" aria-label={t('Vault actions')}>
             {widgetTabs.map((tab) => (
               <button
                 key={tab.id}
@@ -169,7 +171,7 @@ export const VaultDetailPage: React.FC<VaultDetailPageProps> = ({
                 className={`y-vd-tab${widgetTab === tab.id ? ' is-active' : ''}`}
                 onClick={() => setWidgetTab(tab.id)}
               >
-                {tab.label}
+                {t(tab.label)}
               </button>
             ))}
           </div>
@@ -206,7 +208,7 @@ export const VaultDetailPage: React.FC<VaultDetailPageProps> = ({
         <button
           type="button"
           className="y-scroll-top"
-          aria-label="Scroll to top"
+          aria-label={t('Scroll to top')}
           onClick={scrollToTop}
         >
           <ArrowUp size={20} />

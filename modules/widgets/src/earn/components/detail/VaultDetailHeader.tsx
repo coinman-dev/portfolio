@@ -7,6 +7,7 @@ import { openExternal } from '../../openExternal';
 import { ExternalLink, Lock } from '../ui/icons';
 import { VaultAvatar } from '../list/VaultAvatar';
 import { VaultsListChip } from '../list/VaultsListChip';
+import { useT } from '../../i18n';
 import {
   deriveAssetCategory,
   getCategoryDescription,
@@ -44,17 +45,20 @@ interface KpiCellProps {
   showLock?: boolean;
 }
 
-const KpiCell: React.FC<KpiCellProps> = ({ label, value, tooltip, showLock }) => (
-  <div className="y-vd-kpi">
-    <span className="y-vd-kpi__label" title={tooltip}>
-      {label}
-    </span>
-    <span className="y-vd-kpi__value">
-      {value}
-      {showLock && <Lock size={16} className="y-vd-kpi__lock" />}
-    </span>
-  </div>
-);
+const KpiCell: React.FC<KpiCellProps> = ({ label, value, tooltip, showLock }) => {
+  const t = useT();
+  return (
+    <div className="y-vd-kpi">
+      <span className="y-vd-kpi__label" title={t(tooltip)}>
+        {t(label)}
+      </span>
+      <span className="y-vd-kpi__value">
+        {value}
+        {showLock && <Lock size={16} className="y-vd-kpi__lock" />}
+      </span>
+    </div>
+  );
+};
 
 /**
  * Vault avatar + name + explorer link, and (when expanded) the vault's chips.
@@ -65,6 +69,7 @@ export const VaultIdentity: React.FC<{ vault: YearnVault; isCompact: boolean }> 
   vault,
   isCompact,
 }) => {
+  const t = useT();
   const chain = getChain(vault.chainID);
   const product = getProductTypeInfo(vault);
   const listKind = deriveListKind(vault);
@@ -86,7 +91,7 @@ export const VaultIdentity: React.FC<{ vault: YearnVault; isCompact: boolean }> 
         <button
           type="button"
           className="y-vd-header__explorer"
-          aria-label={`View ${vault.name} on the block explorer`}
+          aria-label={t('View {name} on the block explorer', { name: vault.name })}
           onClick={() => openExternal(`${chain.blockExplorer}/address/${vault.address}`)}
         >
           <ExternalLink size={16} />
@@ -95,16 +100,19 @@ export const VaultIdentity: React.FC<{ vault: YearnVault; isCompact: boolean }> 
 
       {!isCompact && (
         <div className="y-vd-header__chips">
-          <VaultsListChip label={chain.name} title={getChainDescription(vault.chainID)} />
+          <VaultsListChip label={chain.name} title={t(getChainDescription(vault.chainID))} />
           <VaultsListChip
-            label={category}
-            title={getCategoryDescription(category) || undefined}
+            label={t(category)}
+            title={t(getCategoryDescription(category) || '') || undefined}
           />
-          <VaultsListChip label={product.label} title={getProductTypeDescription(listKind)} />
+          <VaultsListChip
+            label={t(product.label)}
+            title={t(getProductTypeDescription(listKind))}
+          />
           {kindLabel && (
             <VaultsListChip
-              label={kindLabel}
-              title={getKindDescription(getStrategyKind(vault), kindLabel)}
+              label={t(kindLabel)}
+              title={t(getKindDescription(getStrategyKind(vault), kindLabel))}
             />
           )}
         </div>
@@ -126,6 +134,7 @@ export const VaultDetailHeader: React.FC<VaultDetailHeaderProps> = ({
   onSelectSection,
   isCompact,
 }) => {
+  const t = useT();
   const hasLocked = Boolean(vault.lockedTwin);
   // Same rules as the list, so a vault never shows two different rates.
   const estApy = getHeadlineAPY(vault);
@@ -177,7 +186,7 @@ export const VaultDetailHeader: React.FC<VaultDetailHeaderProps> = ({
         </div>
       </div>
 
-      <nav className="y-vd-tabs" aria-label="Vault sections">
+      <nav className="y-vd-tabs" aria-label={t('Vault sections')}>
         {DETAIL_SECTIONS.map((section) => (
           <button
             key={section.id}
@@ -186,7 +195,7 @@ export const VaultDetailHeader: React.FC<VaultDetailHeaderProps> = ({
             aria-current={activeSection === section.id}
             onClick={() => onSelectSection(section.id)}
           >
-            {section.label}
+            {t(section.label)}
           </button>
         ))}
       </nav>

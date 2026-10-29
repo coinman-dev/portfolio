@@ -1,4 +1,5 @@
 import React from 'react';
+import { useT } from '../../i18n';
 
 const RISK_COLORS = ['transparent', '#63C532', '#F8A908', '#F8A908', '#C73203', '#C73203'];
 
@@ -12,11 +13,12 @@ interface RiskScoreTagProps {
 
 /** Small 40x12 risk gauge, matching yearn.fi's score bar. */
 export const RiskScoreTag: React.FC<RiskScoreTagProps> = ({ riskLevel, className }) => {
+  const t = useT();
   const level = riskLevel < 0 ? 0 : riskLevel > 5 ? 5 : riskLevel;
   return (
     <div
       className={`y-risk-tag${className ? ` ${className}` : ''}`}
-      title={`${level} / 5 : ${RISK_TOOLTIP}`}
+      title={`${level} / 5 : ${t(RISK_TOOLTIP)}`}
     >
       <div className="y-risk-tag__track">
         <div

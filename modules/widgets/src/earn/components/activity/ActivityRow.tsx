@@ -29,6 +29,7 @@ import {
   Unlock,
   WithdrawIcon,
 } from '../ui/icons';
+import { useT } from '../../i18n';
 
 export type ActivityChip = 'vault' | 'chain' | 'date' | 'zap';
 
@@ -58,28 +59,31 @@ export const ActivityIcon: React.FC<{ entry: ActivityEntry; size?: number }> = (
 export const ActivityAmounts: React.FC<{ entry: ActivityEntry; labels: ActivityLabels }> = ({
   entry,
   labels,
-}) => (
-  <div className="y-act-amounts">
-    <TokenIcon
-      src={tokenLogoUrl(entry.chainId, labels.iconAddress)}
-      symbol={labels.shareSymbol || entry.assetSymbol || ''}
-      chainId={entry.chainId}
-      tokenAddress={labels.iconAddress}
-      size={24}
-    />
-    <div className="y-act-amounts__lines">
-      {activityAmounts(entry, labels.shareSymbol).map((line, index) => (
-        <div className="y-act-amounts__line" key={index}>
-          <span className="y-act-amounts__value">
-            {line.sign}
-            {formatActivityAmount(line.value)}
-          </span>
-          <span className="y-act-amounts__symbol">{line.symbol}</span>
-        </div>
-      ))}
+}) => {
+  useT();
+  return (
+    <div className="y-act-amounts">
+      <TokenIcon
+        src={tokenLogoUrl(entry.chainId, labels.iconAddress)}
+        symbol={labels.shareSymbol || entry.assetSymbol || ''}
+        chainId={entry.chainId}
+        tokenAddress={labels.iconAddress}
+        size={24}
+      />
+      <div className="y-act-amounts__lines">
+        {activityAmounts(entry, labels.shareSymbol).map((line, index) => (
+          <div className="y-act-amounts__line" key={index}>
+            <span className="y-act-amounts__value">
+              {line.sign}
+              {formatActivityAmount(line.value)}
+            </span>
+            <span className="y-act-amounts__symbol">{line.symbol}</span>
+          </div>
+        ))}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 /** `0x123456...abcdef` */
 export const shortTxHash = (hash: string) => `${hash.slice(0, 8)}...${hash.slice(-6)}`;
@@ -112,6 +116,7 @@ export const ActivityRow: React.FC<ActivityRowProps> = ({
   activeChips = {},
   onChip,
 }) => {
+  const t = useT();
   const [copied, setCopied] = useState(false);
   const chain = findChain(entry.chainId);
 
@@ -163,9 +168,15 @@ export const ActivityRow: React.FC<ActivityRowProps> = ({
             <div className="y-act-row__chips">
               {chip('vault', labels.vaultName)}
               {chip('chain', chainName(entry.chainId))}
-              {chip('date', formatActivityDate(entry.timestamp), formatActivityDateTime(entry.timestamp))}
-              {entry.status !== 'ok' && <span className="y-act-chip is-static">Limited metadata</span>}
-              {isZapEntry(entry) && chip('zap', <>⚡ Zap</>)}
+              {chip(
+                'date',
+                formatActivityDate(entry.timestamp),
+                formatActivityDateTime(entry.timestamp)
+              )}
+              {entry.status !== 'ok' && (
+                <span className="y-act-chip is-static">{t('Limited metadata')}</span>
+              )}
+              {isZapEntry(entry) && chip('zap', <>&#9889; Zap</>)}
             </div>
           </div>
         </div>
@@ -184,11 +195,11 @@ export const ActivityRow: React.FC<ActivityRowProps> = ({
             </div>
           ))}
           <div className="y-act-details__row">
-            <dt>Confirmed on:</dt>
+            <dt>{t('Confirmed on:')}</dt>
             <dd>{formatActivityDateTime(entry.timestamp)}</dd>
           </div>
           <div className="y-act-details__row">
-            <dt>Vault name:</dt>
+            <dt>{t('Vault name:')}</dt>
             <dd>
               {listedVault && onSelectVault ? (
                 <button
@@ -204,14 +215,14 @@ export const ActivityRow: React.FC<ActivityRowProps> = ({
             </dd>
           </div>
           <div className="y-act-details__row">
-            <dt>Chain name:</dt>
+            <dt>{t('Chain name:')}</dt>
             <dd className="y-act-details__chain">
               {chain && <img className="y-chain-icon" src={chain.icon} alt="" loading="lazy" />}
               {chainName(entry.chainId)}
             </dd>
           </div>
           <div className="y-act-details__row">
-            <dt>Transaction hash:</dt>
+            <dt>{t('Transaction hash:')}</dt>
             <dd className="y-act-details__hash">
               {chain ? (
                 <button
@@ -227,7 +238,7 @@ export const ActivityRow: React.FC<ActivityRowProps> = ({
               <button
                 type="button"
                 className="y-act-copy"
-                aria-label="Copy transaction hash"
+                aria-label={t('Copy transaction hash')}
                 onClick={copyHash}
               >
                 {copied ? <Check size={14} /> : <Copy size={14} />}

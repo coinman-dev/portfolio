@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { formatUnits } from 'viem';
 import { getBalance, readContracts, switchChain } from '@wagmi/core';
 import { YearnVault } from '../types';
+import { tr } from '../i18n';
 import { wagmiConfig } from '../../wallet/wallet';
 import {
   ENSO_ROUTERS,
@@ -679,7 +680,7 @@ export function useVaultActions(
   const fail = useCallback((err: any, fallback: string) => {
     console.error('[useVaultActions]', fallback, err);
     const message = err?.shortMessage || err?.message;
-    setStatus({ stage: 'error', message: message?.slice(0, 200) || fallback });
+    setStatus({ stage: 'error', message: message?.slice(0, 200) || tr(fallback) });
   }, []);
 
   /** Right after a receipt a load-balanced RPC may still answer from the

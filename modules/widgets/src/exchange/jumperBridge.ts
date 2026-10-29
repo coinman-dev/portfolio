@@ -3,14 +3,32 @@ import { numberToHex } from 'viem';
 import { getEthereumProvider, getWalletStatus, subscribeWalletStatus, wagmiConfig } from '../wallet/wallet';
 import { onOverlayChange, overlayHeld } from '../wallet/overlay';
 import { diag } from '../diag';
-import { checkEvmCall } from './lifiGuard';
+import { checkJumperSignature, checkJumperTransaction, type AmountHints } from './jumperGuard';
 
 /**
  * The main window's half of Jumper Exchange: jumper.xyz (in a native view
- * over the Exchange area) sends EIP-1193 calls here through the app, and they get the
- * same treatment as the LI.FI tab's — transactions only to LI.FI's Diamond or
- * approvals for it, no message signing — before WalletConnect sees them.
+ * over the Exchange area) sends EIP-1193 calls here through the app, and
+ * `jumperGuard` checks every transaction and signature against the whitelist
+ * (LI.FI, Uniswap, CoW, Velora Delta, FYND) before WalletConnect sees it.
+ * Approvals above the swap amount are cut down to it; the amounts come with
+ * each call from the page script (`hints`).
+ *
+ * A refusal goes back as 4100, not 4001: to the site 4001 means the user
+ * declined, and it would show "Signature required" instead of the reason.
  */
+
+/** Code for a call the safety check refused (EIP-1193 "unauthorized"). */
+const BLOCKED = 4100;
+
+/** The guard's refusal, with what to do instead. */
+function blocked(err: any): RpcError {
+  const reason = String(err?.message ?? 'Blocked by CoinMan safety check');
+  return new RpcError(
+    BLOCKED,
+    `${reason}. CoinMan signs only whitelisted routes (LI.FI, Uniswap, CoW, Velora, FYND) for the swap amount — ` +
+      'pick another route in the route list.'
+  );
+}
 
 const WALLET_CHAINS = wagmiConfig.chains.map((c) => c.id as number);
 
@@ -61,7 +79,7 @@ function requireChain(params: any): number {
   return id;
 }
 
-async function handle(method: string, params: any): Promise<unknown> {
+async function handle(method: string, params: any, hints: AmountHints | undefined): Promise<unknown> {
   const status = getWalletStatus();
   const account = status.isConnected ? status.address : undefined;
 
@@ -99,14 +117,35 @@ async function handle(method: string, params: any): Promise<unknown> {
       if (tx.chainId != null && Number(tx.chainId) !== chainId) {
         throw new RpcError(4901, 'Switch the network first.');
       }
+      let checked;
       try {
-        checkEvmCall(chainId, tx);
+        checked = checkJumperTransaction(chainId, tx, hints);
       } catch (err: any) {
-        throw new RpcError(4001, err?.message ?? 'Blocked by CoinMan safety check');
+        throw blocked(err);
       }
       const provider = await getEthereumProvider();
       if (!provider) throw new RpcError(4900, 'The wallet is not connected.');
-      diag('info', 'JUMPER', `sending transaction to ${tx.to} on chain ${chainId}`);
+      diag('info', 'JUMPER', `sending ${checked.label} (${tx.to}) on chain ${chainId}`);
+      const sent = checked.data ? [{ ...tx, data: checked.data }, ...params.slice(1)] : params;
+      return provider.request({ method, params: sent });
+    }
+    case 'eth_signTypedData_v4': {
+      const [signer, typedData] = Array.isArray(params) ? params : [];
+      if (!account || String(signer ?? '').toLowerCase() !== account.toLowerCase()) {
+        throw new RpcError(4100, 'The permit is not for the connected CoinMan wallet.');
+      }
+      const chainId = status.chainId ?? 0;
+      let label;
+      try {
+        label = checkJumperSignature(chainId, account, typedData, hints);
+      } catch (err: any) {
+        // The whole request, so the log shows what the site wanted signed.
+        diag('warn', 'JUMPER', 'refused typed data', typedData);
+        throw blocked(err);
+      }
+      const provider = await getEthereumProvider();
+      if (!provider) throw new RpcError(4900, 'The wallet is not connected.');
+      diag('info', 'JUMPER', `signing a ${label} on chain ${chainId}`);
       return provider.request({ method, params });
     }
   }
@@ -115,7 +154,7 @@ async function handle(method: string, params: any): Promise<unknown> {
     return client.request({ method, params } as any);
   }
   diag('warn', 'JUMPER', `refused ${method}`);
-  throw new RpcError(4200, `CoinMan does not allow ${method} for Jumper — only LI.FI transactions are signed.`);
+  throw new RpcError(4200, `CoinMan does not allow ${method} for Jumper — only whitelisted transactions, permits and orders are signed.`);
 }
 
 function pushState(): void {
@@ -137,10 +176,11 @@ export async function startJumperBridge(): Promise<void> {
   if (!events?.listen) throw new Error('not running in CoinMan');
   started = true;
   await events.listen('jumper-wallet-request', async (event: any) => {
-    const { id, method, params } = event.payload ?? {};
+    const { id, method, params, hints } = event.payload ?? {};
     let response: unknown;
     try {
-      response = { result: (await handle(String(method), params)) ?? null };
+      const amounts = hints && typeof hints === 'object' ? (hints as AmountHints) : undefined;
+      response = { result: (await handle(String(method), params, amounts)) ?? null };
     } catch (err: any) {
       const code = err instanceof RpcError ? err.code : (err?.code ?? 4001);
       response = { error: { code, message: err?.shortMessage ?? err?.message ?? String(err) } };

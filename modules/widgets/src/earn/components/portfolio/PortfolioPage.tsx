@@ -1,12 +1,13 @@
 import React from 'react';
 import { YearnVault } from '../../types';
 import { PortfolioHoldings as PortfolioHoldingsData } from '../../hooks/usePortfolioHoldings';
-import { EmptySectionCard } from './EmptySectionCard';
-import { PortfolioActivity } from './PortfolioActivity';
-import { PortfolioHistoryChart } from './PortfolioHistoryChart';
-import { PortfolioHoldings } from './PortfolioHoldings';
-import { PortfolioMetrics } from './PortfolioMetrics';
 import { PortfolioTabId, PortfolioTabs } from './PortfolioTabs';
+import { PortfolioHistoryChart } from './PortfolioHistoryChart';
+import { PortfolioMetrics } from './PortfolioMetrics';
+import { PortfolioHoldings } from './PortfolioHoldings';
+import { PortfolioActivity } from './PortfolioActivity';
+import { EmptySectionCard } from './EmptySectionCard';
+import { useT } from '../../i18n';
 
 interface PortfolioPageProps {
   holdings: PortfolioHoldingsData;
@@ -31,6 +32,7 @@ export const PortfolioPage: React.FC<PortfolioPageProps> = ({
   onExploreVaults,
   onConnectWallet,
 }) => {
+  const t = useT();
   const renderTab = () => {
     if (activeTab === 'activity') {
       return (
@@ -39,9 +41,9 @@ export const PortfolioPage: React.FC<PortfolioPageProps> = ({
             <PortfolioActivity address={walletAddress} vaults={vaults} onSelectVault={onSelectVault} />
           ) : (
             <EmptySectionCard
-              title="Connect a wallet to view activity"
-              description="Review your recent Yearn transactions."
-              ctaLabel="Connect wallet"
+              title={t('Connect a wallet to view activity')}
+              description={t('Review your recent Yearn transactions.')}
+              ctaLabel={t('Connect wallet')}
               onCta={onConnectWallet}
             />
           )}
@@ -53,19 +55,19 @@ export const PortfolioPage: React.FC<PortfolioPageProps> = ({
       return (
         <section className="y-pf-section">
           <div>
-            <h2 className="y-pf-section__heading">Claim rewards</h2>
+            <h2 className="y-pf-section__heading">{t('Claim rewards')}</h2>
             <p className="y-pf-section__subheading">
-              Claim all of your staking and Merkle rewards across Yearn.
+              {t('Claim all of your staking and Merkle rewards across Yearn.')}
             </p>
           </div>
           <EmptySectionCard
-            title={isConnected ? 'No rewards to claim' : 'Connect a wallet to claim rewards'}
+            title={isConnected ? t('No rewards to claim') : t('Connect a wallet to claim rewards')}
             description={
               isConnected
-                ? 'Staking and Merkle rewards will show up here once available.'
-                : 'We will surface any claimable rewards once connected.'
+                ? t('Staking and Merkle rewards will show up here once available.')
+                : t('We will surface any claimable rewards once connected.')
             }
-            ctaLabel={isConnected ? 'Explore Vaults' : 'Connect wallet'}
+            ctaLabel={isConnected ? t('Explore Vaults') : t('Connect wallet')}
             onCta={isConnected ? onExploreVaults : onConnectWallet}
           />
         </section>
@@ -76,10 +78,10 @@ export const PortfolioPage: React.FC<PortfolioPageProps> = ({
       return (
         <section className="y-pf-section">
           <EmptySectionCard
-            title="Connect a wallet to view your portfolio."
-            ctaLabel="Connect wallet"
+            title={t('Connect a wallet to view your portfolio.')}
+            ctaLabel={t('Connect wallet')}
             onCta={onConnectWallet}
-            secondaryCtaLabel="Explore Vaults"
+            secondaryCtaLabel={t('Explore Vaults')}
             onSecondaryCta={onExploreVaults}
           />
         </section>
@@ -114,7 +116,7 @@ export const PortfolioPage: React.FC<PortfolioPageProps> = ({
 
   return (
     <div className="y-pf">
-      <h1 className="y-pf__title">Portfolio</h1>
+      <h1 className="y-pf__title">{t('Portfolio')}</h1>
       <div className="y-pf__tabs-wrap">
         <PortfolioTabs activeTab={activeTab} onSelectTab={onSelectTab} />
       </div>

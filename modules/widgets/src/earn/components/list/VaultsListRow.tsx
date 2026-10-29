@@ -4,8 +4,7 @@ import { getChain } from '../../yearnApi';
 import { formatTVL, formatUSD } from '../../format';
 import {
   deriveAssetCategory,
-  formatFeeStructureAriaLabel,
-  formatFeeStructureLabel,
+  formatFeeDetailLabel,
   getCategoryDescription,
   getChainDescription,
   getFeeStructureKey,
@@ -22,6 +21,7 @@ import { VaultsListChip } from './VaultsListChip';
 import { ApyCell } from './ApyCell';
 import { VaultRowExpanded } from './VaultRowExpanded';
 import { ChevronDown, Check } from '../ui/icons';
+import { useT } from '../../i18n';
 
 interface VaultsListRowProps {
   vault: YearnVault;
@@ -62,12 +62,14 @@ export const VaultsListRow: React.FC<VaultsListRowProps> = ({
   showHoldings = false,
   holdingsValue = 0,
 }) => {
+  const t = useT();
   const chain = getChain(vault.chainID);
   const vaultKey = getVaultKey(vault);
   const productInfo = getProductTypeInfo(vault);
   const derivedCategory = deriveAssetCategory(vault);
   const showDerivedCategory = productInfo.productType === 'lp' && derivedCategory !== vault.category;
   const feeKey = getFeeStructureKey(vault.apr.fees);
+  const feeDetail = formatFeeDetailLabel(vault.apr.fees);
   const tvl = vault.tvl?.tvl || 0;
   const apySpan = showHoldings ? 4 : 6;
   const tvlSpan = showHoldings ? 4 : 5;
@@ -94,7 +96,7 @@ export const VaultsListRow: React.FC<VaultsListRowProps> = ({
     <div className="y-row">
       <button
         type="button"
-        aria-label={isExpanded ? 'Collapse row' : 'Expand row'}
+        aria-label={isExpanded ? t('Collapse row') : t('Expand row')}
         aria-expanded={isExpanded}
         data-tour="vaults-row-expand"
         className={`y-row__chevron${isExpanded ? ' is-open' : ''}`}
@@ -106,7 +108,10 @@ export const VaultsListRow: React.FC<VaultsListRowProps> = ({
         <ChevronDown size={16} />
       </button>
 
-      <div className="y-row__link" role="button" tabIndex={0}
+      <div
+        className="y-row__link"
+        role="button"
+        tabIndex={0}
         onClick={handleActivate}
         onKeyDown={(event) => {
           if (event.key === 'Enter' || event.key === ' ') {
@@ -128,8 +133,8 @@ export const VaultsListRow: React.FC<VaultsListRowProps> = ({
                 aria-checked={isCompared}
                 aria-label={
                   isCompared
-                    ? `Remove ${vault.name} from comparison`
-                    : `Add ${vault.name} to comparison`
+                    ? t('Remove {name} from comparison', { name: vault.name })
+                    : t('Add {name} to comparison', { name: vault.name })
                 }
                 tabIndex={0}
                 className={`y-row__compare${isCompared ? ' is-checked' : ''}`}
@@ -161,47 +166,61 @@ export const VaultsListRow: React.FC<VaultsListRowProps> = ({
                   className="y-chip--md-only"
                   label={chain.name}
                   isActive={activeChains.includes(vault.chainID)}
-                  title={getChainDescription(vault.chainID)}
-                  ariaLabel={`Filter by ${chain.name}`}
+                  title={t(getChainDescription(vault.chainID))}
+                  ariaLabel={t('Filter by {item}', { item: chain.name })}
                   onClick={() => onToggleChain(vault.chainID)}
                 />
                 {vault.category && (
                   <VaultsListChip
-                    label={vault.category}
+                    label={t(vault.category)}
                     isActive={activeCategories.includes(vault.category)}
-                    title={getCategoryDescription(vault.category) || undefined}
-                    ariaLabel={`Filter by ${vault.category}`}
+                    title={
+                      getCategoryDescription(vault.category)
+                        ? t(getCategoryDescription(vault.category)!)
+                        : undefined
+                    }
+                    ariaLabel={t('Filter by {item}', { item: t(vault.category) })}
                     onClick={() => onToggleCategory(vault.category)}
                   />
                 )}
                 {showDerivedCategory && (
                   <VaultsListChip
-                    label={derivedCategory}
+                    label={t(derivedCategory)}
                     isActive={activeCategories.includes(derivedCategory)}
-                    title={getCategoryDescription(derivedCategory) || undefined}
-                    ariaLabel={`Filter by ${derivedCategory}`}
+                    title={
+                      getCategoryDescription(derivedCategory)
+                        ? t(getCategoryDescription(derivedCategory)!)
+                        : undefined
+                    }
+                    ariaLabel={t('Filter by {item}', { item: t(derivedCategory) })}
                     onClick={() => onToggleCategory(derivedCategory)}
                   />
                 )}
                 <VaultsListChip
-                  label={productInfo.label}
+                  label={t(productInfo.label)}
                   isActive={activeProductType === productInfo.productType}
-                  title={getProductTypeDescription(deriveListKind(vault))}
-                  ariaLabel={productInfo.ariaLabel}
+                  title={t(getProductTypeDescription(deriveListKind(vault)))}
+                  ariaLabel={t(productInfo.ariaLabel)}
                   onClick={() => onToggleProductType(productInfo.productType)}
                 />
                 {vault.apr.fees && (
                   <VaultsListChip
                     className="y-chip--md-only"
-                    label={formatFeeStructureLabel(vault.apr.fees)}
+                    label={t('Fees: {mgmt} | {perf}', {
+                      mgmt: feeDetail.management,
+                      perf: feeDetail.performance,
+                    })}
                     isActive={activeFeeStructureKey === feeKey}
-                    title={FEE_CHIP_DESCRIPTION}
-                    ariaLabel={formatFeeStructureAriaLabel(vault.apr.fees)}
+                    title={t(FEE_CHIP_DESCRIPTION)}
+                    ariaLabel={t('Filter by {mgmt} management fee and {perf} performance fee', {
+                      mgmt: feeDetail.management,
+                      perf: feeDetail.performance,
+                    })}
                     onClick={() => onToggleFeeStructure(feeKey)}
                   />
                 )}
                 {(vault.info?.isRetired || vault.details?.isRetired) && (
-                  <VaultsListChip label="Retired" title={RETIRED_TAG_DESCRIPTION} />
+                  <VaultsListChip label={t('Retired')} title={t(RETIRED_TAG_DESCRIPTION)} />
                 )}
               </div>
             </div>
@@ -211,12 +230,12 @@ export const VaultsListRow: React.FC<VaultsListRowProps> = ({
         <div className="y-row__data">
           <ApyCell vault={vault} span={apySpan} interactiveHoverProps={interactiveHoverProps} />
           <div className={`y-row__cell y-span-${tvlSpan}`} datatype="number">
-            <span className="y-row__cell-label">TVL:</span>
+            <span className="y-row__cell-label">{t('TVL:')}</span>
             <p className="y-row__value">{formatTVL(tvl)}</p>
           </div>
           {showHoldings ? (
             <div className="y-row__cell y-span-4" datatype="number">
-              <span className="y-row__cell-label">Holdings:</span>
+              <span className="y-row__cell-label">{t('Holdings:')}</span>
               <p className={`y-row__value${holdingsValue > 0 ? '' : ' is-muted'}`}>
                 {holdingsValue > 0 ? formatUSD(holdingsValue) : '-'}
               </p>

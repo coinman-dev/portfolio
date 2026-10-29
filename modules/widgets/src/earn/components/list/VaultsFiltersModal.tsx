@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Aggressiveness } from '../../vaultMeta';
-import { ChevronDown, Close } from '../ui/icons';
+import { Close, ChevronDown } from '../ui/icons';
 import { useCloseOnEscape } from '../../hooks/useCloseOnEscape';
+import { useT } from '../../i18n';
 
 export interface VaultFilters {
   assets: string[];
@@ -12,9 +13,11 @@ export interface VaultFilters {
   showLegacy: boolean;
 }
 
+export const DEFAULT_MIN_TVL = 50_000;
+
 export const DEFAULT_FILTERS: VaultFilters = {
   assets: [],
-  minTvl: 500,
+  minTvl: DEFAULT_MIN_TVL,
   categories: [],
   aggressiveness: [],
   showSingleAssetStrategies: false,
@@ -23,8 +26,8 @@ export const DEFAULT_FILTERS: VaultFilters = {
 
 export function countActiveFilters(filters: VaultFilters): number {
   let count = 0;
-  if (filters.assets.length) count += 1;
-  if (filters.minTvl !== DEFAULT_FILTERS.minTvl) count += 1;
+  count += filters.assets.length;
+  if (filters.minTvl !== DEFAULT_MIN_TVL) count += 1;
   count += filters.categories.length;
   count += filters.aggressiveness.length;
   if (filters.showSingleAssetStrategies) count += 1;
@@ -54,6 +57,7 @@ export const VaultsFiltersModal: React.FC<VaultsFiltersModalProps> = ({
   onClose,
   onSave,
 }) => {
+  const t = useT();
   const [draft, setDraft] = useState<VaultFilters>(filters);
   const [assetsOpen, setAssetsOpen] = useState(false);
   const [assetSearch, setAssetSearch] = useState('');
@@ -77,8 +81,8 @@ export const VaultsFiltersModal: React.FC<VaultsFiltersModalProps> = ({
   if (!isOpen) return null;
 
   const assetButtonLabel = draft.assets.length
-    ? `Filter by assets (${draft.assets.length})`
-    : 'Filter by assets';
+    ? t('Filter by assets ({count})', { count: draft.assets.length })
+    : t('Filter by assets');
 
   return (
     <div
@@ -88,13 +92,13 @@ export const VaultsFiltersModal: React.FC<VaultsFiltersModalProps> = ({
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <div className="y-filters-modal" role="dialog" aria-modal="true" aria-label="Filters">
+      <div className="y-filters-modal" role="dialog" aria-modal="true" aria-label={t('Filters')}>
         <div className="y-filters-modal__head">
-          <h2 className="y-filters-modal__title">Filters</h2>
+          <h2 className="y-filters-modal__title">{t('Filters')}</h2>
           <button
             type="button"
             className="y-filters-modal__close"
-            aria-label="Close filters"
+            aria-label={t('Close filters')}
             onClick={onClose}
           >
             <Close size={14} />
@@ -103,7 +107,7 @@ export const VaultsFiltersModal: React.FC<VaultsFiltersModalProps> = ({
 
         <div className="y-filters-modal__body">
           <div>
-            <p className="y-filters-modal__label">Underlying Asset</p>
+            <p className="y-filters-modal__label">{t('Underlying Asset')}</p>
             <button
               type="button"
               className={`y-filters-modal__select${assetsOpen ? ' is-open' : ''}`}
@@ -117,8 +121,8 @@ export const VaultsFiltersModal: React.FC<VaultsFiltersModalProps> = ({
                 <input
                   className="y-filters-modal__input"
                   type="text"
-                  placeholder="Search assets"
-                  aria-label="Search assets"
+                  placeholder={t('Search assets')}
+                  aria-label={t('Search assets')}
                   value={assetSearch}
                   onChange={(event) => setAssetSearch(event.target.value)}
                 />
@@ -139,14 +143,14 @@ export const VaultsFiltersModal: React.FC<VaultsFiltersModalProps> = ({
           </div>
 
           <div>
-            <p className="y-filters-modal__label">Minimum TVL</p>
+            <p className="y-filters-modal__label">{t('Minimum TVL')}</p>
             <div className="y-filters-modal__tvl">
               <span>$</span>
               <input
                 type="number"
                 min={0}
                 step={1}
-                aria-label="Minimum TVL"
+                aria-label={t('Minimum TVL')}
                 value={draft.minTvl}
                 onChange={(event) =>
                   setDraft((prev) => ({ ...prev, minTvl: Number(event.target.value) || 0 }))
@@ -156,11 +160,11 @@ export const VaultsFiltersModal: React.FC<VaultsFiltersModalProps> = ({
           </div>
 
           <div>
-            <p className="y-filters-modal__label">Asset Category</p>
+            <p className="y-filters-modal__label">{t('Asset Category')}</p>
             <div className="y-check-stack">
               {CATEGORY_OPTIONS.map((category) => (
                 <label className="y-check-row" key={category}>
-                  <span className="y-check-row__title">{category}</span>
+                  <span className="y-check-row__title">{t(category)}</span>
                   <input
                     type="checkbox"
                     checked={draft.categories.includes(category)}
@@ -177,11 +181,11 @@ export const VaultsFiltersModal: React.FC<VaultsFiltersModalProps> = ({
           </div>
 
           <div>
-            <p className="y-filters-modal__label">Vault Aggressiveness</p>
+            <p className="y-filters-modal__label">{t('Vault Aggressiveness')}</p>
             <div className="y-check-stack">
               {AGGRESSIVENESS_OPTIONS.map((option) => (
                 <label className="y-check-row" key={option}>
-                  <span className="y-check-row__title">{option}</span>
+                  <span className="y-check-row__title">{t(option)}</span>
                   <input
                     type="checkbox"
                     checked={draft.aggressiveness.includes(option)}
@@ -198,18 +202,20 @@ export const VaultsFiltersModal: React.FC<VaultsFiltersModalProps> = ({
           </div>
 
           <details className="y-filters-modal__advanced">
-            <summary>Advanced</summary>
+            <summary>{t('Advanced')}</summary>
             <span className="y-filters-modal__advanced-note">
               {' '}
-              ⚠️ It is not recommended to deposit to strategies or legacy vaults.
+              {'\u26A0\uFE0F'}{' '}
+              {t('It is not recommended to deposit to strategies or legacy vaults.')}
             </span>
             <div className="y-check-stack" style={{ marginTop: 16 }}>
               <label className="y-check-row">
                 <span className="y-check-row__text">
-                  <span className="y-check-row__title">Show single asset strategies</span>
+                  <span className="y-check-row__title">{t('Show single asset strategies')}</span>
                   <span className="y-check-row__desc">
-                    Checking this will show the underlying strategies used in Single Asset Vaults in
-                    the list.
+                    {t(
+                      'Checking this will show the underlying strategies used in Single Asset Vaults in the list.'
+                    )}
                   </span>
                 </span>
                 <input
@@ -225,8 +231,10 @@ export const VaultsFiltersModal: React.FC<VaultsFiltersModalProps> = ({
               </label>
               <label className="y-check-row">
                 <span className="y-check-row__text">
-                  <span className="y-check-row__title">Show legacy vaults</span>
-                  <span className="y-check-row__desc">Includes legacy vaults in the list.</span>
+                  <span className="y-check-row__title">{t('Show legacy vaults')}</span>
+                  <span className="y-check-row__desc">
+                    {t('Includes legacy vaults in the list.')}
+                  </span>
                 </span>
                 <input
                   type="checkbox"
@@ -244,7 +252,7 @@ export const VaultsFiltersModal: React.FC<VaultsFiltersModalProps> = ({
             className="y-btn y-btn--ghost y-btn--pill"
             onClick={() => setDraft(DEFAULT_FILTERS)}
           >
-            Clear
+            {t('Clear')}
           </button>
           <button
             type="button"
@@ -254,7 +262,7 @@ export const VaultsFiltersModal: React.FC<VaultsFiltersModalProps> = ({
               onClose();
             }}
           >
-            Save
+            {t('Save')}
           </button>
         </div>
       </div>

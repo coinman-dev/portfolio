@@ -5,6 +5,7 @@ import { VaultAboutSection } from '../shared/VaultAboutSection';
 import { AllocationDonut, ALLOCATION_COLORS } from '../charts/AllocationDonut';
 import { VaultChart } from '../charts/VaultChart';
 import { ChartKind, useVaultChart } from '../../hooks/useVaultChart';
+import { useT } from '../../i18n';
 
 type ExpandedView = 'strategies' | 'apy' | 'performance' | 'tvl';
 
@@ -33,6 +34,7 @@ export function getActiveStrategies(vault: YearnVault) {
 }
 
 export const VaultRowExpanded: React.FC<VaultRowExpandedProps> = ({ vault, onNavigateToVault }) => {
+  const t = useT();
   const [view, setView] = useState<ExpandedView>('strategies');
   const chartKind: ChartKind = view === 'performance' ? 'performance' : view === 'tvl' ? 'tvl' : 'apy';
   const chart = useVaultChart(view === 'strategies' ? null : vault, chartKind, 'all');
@@ -70,7 +72,7 @@ export const VaultRowExpanded: React.FC<VaultRowExpandedProps> = ({ vault, onNav
                   className={`y-expanded-selector__tab${view === tab.id ? ' is-active' : ''}`}
                   onClick={() => setView(tab.id)}
                 >
-                  {tab.label}
+                  {t(tab.label)}
                 </button>
               ))}
             </div>
@@ -82,13 +84,13 @@ export const VaultRowExpanded: React.FC<VaultRowExpandedProps> = ({ vault, onNav
                   className={`y-expanded-selector__tab${view === tab.id ? ' is-active' : ''}`}
                   onClick={() => setView(tab.id)}
                 >
-                  {tab.label}
+                  {t(tab.label)}
                 </button>
               ))}
             </div>
           </div>
           <button type="button" className="y-expanded-selector__cta" onClick={onNavigateToVault}>
-            Go to Vault
+            {t('Go to Vault')}
           </button>
         </div>
 
@@ -118,7 +120,7 @@ export const VaultRowExpanded: React.FC<VaultRowExpandedProps> = ({ vault, onNav
                 <AllocationDonut data={slices} />
               </div>
             ) : (
-              <div className="y-expanded-empty">No active strategies.</div>
+              <div className="y-expanded-empty">{t('No active strategies.')}</div>
             )
           ) : (
             <VaultChart

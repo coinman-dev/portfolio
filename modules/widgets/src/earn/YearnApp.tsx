@@ -14,6 +14,7 @@ import { wagmiConfig, subscribeWalletStatus, getWalletStatus, WalletStatus, conn
 import { TopNav } from './components/shell/TopNav';
 import { Crumb } from './components/shell/Breadcrumbs';
 import { PageContainer } from './components/shell/PageContainer';
+import { useT } from './i18n';
 import './styles/index.css';
 
 const queryClient = new QueryClient();
@@ -35,6 +36,7 @@ export const YearnDashboard: React.FC<EarnMountOptions> = ({
   initialSettings,
   onSettingsChange,
 }) => {
+  const t = useT();
   const [listState, setListState] = useState<VaultsListState>(() =>
     restoreListState(initialSettings)
   );
@@ -122,14 +124,14 @@ export const YearnDashboard: React.FC<EarnMountOptions> = ({
       setSelectedVault(null);
     };
     if (activeView === 'vault-detail' && selectedVault) {
-      return [{ label: 'Vaults', onClick: goToVaults }, { label: selectedVault.name }];
+      return [{ label: t('Vaults'), onClick: goToVaults }, { label: selectedVault.name }];
     }
     if (activeView === 'portfolio') {
-      return [{ label: 'Vaults', onClick: goToVaults }, { label: 'Portfolio' }];
+      return [{ label: t('Vaults'), onClick: goToVaults }, { label: t('Portfolio') }];
     }
     // On the list itself the crumb would only point at the page you are on.
     return [];
-  }, [activeView, selectedVault]);
+  }, [activeView, selectedVault, t]);
 
   return (
     <div className="yearn-root y-shell">
@@ -184,7 +186,7 @@ export const YearnDashboard: React.FC<EarnMountOptions> = ({
           <VaultsListView
             vaults={vaults}
             isLoading={isLoading}
-            error={error}
+            error={error ? t(error) : null}
             state={listState}
             onStateChange={handleListStateChange}
             onSelectVault={handleOpenVaultDetail}

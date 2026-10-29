@@ -2,7 +2,8 @@
 //
 // 0. Puts back the site's saved settings, and saves them as they change.
 // 1. Answers the site's CMS calls (banners, feature cards, badges) with an
-//    empty list, so nothing ever reaches strapi.jumper.xyz.
+//    empty list, so nothing ever reaches strapi.jumper.xyz, and notes the
+//    swap amounts of the routes the site fetches.
 // 2. Offers the CoinMan wallet to the site (EIP-1193 + EIP-6963). Every call
 //    goes over the coinman-wallet protocol to the app, which checks it and
 //    only then passes it to the connected wallet.
@@ -75,6 +76,77 @@
             return false;
         }
     }
+    // Swap amounts per "chainId:token", from the routes the site fetched, the
+    // step it asks to execute and the routes its widget keeps for execution
+    // (localStorage "*-widget-routes", also what "Try again" runs). They go
+    // with every wallet call so the app can hold approvals, permits and
+    // orders to the swap (jumperGuard.ts).
+    var ROUTE_PATH = /\/(advanced\/routes|advanced\/stepTransaction|quote)(\?|$)/;
+    var HINT_TTL = 30 * 60 * 1000;
+    var amounts = {};
+    function noteStep(step) {
+        var a = step && step.action;
+        if (!a || !a.fromToken || !a.fromToken.address || !a.fromAmount) return;
+        amounts[a.fromChainId + ":" + String(a.fromToken.address).toLowerCase()] = {
+            amount: String(a.fromAmount),
+            at: Date.now()
+        };
+    }
+    function noteBody(body) {
+        if (!body) return;
+        if (Array.isArray(body.routes)) {
+            body.routes.forEach(function (r) { (r.steps || []).forEach(noteStep); });
+        } else {
+            noteStep(body);
+        }
+    }
+    function isDone(route) {
+        return (route.steps || []).every(function (st) {
+            return st.execution && st.execution.status === "DONE";
+        });
+    }
+    // Routes the widget is about to run or running, oldest first, so the
+    // newest one wins for its token.
+    function noteStoredRoutes() {
+        var routes = [];
+        try {
+            for (var i = 0; i < localStorage.length; i++) {
+                var key = localStorage.key(i);
+                if (!key || !/-widget-routes$/.test(key)) continue;
+                var saved = JSON.parse(localStorage.getItem(key) || "{}");
+                var byId = (saved.state && saved.state.routes) || {};
+                Object.keys(byId).forEach(function (id) {
+                    var route = byId[id] && byId[id].route;
+                    if (route && !isDone(route)) routes.push(route);
+                });
+            }
+        } catch (e) { /* no storage or not JSON */ }
+        function started(route) {
+            var first = route.steps && route.steps[0];
+            return (first && first.execution && first.execution.startedAt) || Infinity;
+        }
+        routes.sort(function (a, b) { return started(a) - started(b); });
+        routes.forEach(function (route) { (route.steps || []).forEach(noteStep); });
+    }
+    function hints() {
+        noteStoredRoutes();
+        var out = {};
+        var now = Date.now();
+        Object.keys(amounts).forEach(function (key) {
+            if (now - amounts[key].at < HINT_TTL) out[key] = amounts[key].amount;
+            else delete amounts[key];
+        });
+        return out;
+    }
+    function isRouteCall(url) {
+        try {
+            var u = new URL(String(url), location.href);
+            return (u.hostname === "api.jumper.xyz" || u.hostname === "li.quest") && ROUTE_PATH.test(u.pathname);
+        } catch (e) {
+            return false;
+        }
+    }
+
     window.fetch = function (input, init) {
         var url = typeof input === "string" ? input : input && (input.url || input.href);
         if (url && isCms(url)) {
@@ -83,13 +155,35 @@
                 headers: { "content-type": "application/json" }
             }));
         }
-        return realFetch(input, init);
+        if (!url || !isRouteCall(url)) return realFetch(input, init);
+        try {
+            if (init && typeof init.body === "string") noteBody(JSON.parse(init.body));
+        } catch (e) { /* not a step */ }
+        return realFetch(input, init).then(function (res) {
+            res.clone().json().then(noteBody).catch(function () { /* not JSON */ });
+            return res;
+        });
     };
     var xhrOpen = XMLHttpRequest.prototype.open;
+    var xhrSend = XMLHttpRequest.prototype.send;
     XMLHttpRequest.prototype.open = function (method, url) {
         var args = Array.prototype.slice.call(arguments);
         if (isCms(url)) args[1] = "data:application/json," + encodeURIComponent(EMPTY);
+        this.__coinmanRoute = isRouteCall(url);
         return xhrOpen.apply(this, args);
+    };
+    XMLHttpRequest.prototype.send = function (body) {
+        if (this.__coinmanRoute) {
+            try {
+                if (typeof body === "string") noteBody(JSON.parse(body));
+            } catch (e) { /* not a step */ }
+            this.addEventListener("load", function () {
+                try {
+                    noteBody(JSON.parse(this.responseText));
+                } catch (e) { /* not JSON */ }
+            });
+        }
+        return xhrSend.apply(this, arguments);
     };
     // CMS images: drop the source before the browser fetches it.
     function scrubImages(root) {
@@ -116,7 +210,11 @@
             method: "POST",
             // text/plain keeps this a simple request: no CORS preflight.
             headers: { "content-type": "text/plain" },
-            body: JSON.stringify({ method: method, params: params === undefined ? [] : params })
+            body: JSON.stringify({
+                method: method,
+                params: params === undefined ? [] : params,
+                hints: method === "eth_sendTransaction" || method === "eth_signTypedData_v4" ? hints() : undefined
+            })
         }).then(function (res) {
             return res.json();
         }).then(function (body) {

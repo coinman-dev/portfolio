@@ -7,6 +7,7 @@ import { LINKS } from '../../constants';
 import { Check, Copy, ExternalLink } from '../ui/icons';
 import { fetchVaultSnapshot } from '../../kongApi';
 import { SectionCard } from './SectionCard';
+import { useT } from '../../i18n';
 
 interface AddressRowProps {
   label: string;
@@ -15,6 +16,8 @@ interface AddressRowProps {
 }
 
 const AddressRow: React.FC<AddressRowProps> = ({ label, address, explorer }) => {
+  const t = useT();
+  const labelText = t(label);
   const [isCopied, setIsCopied] = useState(false);
 
   useEffect(() => {
@@ -25,12 +28,12 @@ const AddressRow: React.FC<AddressRowProps> = ({ label, address, explorer }) => 
 
   return (
     <div className="y-vd-info__row">
-      <span className="y-vd-info__label">{label}</span>
+      <span className="y-vd-info__label">{labelText}</span>
       <span className="y-vd-info__value">
         <span className="y-vd-info__addr">{shortenAddress(address)}</span>
         <button
           type="button"
-          aria-label={`View ${label.toLowerCase()} on the block explorer`}
+          aria-label={t('View {label} on the block explorer', { label: labelText.toLowerCase() })}
           className="y-vd-info__icon"
           onClick={() => openExternal(`${explorer}/address/${address}`)}
         >
@@ -38,7 +41,7 @@ const AddressRow: React.FC<AddressRowProps> = ({ label, address, explorer }) => 
         </button>
         <button
           type="button"
-          aria-label={`Copy ${label.toLowerCase()}`}
+          aria-label={t('Copy {label}', { label: labelText.toLowerCase() })}
           className="y-vd-info__icon"
           onClick={() => {
             void navigator.clipboard.writeText(address);
@@ -58,15 +61,18 @@ interface LinkRowProps {
   href: string;
 }
 
-const LinkRow: React.FC<LinkRowProps> = ({ label, cta, href }) => (
-  <div className="y-vd-info__row">
-    <span className="y-vd-info__label">{label}</span>
-    <button type="button" className="y-vd-link" onClick={() => openExternal(href)}>
-      {cta}
-      <ExternalLink size={14} />
-    </button>
-  </div>
-);
+const LinkRow: React.FC<LinkRowProps> = ({ label, cta, href }) => {
+  const t = useT();
+  return (
+    <div className="y-vd-info__row">
+      <span className="y-vd-info__label">{t(label)}</span>
+      <button type="button" className="y-vd-link" onClick={() => openExternal(href)}>
+        {t(cta)}
+        <ExternalLink size={14} />
+      </button>
+    </div>
+  );
+};
 
 interface VaultMoreInfoSectionProps {
   vault: YearnVault;
@@ -77,6 +83,7 @@ export const VaultMoreInfoSection: React.FC<VaultMoreInfoSectionProps> = ({
   vault,
   sectionRef,
 }) => {
+  const t = useT();
   const [deployedAt, setDeployedAt] = useState<number | null>(null);
   const chain = getChain(vault.chainID);
   const decimals = vault.decimals ?? vault.token?.decimals ?? 18;
@@ -110,7 +117,7 @@ export const VaultMoreInfoSection: React.FC<VaultMoreInfoSectionProps> = ({
   };
 
   return (
-    <SectionCard id="more" title="More Info" sectionRef={sectionRef} bodyClassName="y-vd-info">
+    <SectionCard id="more" title={t('More Info')} sectionRef={sectionRef} bodyClassName="y-vd-info">
       <AddressRow
         label={hasLocked ? 'Unlocked Vault Contract Address' : 'Vault Contract Address'}
         address={vault.address}
@@ -138,13 +145,13 @@ export const VaultMoreInfoSection: React.FC<VaultMoreInfoSectionProps> = ({
 
       <div className="y-vd-info__row">
         <span className="y-vd-info__label">
-          {hasLocked ? 'Unlocked Price Per Share' : 'Price Per Share'}
+          {hasLocked ? t('Unlocked Price Per Share') : t('Price Per Share')}
         </span>
         <span className="y-vd-info__value y-vd-info__addr">{pps(vault.pricePerShare)}</span>
       </div>
       {hasLocked && vault.lockedTwin && (
         <div className="y-vd-info__row">
-          <span className="y-vd-info__label">Locked Price Per Share</span>
+          <span className="y-vd-info__label">{t('Locked Price Per Share')}</span>
           <span className="y-vd-info__value y-vd-info__addr">
             {lockedPps()}
           </span>
@@ -153,7 +160,7 @@ export const VaultMoreInfoSection: React.FC<VaultMoreInfoSectionProps> = ({
 
       {deployedAt !== null && (
         <div className="y-vd-info__row">
-          <span className="y-vd-info__label">Deployed on</span>
+          <span className="y-vd-info__label">{t('Deployed on')}</span>
           <span className="y-vd-info__value">{formatLongDate(deployedAt)}</span>
         </div>
       )}
@@ -166,7 +173,7 @@ export const VaultMoreInfoSection: React.FC<VaultMoreInfoSectionProps> = ({
         href={LINKS.powerglove(vault.chainID, vault.address)}
       />
       <LinkRow
-        label={`${vault.symbol} API`}
+        label={t('{symbol} API', { symbol: vault.symbol })}
         cta="View API Data"
         href={LINKS.ydaemonVault(vault.chainID, vault.address)}
       />

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ChevronDown } from '../ui/icons';
+import { useT } from '../../i18n';
 
 export interface ChartDropdownOption<T extends string> {
   id: T;
@@ -20,7 +21,9 @@ export function ChartDropdown<T extends string>({
   onChange,
   ariaLabel,
 }: ChartDropdownProps<T>) {
+  const t = useT();
   const [isOpen, setIsOpen] = useState(false);
+  const current = options.find((option) => option.id === value)?.label;
 
   return (
     <div className="y-vd-chart__period">
@@ -31,7 +34,7 @@ export function ChartDropdown<T extends string>({
         aria-expanded={isOpen}
         onClick={() => setIsOpen((open) => !open)}
       >
-        {options.find((option) => option.id === value)?.label}
+        {current !== undefined ? t(current) : current}
         <ChevronDown size={16} />
       </button>
       {isOpen && (
@@ -50,7 +53,7 @@ export function ChartDropdown<T extends string>({
                     setIsOpen(false);
                   }}
                 >
-                  {option.label}
+                  {t(option.label)}
                 </button>
               </li>
             ))}

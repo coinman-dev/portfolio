@@ -22,6 +22,7 @@ import { VaultsListSkeleton } from './VaultsListSkeleton';
 import { CompareBar } from './CompareBar';
 import { VaultsCompareModal } from './VaultsCompareModal';
 import { VaultsPagination } from './VaultsPagination';
+import { useT } from '../../i18n';
 
 export interface VaultsListState {
   productType: ProductType | 'all';
@@ -176,6 +177,7 @@ export const VaultsListView: React.FC<VaultsListViewProps> = ({
   holdings = {},
   showHoldings = false,
 }) => {
+  const t = useT();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
   const listRef = useRef<HTMLDivElement>(null);
@@ -247,14 +249,14 @@ export const VaultsListView: React.FC<VaultsListViewProps> = ({
       if (seenDeltas.has(entry.delta)) continue;
       seenDeltas.add(entry.delta);
       suggestions.push({
-        label: `Show ${entry.combo.map((r) => r.label).join(' and show ')} (+${entry.delta})`,
+        label: t(`Show ${entry.combo.map((r) => r.label).join(' and show ')} (+{delta})`, { delta: entry.delta }),
         filters: entry.filters,
       });
       if (suggestions.length === 3) break;
     }
 
     return suggestions;
-  }, [vaults, state, filtered.length, holdings]);
+  }, [vaults, state, filtered.length, holdings, t]);
 
   const sorted = useMemo(() => {
     if (state.sortBy === 'featuring' || !state.sortDir) {
@@ -348,7 +350,7 @@ export const VaultsListView: React.FC<VaultsListViewProps> = ({
       ) : error ? (
         <div className="y-list-frame-end">
           <div className="y-list-empty">
-            <b>Something went wrong</b>
+            <b>{t('Something went wrong')}</b>
             <p>{error}</p>
           </div>
         </div>
@@ -406,8 +408,8 @@ export const VaultsListView: React.FC<VaultsListViewProps> = ({
           {searchSuggestions.length > 0 && (
             <div className="y-list-more">
               <div className="y-list-more__text">
-                <b>{`Still looking for "${state.search.trim()}"?`}</b>
-                <p>Show additional matching vaults hidden by filters.</p>
+                <b>{t('Still looking for "{query}"?', { query: state.search.trim() })}</b>
+                <p>{t('Show additional matching vaults hidden by filters.')}</p>
               </div>
               <div className="y-list-more__actions">
                 {searchSuggestions.map((suggestion) => (

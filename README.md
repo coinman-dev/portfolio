@@ -78,7 +78,7 @@ The shared EVM network list includes Ethereum, Arbitrum, Optimism, Polygon, BNB 
 | Linux (Ubuntu 22.04+) | ✅ Supported |
 | macOS | ✅ Supported |
 
-Download **[v0.8.0-beta](https://github.com/coinman-dev/portfolio/releases/tag/v0.8.0-beta)** from GitHub Releases. This is a prerelease: back up your database before upgrading.
+Download **[v0.8.1-beta](https://github.com/coinman-dev/portfolio/releases/tag/v0.8.1-beta)** from GitHub Releases. This is a prerelease: back up your database before upgrading.
 
 | Platform | Release asset |
 |----------|---------------|
@@ -114,7 +114,7 @@ The repository includes compiled Exchange/Earn bundles, so **Node.js is only req
 ```bash
 git clone https://github.com/coinman-dev/portfolio.git
 cd portfolio
-bash scripts/build-linux-local.sh v0.8.0-beta
+bash scripts/build-linux-local.sh v0.8.1-beta
 ```
 
 Output: `target/release/coinman-portfolio`
@@ -126,7 +126,7 @@ Output: `target/release/coinman-portfolio`
 ```bash
 git clone https://github.com/coinman-dev/portfolio.git
 cd portfolio
-bash scripts/build-windows-local.sh v0.8.0-beta
+bash scripts/build-windows-local.sh v0.8.1-beta
 ```
 
 Output: `target/x86_64-pc-windows-msvc/release/coinman-portfolio.exe`
@@ -136,8 +136,8 @@ The script uses [`cargo-xwin`](https://github.com/rust-cross/cargo-xwin), which 
 ### What the scripts do
 
 - Verify prerequisites and offer to install anything missing (`apt`, `rustup target add`, `cargo install`).
-- Stamp the binary version from the latest `v*` git tag plus the short HEAD SHA — e.g. `0.8.0-beta-abcdef0` — so the version shown in the desktop UI uniquely identifies the build.
-- Accept a specific tag as a version argument: `bash scripts/build-linux-local.sh v0.8.0-beta`. The script builds the current checkout; this argument does not check out the tag.
+- Stamp the binary version from the latest `v*` git tag plus the short HEAD SHA — e.g. `0.8.1-beta-abcdef0` — so the version shown in the desktop UI uniquely identifies the build.
+- Accept a specific tag as a version argument: `bash scripts/build-linux-local.sh v0.8.1-beta`. The script builds the current checkout; this argument does not check out the tag.
 - Restore the working tree after the build via a `trap`, even on failure or Ctrl+C.
 
 ### Development mode

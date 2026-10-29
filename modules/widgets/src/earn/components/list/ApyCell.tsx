@@ -4,6 +4,7 @@ import { formatAPY } from '../../format';
 import { Lock, Unlock } from '../ui/icons';
 import { YVUSD_COOLDOWN_DAYS } from '../../constants';
 import { getHeadlineAPY, isNewVaultAPY } from '../../vaultMeta';
+import { tr, useT } from '../../i18n';
 
 const KATANA_CHAIN_ID = 747474;
 
@@ -33,41 +34,48 @@ function buildBreakdown(vault: YearnVault): Breakdown | null {
   if (vault.lockedTwin) {
     const unlocked = vault.apr.forwardAPR?.netAPR || vault.apr.netAPR || 0;
     return {
-      ariaLabel: 'Show yvUSD APY breakdown',
+      ariaLabel: tr('Show yvUSD APY breakdown'),
       rows: [
-        { label: 'Locked APY', value: formatAPY(vault.lockedTwin.netAPR), icon: <Lock size={12} /> },
-        { label: 'Unlocked APY', value: formatAPY(unlocked), icon: <Unlock size={12} /> },
+        {
+          label: tr('Locked APY'),
+          value: formatAPY(vault.lockedTwin.netAPR),
+          icon: <Lock size={12} />,
+        },
+        { label: tr('Unlocked APY'), value: formatAPY(unlocked), icon: <Unlock size={12} /> },
       ],
       notes: [
         {
-          term: 'Locked:',
-          text: `Shares require a ${YVUSD_COOLDOWN_DAYS}-day cooldown before withdrawal.`,
+          term: tr('Locked:'),
+          text: tr('Shares require a {days}-day cooldown before withdrawal.', {
+            days: YVUSD_COOLDOWN_DAYS,
+          }),
         },
-        { term: 'Unlocked:', text: 'Shares can be withdrawn without a cooldown.' },
+        { term: tr('Unlocked:'), text: tr('Shares can be withdrawn without a cooldown.') },
       ],
     };
   }
 
   // Katana: native yield plus KAT app rewards (yearn.fi's "Katana Est. APY breakdown").
-  const appRewards = vault.chainID === KATANA_CHAIN_ID ? vault.apr.extra?.katanaAppRewardsAPR : undefined;
+  const appRewards =
+    vault.chainID === KATANA_CHAIN_ID ? vault.apr.extra?.katanaAppRewardsAPR : undefined;
   if (appRewards !== undefined && appRewards > 0) {
     const native = vault.apr.forwardAPR?.netAPR || 0;
     return {
-      ariaLabel: `Show ${vault.name} APY breakdown`,
+      ariaLabel: tr('Show {name} APY breakdown', { name: vault.name }),
       rows: [
-        { label: 'Est. Native APY', value: formatAPY(native) },
-        { label: 'App Rewards APR', value: formatAPY(appRewards) },
-        { label: 'Total APY', value: formatAPY(getHeadlineAPY(vault)) },
+        { label: tr('Est. Native APY'), value: formatAPY(native) },
+        { label: tr('App Rewards APR'), value: formatAPY(appRewards) },
+        { label: tr('Total APY'), value: formatAPY(getHeadlineAPY(vault)) },
       ],
-      notes: [{ term: 'KAT:', text: 'This Vault is receiving KAT incentives.' }],
+      notes: [{ term: 'KAT:', text: tr('This Vault is receiving KAT incentives.') }],
     };
   }
 
   const boost = vault.chainID === 1 ? vault.apr.forwardAPR?.composite?.boost || 0 : 0;
   if (boost > 0) {
     return {
-      ariaLabel: `Show ${vault.name} APY breakdown`,
-      rows: [{ label: 'Boost', value: `${boost.toFixed(2)}x` }],
+      ariaLabel: tr('Show {name} APY breakdown', { name: vault.name }),
+      rows: [{ label: tr('Boost'), value: `${boost.toFixed(2)}x` }],
     };
   }
 
@@ -79,11 +87,12 @@ export const ApyValue: React.FC<{ vault: YearnVault; align?: 'left' | 'right' }>
   vault,
   align = 'right',
 }) => {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const breakdown = buildBreakdown(vault);
   const headline = isNewVaultAPY(vault)
-    ? 'NEW'
-    : `${vault.info?.isBoosted ? '⚡️ ' : ''}${formatAPY(getHeadlineAPY(vault))}`;
+    ? t('NEW')
+    : `${vault.info?.isBoosted ? '\u2728 ' : ''}${formatAPY(getHeadlineAPY(vault))}`;
 
   if (!breakdown) {
     return <b className="y-row__value">{headline}</b>;
@@ -138,9 +147,12 @@ export const ApyValue: React.FC<{ vault: YearnVault; align?: 'left' | 'right' }>
 
 /** Grid cell wrapper for the vaults list. The label only shows below `md`,
  *  where the list head is hidden and each row carries its own captions. */
-export const ApyCell: React.FC<ApyCellProps> = ({ vault, span, interactiveHoverProps }) => (
-  <div className={`y-row__cell y-span-${span}`} datatype="number" {...interactiveHoverProps}>
-    <span className="y-row__cell-label">Est. APY:</span>
-    <ApyValue vault={vault} />
-  </div>
-);
+export const ApyCell: React.FC<ApyCellProps> = ({ vault, span, interactiveHoverProps }) => {
+  const t = useT();
+  return (
+    <div className={`y-row__cell y-span-${span}`} datatype="number" {...interactiveHoverProps}>
+      <span className="y-row__cell-label">{t('Est. APY:')}</span>
+      <ApyValue vault={vault} />
+    </div>
+  );
+};
