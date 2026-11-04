@@ -1,6 +1,6 @@
 import { BrChain, BrToken, FeeLine, NoRoute, Provider, QuoteRequest, Reliability, RouteQuote, SiteLink } from '../types';
 import { amountUSD, isNativeToken, receiverOf, toUnits } from './common';
-import { BCH_CHAIN_ID, DASH_CHAIN_ID, DOGE_CHAIN_ID, LTC_CHAIN_ID } from '../catalog';
+import { BCH_CHAIN_ID, DASH_CHAIN_ID, DOGE_CHAIN_ID, LTC_CHAIN_ID, XRP_CHAIN_ID } from '../catalog';
 import { intlLocale, subSwaps, tr } from '../i18n';
 
 /**
@@ -63,6 +63,7 @@ export const THORCHAIN: ThorLikeConfig = {
     LTC: LTC_CHAIN_ID,
     DOGE: DOGE_CHAIN_ID,
     BCH: BCH_CHAIN_ID,
+    XRP: XRP_CHAIN_ID,
     SOL: 1151111081099710,
     TRON: 728126428,
   },
@@ -93,9 +94,9 @@ const UTXO_TX_BYTES = 250;
 const codeOf = (cfg: ThorLikeConfig, chain: BrChain) =>
   Object.entries(cfg.chainIds).find(([, id]) => id === chain.id)?.[0];
 
-/** Chains a deposit is sent to by hand, with the memo in OP_RETURN. */
+/** Chains a deposit is sent to by hand: UTXO with the memo in OP_RETURN, XRP with it in MemoData. */
 export const isDepositChain = (cfg: ThorLikeConfig, chain: BrChain) =>
-  chain.type === 'UTXO' && codeOf(cfg, chain) !== undefined;
+  (chain.type === 'UTXO' || chain.type === 'XRPL') && codeOf(cfg, chain) !== undefined;
 
 const reason = (error: string) => error.replace(/^failed to simulate swap: /, '');
 
@@ -260,10 +261,14 @@ function toRoute(cfg: ThorLikeConfig, req: QuoteRequest, q: any, streaming: bool
     { label: 'Outbound network fee', usd: amountUSD(out(q.fees?.outbound), req.toToken), included: true },
   ];
   const affiliate = Number(q.fees?.affiliate ?? 0);
-  // A hand-sent UTXO deposit pays its own miner fee at the recommended rate.
-  const gasUSD = isDepositChain(cfg, req.fromChain)
-    ? toUnits(BigInt(Number(q.recommended_gas_rate ?? 0) * UTXO_TX_BYTES), 8) * req.fromNativePriceUSD
-    : null;
+  // A hand-sent deposit pays its own network fee at the recommended rate:
+  // per byte on UTXO chains, a flat fee in drops on XRP.
+  const rate = Number(q.recommended_gas_rate ?? 0);
+  const gasUSD = !isDepositChain(cfg, req.fromChain)
+    ? null
+    : req.fromChain.type === 'XRPL'
+      ? (rate / 1e6) * req.fromNativePriceUSD
+      : toUnits(BigInt(rate * UTXO_TX_BYTES), 8) * req.fromNativePriceUSD;
   const parts = Number(q.max_streaming_quantity ?? 0);
   const minutes = Math.max(1, Math.round(Number(q.total_swap_seconds ?? 0) / 60));
   return {
@@ -284,7 +289,9 @@ function toRoute(cfg: ThorLikeConfig, req: QuoteRequest, q: any, streaming: bool
     durationSec: Number(q.total_swap_seconds) || undefined,
     reliability: cfg.reliability,
     site: cfg.site,
-    note: streaming
+    note: req.toChain.type === 'XRPL'
+      ? 'The receiving XRP address must already be activated (hold the 1 XRP reserve); send to your own wallet, not to an exchange address that needs a destination tag.'
+      : streaming
       ? tr('Streams {parts} over about {minutes} min; any part that cannot fill within your slippage is refunded.', {
           parts: subSwaps(parts),
           minutes,

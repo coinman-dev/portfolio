@@ -1,7 +1,7 @@
 import { NoRoute, Provider, QuoteRequest } from '../types';
 import { getJson, isNativeToken, receiverOf, senderOf } from './common';
 import { tr } from '../i18n';
-import { BCH_CHAIN_ID, DASH_CHAIN_ID, DOGE_CHAIN_ID, LTC_CHAIN_ID, isStable } from '../catalog';
+import { BCH_CHAIN_ID, DASH_CHAIN_ID, DOGE_CHAIN_ID, LTC_CHAIN_ID, XRP_CHAIN_ID, isStable } from '../catalog';
 
 /**
  * NEAR Intents' 1Click API: solvers compete to fill; funds go to a one-time
@@ -35,6 +35,7 @@ const BLOCKCHAINS: Record<number, string> = {
   [LTC_CHAIN_ID]: 'ltc',
   [DOGE_CHAIN_ID]: 'doge',
   [BCH_CHAIN_ID]: 'bch',
+  [XRP_CHAIN_ID]: 'xrp',
   9270000000000000: 'sui',
 };
 

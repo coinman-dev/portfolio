@@ -11,6 +11,7 @@ import { lifiRoutesBody, lifiToolNames } from '../providers/lifi';
 import { ThorLikeId, thorlikeConfig, thorlikeEvmSend } from '../providers/thorlike';
 import { ACROSS_SPOKE_POOLS, acrossPeriphery, acrossSwapUrl } from '../providers/across';
 import { VELORA_AUGUSTUS, veloraBuild, veloraPriceUrl } from '../providers/velora';
+import { sushiRouter, sushiUrl } from '../providers/sushi';
 import { TrVars, tr } from '../i18n';
 
 /** What gets tracked after the source transaction lands. */
@@ -51,7 +52,7 @@ export interface ExecPlan {
 const MAX_EXTRA_FEE_USD = 25;
 
 /** Services whose routes can be signed here; the rest open their site. */
-const EXECUTABLE: ProviderId[] = ['relay', 'socket', 'across', 'kyberswap', 'velora', 'debridge', 'lifi', 'maya', 'thorchain'];
+const EXECUTABLE: ProviderId[] = ['relay', 'socket', 'across', 'kyberswap', 'velora', 'sushi', 'debridge', 'lifi', 'maya', 'thorchain'];
 
 export function executionBlocker(
   route: RankedRoute,
@@ -371,6 +372,25 @@ async function veloraPlan(route: RankedRoute, req: QuoteRequest, signal: AbortSi
   };
 }
 
+/** SushiSwap: same chain only, so the simulation checks what reaches the receiver. */
+async function sushiPlan(route: RankedRoute, req: QuoteRequest, signal: AbortSignal): Promise<ExecPlan> {
+  const body = await getJson(sushiUrl(req, true), { signal });
+  if (body.status !== 'Success' || !body.tx?.to || !body.tx?.data) fail('Sushi did not build a transaction');
+  const router = sushiRouter(req.fromChain.id);
+  if (!same(body.tx.to, router)) fail('Sushi named a contract that is not its RedSnwapper');
+  const native = isNativeToken(req.fromChain, req.fromToken);
+  const toAmount = BigInt(body.assumedAmountOut);
+  return {
+    ...baseFields(route, req),
+    spender: native ? undefined : (router as Hex),
+    tx: { to: body.tx.to, data: body.tx.data, value: BigInt(body.tx.value ?? 0) },
+    extraValue: 0n,
+    toAmount,
+    toAmountMin: (toAmount * BigInt(10_000 - req.slippageBps)) / 10_000n,
+    status: { kind: 'none' },
+  };
+}
+
 /**
  * Maya / THORChain from an EVM wallet: one call to the network's router, which
  * moves the input to the vault with the memo. The payout always comes later
@@ -405,6 +425,7 @@ export async function buildPlan(route: RankedRoute, req: QuoteRequest, signal: A
     socket: socketPlan,
     kyberswap: kyberPlan,
     velora: veloraPlan,
+    sushi: sushiPlan,
     across: acrossPlan,
     debridge: debridgePlan,
     lifi: lifiPlan,

@@ -366,4 +366,16 @@ export const RU: Record<string, string> = {
   'Velora named a contract that is not Augustus v6.2': 'Velora указала контракт, который не Augustus v6.2',
   'Velora added a partner fee': 'Velora добавила партнёрскую комиссию',
   'Velora did not build a transaction': 'Velora не собрала транзакцию',
+  'Sushi did not build a transaction': 'Sushi не собрал транзакцию',
+  'Sushi named a contract that is not its RedSnwapper': 'Sushi указал контракт, который не его RedSnwapper',
+  'none (Metis), within Solana only — site': 'нет (Metis), только внутри Solana — на сайте',
+  'none, within Sui only — site': 'нет, только внутри Sui — на сайте',
+  '0–0.1% by route, read from each quote — site': '0–0,1% в зависимости от маршрута, берётся из котировки — на сайте',
+  'swaps within Solana only': 'только обмены внутри Solana',
+  'swaps within Sui only': 'только обмены внутри Sui',
+  'With the memo (MemoData)': 'С memo (поле MemoData)',
+  'Without it {provider} cannot tell what to do and refunds the deposit minus fees. Put it in the memo field of your XRP wallet (for example Xaman); no destination tag.':
+    'Без него {provider} не поймёт, что делать, и вернёт депозит за вычетом комиссий. Вставьте его в поле memo своего XRP-кошелька (например, Xaman); тег назначения не нужен.',
+  'The receiving XRP address must already be activated (hold the 1 XRP reserve); send to your own wallet, not to an exchange address that needs a destination tag.':
+    'XRP-адрес получателя должен быть уже активирован (держать резерв 1 XRP); отправляйте на свой кошелёк, а не на биржевой адрес, которому нужен тег назначения.',
 };

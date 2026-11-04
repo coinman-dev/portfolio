@@ -16,18 +16,31 @@ interface ExtraCoin {
   chain: BrChain;
   name: string;
   coingeckoId: string;
+  decimals: number;
 }
 
-const extraCoin = (id: number, key: string, name: string, symbol: string, logo: string, explorer: string, coingeckoId: string): ExtraCoin => ({
-  chain: { id, key, name, type: 'UTXO', logo, nativeSymbol: symbol, nativeAddress: key, explorer },
+const extraCoin = (
+  id: number,
+  key: string,
+  name: string,
+  symbol: string,
+  logo: string,
+  explorer: string,
+  coingeckoId: string,
+  type: ChainType = 'UTXO',
+  decimals = 8
+): ExtraCoin => ({
+  chain: { id, key, name, type, logo, nativeSymbol: symbol, nativeAddress: key, explorer },
   name,
   coingeckoId,
+  decimals,
 });
 
 export const DASH_CHAIN_ID = 30000000000001;
 export const LTC_CHAIN_ID = 30000000000002;
 export const DOGE_CHAIN_ID = 30000000000003;
 export const BCH_CHAIN_ID = 30000000000004;
+export const XRP_CHAIN_ID = 30000000000005;
 
 const CG_IMAGES = 'https://assets.coingecko.com/coins/images';
 const EXTRA_COINS: ExtraCoin[] = [
@@ -35,6 +48,8 @@ const EXTRA_COINS: ExtraCoin[] = [
   extraCoin(LTC_CHAIN_ID, 'ltc', 'Litecoin', 'LTC', `${CG_IMAGES}/2/standard/litecoin.png`, 'https://litecoinspace.org', 'litecoin'),
   extraCoin(DOGE_CHAIN_ID, 'doge', 'Dogecoin', 'DOGE', `${CG_IMAGES}/5/standard/dogecoin.png`, 'https://dogechain.info', 'dogecoin'),
   extraCoin(BCH_CHAIN_ID, 'bch', 'Bitcoin Cash', 'BCH', `${CG_IMAGES}/780/standard/bitcoin-cash-circle.png`, 'https://bch.loping.net', 'bitcoin-cash'),
+  // XRP has 6 decimals (drops) and its own address family.
+  extraCoin(XRP_CHAIN_ID, 'xrp', 'XRP Ledger', 'XRP', `${CG_IMAGES}/44/standard/xrp-symbol-white-128.png`, 'https://xrpscan.com', 'ripple', 'XRPL', 6),
 ];
 const extraOf = (chainId: number) => EXTRA_COINS.find((coin) => coin.chain.id === chainId);
 
@@ -203,7 +218,7 @@ async function extraTokens(coin: ExtraCoin): Promise<BrToken[]> {
       address: coin.chain.nativeAddress,
       symbol: coin.chain.nativeSymbol,
       name: coin.name,
-      decimals: 8,
+      decimals: coin.decimals,
       logo: coin.chain.logo,
       priceUSD: await extraPrice(coin).catch(() => 0),
       status: 'verified',

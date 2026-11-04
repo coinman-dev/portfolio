@@ -1,5 +1,5 @@
-/** LI.FI's chain families; every other service is mapped onto these ids. */
-export type ChainType = 'EVM' | 'SVM' | 'UTXO' | 'MVM' | 'TVM';
+/** LI.FI's chain families (plus the XRP Ledger, which LI.FI lacks); every other service is mapped onto these ids. */
+export type ChainType = 'EVM' | 'SVM' | 'UTXO' | 'MVM' | 'TVM' | 'XRPL';
 
 export interface BrChain {
   /** LI.FI chain id — the one id the whole comparison uses. */
@@ -46,7 +46,7 @@ export interface QuoteRequest {
   nearApiKey?: string;
 }
 
-export type ProviderId = 'lifi' | 'jumper' | 'socket' | 'relay' | 'kyberswap' | 'cow' | 'debridge' | 'near' | 'maya' | 'thorchain' | 'across' | 'velora';
+export type ProviderId = 'lifi' | 'jumper' | 'socket' | 'relay' | 'kyberswap' | 'cow' | 'debridge' | 'near' | 'maya' | 'thorchain' | 'across' | 'velora' | 'sushi' | 'jupiter' | 'cetus' | 'mayan';
 
 /** 3 — long-running, heavily used; 2 — established but newer or thinner; 1 — unknown. */
 export type Reliability = 1 | 2 | 3;

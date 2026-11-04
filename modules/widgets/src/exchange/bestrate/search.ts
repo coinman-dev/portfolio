@@ -10,6 +10,10 @@ import { nearProvider } from './providers/near';
 import { mayaProvider, thorchainProvider } from './providers/thorlike';
 import { acrossProvider } from './providers/across';
 import { veloraProvider } from './providers/velora';
+import { sushiProvider } from './providers/sushi';
+import { jupiterProvider } from './providers/jupiter';
+import { cetusProvider } from './providers/cetus';
+import { mayanProvider } from './providers/mayan';
 
 export const PROVIDERS: Provider[] = [
   socketProvider,
@@ -17,11 +21,15 @@ export const PROVIDERS: Provider[] = [
   acrossProvider,
   kyberswapProvider,
   veloraProvider,
+  sushiProvider,
   cowProvider,
   debridgeProvider,
   nearProvider,
   mayaProvider,
   thorchainProvider,
+  mayanProvider,
+  jupiterProvider,
+  cetusProvider,
   lifiProvider,
 ];
 
@@ -37,6 +45,10 @@ export const PROVIDER_FEES: Record<ProviderId, string> = {
   thorchain: 'none; pool and outbound fees are in the price',
   across: "none; the relayer's capital fee is about 0.01%",
   velora: 'none, same chain only',
+  sushi: 'none, same chain only',
+  jupiter: 'none (Metis), within Solana only — site',
+  cetus: 'none, within Sui only — site',
+  mayan: '0–0.1% by route, read from each quote — site',
   lifi: '0.25% (jumper.xyz: none)',
   jumper: 'none — site only',
 };

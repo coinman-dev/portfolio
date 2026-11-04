@@ -150,6 +150,8 @@ export const DepositPanel: React.FC<DepositPanelProps> = (props) => {
   const inputUSD = amountUSD(req.amount, req.fromToken);
   const core = CORE_WALLETS[req.fromChain.key];
   const trackable = /^[0-9a-fA-F]{64}$/.test(txid.trim());
+  // XRP carries the memo in the transaction's MemoData field, UTXO chains in OP_RETURN.
+  const xrp = req.fromChain.type === 'XRPL';
 
   return (
     <div className="br-modal" role="dialog" aria-label={t('Deposit to {provider}', { provider })} onMouseDown={onClose}>
@@ -189,7 +191,7 @@ export const DepositPanel: React.FC<DepositPanelProps> = (props) => {
                 <span className="br-ok">{t('✓ an active {provider} vault, the chain is not halted', { provider })}</span>
               </div>
               <div>
-                <span className="br-muted">{t('With the memo (OP_RETURN)')}</span>
+                <span className="br-muted">{xrp ? t('With the memo (MemoData)') : t('With the memo (OP_RETURN)')}</span>
                 <strong className="br-mono">
                   {deposit.memo} <Copy value={deposit.memo} />
                 </strong>
@@ -238,7 +240,9 @@ export const DepositPanel: React.FC<DepositPanelProps> = (props) => {
               <li>
                 <strong>{t('The memo must be in the transaction.')}</strong>{' '}
                 {t(
-                  'Without it {provider} cannot tell what to do and refunds the deposit minus fees. A wallet that cannot add OP_RETURN data will not work.',
+                  xrp
+                    ? 'Without it {provider} cannot tell what to do and refunds the deposit minus fees. Put it in the memo field of your XRP wallet (for example Xaman); no destination tag.'
+                    : 'Without it {provider} cannot tell what to do and refunds the deposit minus fees. A wallet that cannot add OP_RETURN data will not work.',
                   { provider }
                 )}
               </li>

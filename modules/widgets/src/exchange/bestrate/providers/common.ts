@@ -11,6 +11,8 @@ import { tr } from '../i18n';
 const STAND_IN: Partial<Record<ChainType, string>> = {
   EVM: '0x000000000000000000000000000000000000dEaD',
   TVM: 'T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb',
+  // ACCOUNT_ZERO, the XRP Ledger's all-zero account.
+  XRPL: 'rrrrrrrrrrrrrrrrrrrrrhoLvTp',
 };
 const UTXO_STAND_IN: Record<string, string> = {
   btc: '1111111111111111111114oLvT2',

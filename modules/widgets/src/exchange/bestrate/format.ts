@@ -35,6 +35,8 @@ const ADDRESS_PATTERNS: Record<ChainType, RegExp> = {
   SVM: /^[1-9A-HJ-NP-Za-km-z]{32,44}$/,
   UTXO: /^(bc1[0-9a-z]{25,87}|[13][1-9A-HJ-NP-Za-km-z]{25,34})$/,
   MVM: /^0x[0-9a-fA-F]{64}$/,
+  // Classic address; an X-address or a destination tag cannot go into a swap memo.
+  XRPL: /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/,
 };
 
 /** UTXO chains each have their own format; the family pattern above is Bitcoin's. */
@@ -69,6 +71,7 @@ export const FAMILY_NAMES: Record<ChainType, string> = {
   SVM: 'Solana',
   UTXO: 'Bitcoin',
   MVM: 'Sui',
+  XRPL: 'XRP',
 };
 
 /** "Dash address", "Solana address": UTXO chains by their own name. */
