@@ -251,7 +251,11 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
   const toAddress = customReceiver ? receiverText.trim() || undefined : addressOf(toChain);
   const receiverInvalid = customReceiver && !!toChain && receiverText.trim() !== '' && !isAddressFor(toChain, receiverText);
   // One address field per non-EVM chain in use (Bitcoin and Dash need their own).
-  const addressChains = [fromChain, customReceiver ? undefined : toChain]
+  // Coins sent by hand (UTXO, XRP) need none on the sending side: Maya and
+  // THORChain refund to the address the deposit came from, and NEAR, signed
+  // on its own site, asks there.
+  const sentByHand = fromChain?.type === 'UTXO' || fromChain?.type === 'XRPL';
+  const addressChains = [sentByHand ? undefined : fromChain, customReceiver ? undefined : toChain]
     .filter((c): c is BrChain => !!c && c.type !== 'EVM')
     .filter((c, i, list) => list.findIndex((o) => addressKey(o) === addressKey(c)) === i);
   // Quotes run on a stand-in for these; deposits and swaps wait for the real one.
