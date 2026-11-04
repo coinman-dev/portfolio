@@ -1,5 +1,6 @@
 import { NoRoute, Provider } from '../types';
 import { amountUSD, getJson, humanAmount, isNativeToken, receiverOf, sameChain, senderOf } from './common';
+import { tr } from '../i18n';
 
 /**
  * CoW Protocol: same-chain batch auctions. The network fee comes out of the
@@ -26,9 +27,9 @@ export const cowProvider: Provider = {
   async quote(req, signal) {
     const network = NETWORKS[req.fromChain.id];
     if (!sameChain(req)) throw new NoRoute('same-chain swaps only');
-    if (!network) throw new NoRoute(`${req.fromChain.name} is not supported`);
+    if (!network) throw new NoRoute(tr('{chain} is not supported', { chain: req.fromChain.name }));
     if (isNativeToken(req.fromChain, req.fromToken)) {
-      throw new NoRoute(`selling native ${req.fromChain.nativeSymbol} needs wrapping first`);
+      throw new NoRoute(tr('selling native {symbol} needs wrapping first', { symbol: req.fromChain.nativeSymbol }));
     }
     const buyToken = isNativeToken(req.toChain, req.toToken) ? COW_NATIVE : req.toToken.address;
     const body = await getJson(`https://api.cow.fi/${network}/api/v1/quote`, {
@@ -60,7 +61,7 @@ export const cowProvider: Provider = {
         id: `cow:${body.id ?? 'quote'}`,
         provider: 'cow',
         providerName: 'CoW Swap',
-        via: 'CoW batch auction',
+        via: tr('CoW batch auction'),
         toAmount,
         toUSD: amountUSD(toAmount, req.toToken),
         // Paid out of the sold amount; the wallet sends no gas.
@@ -70,7 +71,9 @@ export const cowProvider: Provider = {
         fees: [{ label: 'Network fee (from the sold amount)', usd: networkFeeUSD, included: true }],
         reliability: 3,
         site: {
-          name: 'swap.cow.fi',
+          // Opens the app's CoW Swap tab on this pair (see openSite).
+          name: 'CoW Swap',
+          inApp: true,
           url: `https://swap.cow.fi/#/${req.fromChain.id}/swap/${req.fromToken.address}/${buyToken}?${params}`,
         },
       },

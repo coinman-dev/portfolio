@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { openExternal } from '../../earn/openExternal';
 import { SwapRecord, SwapStatus, loadHistory, onHistoryChange, resumePending } from './history';
 import { formatAmount, shortAddress } from './format';
+import { intlLocale, useT } from './i18n';
 
 const STATUS_LABELS: Record<SwapStatus, string> = {
   sending: 'Sending',
@@ -25,13 +26,14 @@ function trackerUrl(record: SwapRecord): string | null {
 }
 
 function HistoryRow({ record }: { record: SwapRecord }) {
+  const t = useT();
   const tracker = trackerUrl(record);
   const toOther = record.receiver.toLowerCase() !== record.user.toLowerCase();
   return (
     <div className="br-hist__row">
       <div className="br-hist__top">
-        <span className="br-muted">{new Date(record.createdAt).toLocaleString()}</span>
-        <span className={`br-hist__status is-${record.status}`}>{STATUS_LABELS[record.status]}</span>
+        <span className="br-muted">{new Date(record.createdAt).toLocaleString(intlLocale())}</span>
+        <span className={`br-hist__status is-${record.status}`}>{t(STATUS_LABELS[record.status])}</span>
       </div>
       <div className="br-hist__main">
         <strong>
@@ -44,9 +46,13 @@ function HistoryRow({ record }: { record: SwapRecord }) {
         <span className="br-muted">{record.to.chainName}</span>
       </div>
       <div className="br-muted">
-        {record.providerName} via {record.via}
-        {toOther && ` · to ${shortAddress(record.receiver)}`}
-        {' · '}minimum {formatAmount(BigInt(record.to.min), record.to.decimals)} {record.to.symbol}
+        {record.providerName} {t('via')} {record.via}
+        {toOther && ` · ${t('to {address}', { address: shortAddress(record.receiver) })}`}
+        {' · '}
+        {t('minimum {amount} {symbol}', {
+          amount: formatAmount(BigInt(record.to.min), record.to.decimals),
+          symbol: record.to.symbol,
+        })}
       </div>
       <div className="br-hist__links">
         {record.txs.map((tx) =>
@@ -57,17 +63,17 @@ function HistoryRow({ record }: { record: SwapRecord }) {
               className="br-link"
               onClick={() => openExternal(`${record.explorer}/tx/${tx.hash}`)}
             >
-              {STEP_LABELS[tx.step] ?? tx.step} ↗
+              {t(STEP_LABELS[tx.step] ?? tx.step)} ↗
             </button>
           ) : (
             <span key={tx.step} className="br-mono">
-              {STEP_LABELS[tx.step] ?? tx.step} {shortAddress(tx.hash)}
+              {t(STEP_LABELS[tx.step] ?? tx.step)} {shortAddress(tx.hash)}
             </span>
           )
         )}
         {tracker && (
           <button type="button" className="br-link" onClick={() => openExternal(tracker)}>
-            track transfer ↗
+            {t('track transfer')} ↗
           </button>
         )}
       </div>
@@ -77,6 +83,7 @@ function HistoryRow({ record }: { record: SwapRecord }) {
 }
 
 export const HistoryPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  const t = useT();
   const [records, setRecords] = useState<SwapRecord[] | null>(null);
 
   useEffect(() => {
@@ -96,22 +103,25 @@ export const HistoryPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => 
   }, [onClose]);
 
   return (
-    <div className="br-modal" role="dialog" aria-label="Swap history" onMouseDown={onClose}>
+    <div className="br-modal" role="dialog" aria-label={t('Swap history')} onMouseDown={onClose}>
       <div className="br-modal__panel br-hist" onMouseDown={(e) => e.stopPropagation()}>
         <div className="br-modal__head">
-          <h3>Swap history{records ? ` (${records.length})` : ''}</h3>
-          <button type="button" className="br-icon-btn" aria-label="Close" onClick={onClose}>
+          <h3>
+            {t('Swap history')}
+            {records ? ` (${records.length})` : ''}
+          </h3>
+          <button type="button" className="br-icon-btn" aria-label={t('Close')} onClick={onClose}>
             ×
           </button>
         </div>
         <div className="br-hist__list">
-          {!records && <div className="br-muted br-pad">Loading…</div>}
+          {!records && <div className="br-muted br-pad">{t('Loading…')}</div>}
           {records && !records.length && (
-            <div className="br-muted br-pad">No swaps yet. Swaps signed here are listed with their transactions.</div>
+            <div className="br-muted br-pad">{t('No swaps yet. Swaps signed here are listed with their transactions.')}</div>
           )}
           {records?.map((record) => <HistoryRow key={record.id} record={record} />)}
         </div>
-        <div className="br-muted br-hist__note">Stored on this computer in data/exchange-history.json.</div>
+        <div className="br-muted br-hist__note">{t('Stored on this computer in data/exchange-history.json.')}</div>
       </div>
     </div>
   );

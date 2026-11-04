@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { BrChain, BrToken } from './types';
 import { fetchToken, fetchTokens } from './catalog';
 import { FAMILY_NAMES, formatUSD, shortAddress } from './format';
+import { useT } from './i18n';
 
 const MAX_ROWS = 150;
 
@@ -20,6 +21,7 @@ export function Logo({ src, alt }: { src?: string; alt: string }) {
 }
 
 export const TokenSelect: React.FC<TokenSelectProps> = ({ title, chains, chainId, onSelect, onClose }) => {
+  const t = useT();
   const [activeChainId, setActiveChainId] = useState(chainId);
   const [chainQuery, setChainQuery] = useState('');
   const [tokenQuery, setTokenQuery] = useState('');
@@ -55,12 +57,12 @@ export const TokenSelect: React.FC<TokenSelectProps> = ({ title, chains, chainId
 
   const query = tokenQuery.trim().toLowerCase();
   const shownTokens = useMemo(() => {
-    if (!query) return tokens.filter((t) => t.status !== 'flagged').slice(0, MAX_ROWS);
-    const exact = tokens.filter((t) => t.address.toLowerCase() === query);
+    if (!query) return tokens.filter((tok) => tok.status !== 'flagged').slice(0, MAX_ROWS);
+    const exact = tokens.filter((tok) => tok.address.toLowerCase() === query);
     if (exact.length) return exact;
     return tokens
-      .filter((t) => t.status !== 'flagged')
-      .filter((t) => t.symbol.toLowerCase().includes(query) || t.name.toLowerCase().includes(query))
+      .filter((tok) => tok.status !== 'flagged')
+      .filter((tok) => tok.symbol.toLowerCase().includes(query) || tok.name.toLowerCase().includes(query))
       .slice(0, MAX_ROWS);
   }, [tokens, query]);
 
@@ -84,7 +86,7 @@ export const TokenSelect: React.FC<TokenSelectProps> = ({ title, chains, chainId
       <div className="br-modal__panel" onMouseDown={(e) => e.stopPropagation()}>
         <div className="br-modal__head">
           <h3>{title}</h3>
-          <button type="button" className="br-icon-btn" aria-label="Close" onClick={onClose}>
+          <button type="button" className="br-icon-btn" aria-label={t('Close')} onClick={onClose}>
             ×
           </button>
         </div>
@@ -92,7 +94,7 @@ export const TokenSelect: React.FC<TokenSelectProps> = ({ title, chains, chainId
           <div className="br-select__chains">
             <input
               className="br-input"
-              placeholder="Search network"
+              placeholder={t('Search network')}
               value={chainQuery}
               onChange={(e) => setChainQuery(e.target.value)}
             />
@@ -109,7 +111,7 @@ export const TokenSelect: React.FC<TokenSelectProps> = ({ title, chains, chainId
                 >
                   <Logo src={c.logo} alt={c.name} />
                   <span>{c.name}</span>
-                  {c.type !== 'EVM' && <span className="br-tag">{FAMILY_NAMES[c.type]}</span>}
+                  {c.type !== 'EVM' && <span className="br-tag">{c.type === 'UTXO' ? 'UTXO' : FAMILY_NAMES[c.type]}</span>}
                 </button>
               ))}
             </div>
@@ -117,34 +119,34 @@ export const TokenSelect: React.FC<TokenSelectProps> = ({ title, chains, chainId
           <div className="br-select__tokens">
             <input
               className="br-input"
-              placeholder="Search by name, symbol or paste an address"
+              placeholder={t('Search by name, symbol or paste an address')}
               value={tokenQuery}
               autoFocus
               onChange={(e) => setTokenQuery(e.target.value)}
             />
             <div className="br-select__list">
-              {loading && <div className="br-muted br-pad">Loading tokens…</div>}
-              {!loading && !rows.length && <div className="br-muted br-pad">No tokens found.</div>}
+              {loading && <div className="br-muted br-pad">{t('Loading tokens…')}</div>}
+              {!loading && !rows.length && <div className="br-muted br-pad">{t('No tokens found.')}</div>}
               {chain &&
-                rows.map((t) => (
+                rows.map((tok) => (
                   <button
-                    key={t.address}
+                    key={tok.address}
                     type="button"
                     className="br-select__token"
-                    onClick={() => onSelect(chain, t)}
+                    onClick={() => onSelect(chain, tok)}
                   >
-                    <Logo src={t.logo} alt={t.symbol} />
+                    <Logo src={tok.logo} alt={tok.symbol} />
                     <span className="br-select__token-main">
                       <span className="br-select__token-symbol">
-                        {t.symbol}
-                        {t.status === 'unverified' && <span className="br-tag br-tag--warn">unverified</span>}
-                        {t.status === 'flagged' && <span className="br-tag br-tag--bad">flagged</span>}
+                        {tok.symbol}
+                        {tok.status === 'unverified' && <span className="br-tag br-tag--warn">{t('unverified')}</span>}
+                        {tok.status === 'flagged' && <span className="br-tag br-tag--bad">{t('flagged')}</span>}
                       </span>
                       <span className="br-muted">
-                        {t.name} · {shortAddress(t.address)}
+                        {tok.name} · {shortAddress(tok.address)}
                       </span>
                     </span>
-                    <span className="br-muted">{t.priceUSD ? formatUSD(t.priceUSD) : ''}</span>
+                    <span className="br-muted">{tok.priceUSD ? formatUSD(tok.priceUSD) : ''}</span>
                   </button>
                 ))}
             </div>

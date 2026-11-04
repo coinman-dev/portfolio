@@ -1,4 +1,5 @@
 import { NoRoute, Provider, QuoteRequest } from '../types';
+import { tr } from '../i18n';
 import { getJson, isNativeToken, sameChain } from './common';
 
 /** KyberSwap's aggregator: swaps within one EVM chain, no fee and no key. */
@@ -28,7 +29,7 @@ const KYBER_API = 'https://aggregator-api.kyberswap.com';
 function slugOf(req: QuoteRequest): string {
   const slug = SLUGS[req.fromChain.id];
   if (!sameChain(req)) throw new NoRoute('same-chain swaps only');
-  if (!slug) throw new NoRoute(`${req.fromChain.name} is not supported`);
+  if (!slug) throw new NoRoute(tr('{chain} is not supported', { chain: req.fromChain.name }));
   return slug;
 }
 

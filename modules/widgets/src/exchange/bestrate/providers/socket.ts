@@ -1,5 +1,6 @@
 import { FeeLine, NoRoute, Provider, QuoteRequest, RouteQuote } from '../types';
 import { amountUSD, getJson, isNativeToken, receiverOf, reliabilityOf, senderOf } from './common';
+import { tr } from '../i18n';
 
 /**
  * Socket (the engine behind Bungee). The public endpoint needs no key but
@@ -22,7 +23,7 @@ function tokenOf(req: QuoteRequest, side: 'from' | 'to'): string {
   const token = side === 'from' ? req.fromToken : req.toToken;
   if (!isNativeToken(chain, token)) return token.address;
   if (chain.type === 'EVM' || chain.type === 'TVM') return SOCKET_NATIVE;
-  throw new NoRoute(`native ${chain.nativeSymbol} is not mapped for Socket`);
+  throw new NoRoute(tr('native {symbol} is not mapped for Socket', { symbol: chain.nativeSymbol }));
 }
 
 export function socketQuoteUrl(req: QuoteRequest, user: string, receiver: string): string {

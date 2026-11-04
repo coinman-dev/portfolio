@@ -8,6 +8,7 @@ import { socketQuoteUrl } from '../providers/socket';
 import { kyberBuildUrl, kyberRoutesUrl } from '../providers/kyberswap';
 import { debridgeChainId, debridgeCreateTxUrl } from '../providers/debridge';
 import { lifiRoutesBody, lifiToolNames } from '../providers/lifi';
+import { TrVars, tr } from '../i18n';
 
 /** What gets tracked after the source transaction lands. */
 export type StatusRef =
@@ -54,13 +55,15 @@ export function executionBlocker(
   /** The wallet's balance of the input token, when known. */
   balance?: bigint | null
 ): string | null {
-  if (route.estimateOnly) return 'only available on the site';
-  if (!EXECUTABLE.includes(route.provider)) return `${route.providerName} runs on its own site`;
-  if (req.fromChain.type !== 'EVM') return 'sending from this network is not supported here yet';
-  if (!walletChains.includes(req.fromChain.id)) return `${req.fromChain.name} is not enabled in the wallet connection`;
-  if (!req.fromAddress) return 'connect a wallet first';
-  if (!req.toAddress) return `enter the ${req.toChain.name} receiver address`;
-  if (balance != null && balance < req.amount) return `not enough ${req.fromToken.symbol} in the wallet`;
+  if (route.estimateOnly) return tr('only available on the site');
+  if (!EXECUTABLE.includes(route.provider)) return tr('{provider} runs on its own site', { provider: route.providerName });
+  if (req.fromChain.type !== 'EVM') return tr('sending from this network is not supported here yet');
+  if (!walletChains.includes(req.fromChain.id)) {
+    return tr('{chain} is not enabled in the wallet connection', { chain: req.fromChain.name });
+  }
+  if (!req.fromAddress) return tr('connect a wallet first');
+  if (!req.toAddress) return tr('enter the {chain} receiver address', { chain: req.toChain.name });
+  if (balance != null && balance < req.amount) return tr('not enough {symbol} in the wallet', { symbol: req.fromToken.symbol });
   return null;
 }
 
@@ -75,8 +78,9 @@ const DLN_ABI = parseAbi([
 
 const same = (a?: string, b?: string) => !!a && !!b && a.toLowerCase() === b.toLowerCase();
 
-function fail(reason: string): never {
-  throw new NoRoute(reason);
+/** Refuses the plan; `reason` is English source text with `{name}` placeholders. */
+function fail(reason: string, vars?: TrVars): never {
+  throw new NoRoute(tr(reason, vars));
 }
 
 function baseFields(route: RankedRoute, req: QuoteRequest) {
@@ -107,7 +111,7 @@ async function relayPlan(route: RankedRoute, req: QuoteRequest, signal: AbortSig
   if (items.some(({ step }: any) => step.kind !== 'transaction')) fail('this Relay route needs a signature — use relay.link');
   const approvals = items.filter(({ step }: any) => step.id === 'approve');
   const mains = items.filter(({ step }: any) => step.id !== 'approve');
-  if (mains.length !== 1) fail(`Relay returned ${mains.length} transactions; expected one`);
+  if (mains.length !== 1) fail('Relay returned {count} transactions; expected one', { count: mains.length });
   const main = mains[0];
   const data = main.item.data;
   if (Number(data.chainId) !== req.fromChain.id) fail('Relay transaction is for another chain');
@@ -144,7 +148,7 @@ async function socketPlan(route: RankedRoute, req: QuoteRequest, signal: AbortSi
   const picked = routes.find((r) => protocols(r) === route.via) ?? routes[0];
   if (!picked) fail('Socket returned no route');
   const kind = picked.txData?.kind;
-  if (kind && kind !== 'evm' && kind !== 'evm_tx') fail(`Socket route of kind ${kind} is not supported`);
+  if (kind && kind !== 'evm' && kind !== 'evm_tx') fail('Socket route of kind {kind} is not supported', { kind });
   const object = picked.txData?.object;
   if (!object?.to || !object?.data) fail('Socket returned no transaction');
   return {
@@ -280,7 +284,7 @@ export async function buildPlan(route: RankedRoute, req: QuoteRequest, signal: A
     lifi: lifiPlan,
   };
   const build = builders[route.provider];
-  if (!build) fail(`${route.providerName} cannot be executed here`);
+  if (!build) fail('{provider} cannot be executed here', { provider: route.providerName });
   const plan = await build(route, req, signal);
   checkPlan(plan, req);
   return plan;
@@ -295,19 +299,25 @@ export function checkPlan(plan: ExecPlan, req: QuoteRequest): void {
   const allowed = allowedContracts(plan.provider, plan.chainId);
   if (plan.chainId !== req.fromChain.id) fail('transaction is for another chain');
   if (!allowed.has(plan.tx.to.toLowerCase())) {
-    fail(`${plan.providerName} asked to call ${plan.tx.to}, which is not one of its contracts`);
+    fail('{provider} asked to call {address}, which is not one of its contracts', {
+      provider: plan.providerName,
+      address: plan.tx.to,
+    });
   }
   if (plan.token) {
-    if (!plan.spender) fail(`${plan.providerName} did not name a contract to approve`);
+    if (!plan.spender) fail('{provider} did not name a contract to approve', { provider: plan.providerName });
     if (!allowed.has(plan.spender.toLowerCase())) {
-      fail(`${plan.providerName} asked to approve ${plan.spender}, which is not one of its contracts`);
+      fail('{provider} asked to approve {address}, which is not one of its contracts', {
+        provider: plan.providerName,
+        address: plan.spender,
+      });
     }
   }
   const maxValue = (plan.token ? 0n : plan.amount) + plan.extraValue;
   if (plan.tx.value > maxValue) fail('the transaction sends more native coin than the swap needs');
   // Fees in the native coin on top (deBridge, some LI.FI bridges) are a few dollars.
   const extraUSD = (Number(plan.extraValue) / 1e18) * req.fromNativePriceUSD;
-  if (extraUSD > MAX_EXTRA_FEE_USD) fail(`fixed fee of ${extraUSD.toFixed(2)}$ is unusually high`);
+  if (extraUSD > MAX_EXTRA_FEE_USD) fail('fixed fee of {usd}$ is unusually high', { usd: extraUSD.toFixed(2) });
   if (plan.toAmountMin > plan.toAmount) fail('minimum received is above the quote');
   if (plan.toAmountMin <= 0n) fail('no minimum amount to receive');
 }

@@ -46,7 +46,7 @@ export interface QuoteRequest {
   nearApiKey?: string;
 }
 
-export type ProviderId = 'lifi' | 'jumper' | 'socket' | 'relay' | 'kyberswap' | 'cow' | 'debridge' | 'near';
+export type ProviderId = 'lifi' | 'jumper' | 'socket' | 'relay' | 'kyberswap' | 'cow' | 'debridge' | 'near' | 'maya';
 
 /** 3 — long-running, heavily used; 2 — established but newer or thinner; 1 — unknown. */
 export type Reliability = 1 | 2 | 3;
@@ -61,6 +61,8 @@ export interface FeeLine {
 export interface SiteLink {
   name: string;
   url: string;
+  /** Opens in one of the app's own tabs rather than the browser. */
+  inApp?: boolean;
 }
 
 export interface RouteQuote {
@@ -86,6 +88,10 @@ export interface RouteQuote {
   /** A figure worked out from another quote — only reachable on the site. */
   estimateOnly?: boolean;
   note?: string;
+  /** Maya Protocol route: streamed in sub-swaps or swapped at once. */
+  maya?: { streaming: boolean };
+  /** The pools or reserves are thin for this size: it may fill only partly. */
+  capacityWarning?: string;
 }
 
 export interface Provider {

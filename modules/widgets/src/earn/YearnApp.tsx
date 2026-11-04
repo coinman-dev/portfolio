@@ -14,7 +14,7 @@ import { wagmiConfig, subscribeWalletStatus, getWalletStatus, WalletStatus, conn
 import { TopNav } from './components/shell/TopNav';
 import { Crumb } from './components/shell/Breadcrumbs';
 import { PageContainer } from './components/shell/PageContainer';
-import { useT } from './i18n';
+import { useSavedLang, useT } from './i18n';
 import './styles/index.css';
 
 const queryClient = new QueryClient();
@@ -36,6 +36,7 @@ export const YearnDashboard: React.FC<EarnMountOptions> = ({
   initialSettings,
   onSettingsChange,
 }) => {
+  useSavedLang(initialSettings?.lang, (lang) => onSettingsChange?.({ lang }));
   const t = useT();
   const [listState, setListState] = useState<VaultsListState>(() =>
     restoreListState(initialSettings)

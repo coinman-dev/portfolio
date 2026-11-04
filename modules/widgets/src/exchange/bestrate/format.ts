@@ -1,5 +1,6 @@
 import { isAddress } from 'viem';
-import { ChainType } from './types';
+import { BrChain, ChainType } from './types';
+import { tr } from './i18n';
 
 const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
 
@@ -13,16 +14,16 @@ export function formatAmount(amount: bigint, decimals: number): string {
 }
 
 export function formatPct(value: number | null): string {
-  if (value == null) return 'not disclosed';
+  if (value == null) return tr('not disclosed');
   if (value === 0) return '0%';
   return `${value < 0.01 ? value.toFixed(4) : value.toFixed(2)}%`;
 }
 
 export function formatDuration(seconds?: number): string {
   if (!seconds || seconds <= 0) return '—';
-  if (seconds < 60) return `${Math.round(seconds)} s`;
-  if (seconds < 3600) return `${Math.round(seconds / 60)} min`;
-  return `${(seconds / 3600).toFixed(1)} h`;
+  if (seconds < 60) return tr('{n} s', { n: Math.round(seconds) });
+  if (seconds < 3600) return tr('{n} min', { n: Math.round(seconds / 60) });
+  return tr('{n} h', { n: (seconds / 3600).toFixed(1) });
 }
 
 export const shortAddress = (address: string) =>
@@ -36,9 +37,27 @@ const ADDRESS_PATTERNS: Record<ChainType, RegExp> = {
   MVM: /^0x[0-9a-fA-F]{64}$/,
 };
 
+/** UTXO chains each have their own format; the family pattern above is Bitcoin's. */
+const UTXO_PATTERNS: Record<string, RegExp> = {
+  btc: ADDRESS_PATTERNS.UTXO,
+  // Transparent addresses only: the swap services cannot pay shielded ones.
+  zec: /^t[13][1-9A-HJ-NP-Za-km-z]{33}$/,
+  dash: /^[X7][1-9A-HJ-NP-Za-km-z]{33}$/,
+};
+
+/**
+ * Which typed-in address a chain uses: one per family, except UTXO chains,
+ * where Bitcoin, Zcash and Dash addresses differ.
+ */
+export const addressKey = (chain: BrChain): string =>
+  chain.type === 'UTXO' && UTXO_PATTERNS[chain.key] ? chain.key : chain.type;
+
 /** Format check; mixed-case EVM addresses must also match their checksum, which catches typos. */
-export const isAddressFor = (type: ChainType, address: string) =>
-  type === 'EVM' ? isAddress(address.trim()) : ADDRESS_PATTERNS[type].test(address.trim());
+export function isAddressFor(chain: BrChain, address: string): boolean {
+  const value = address.trim();
+  if (chain.type === 'EVM') return isAddress(value);
+  return (UTXO_PATTERNS[addressKey(chain)] ?? ADDRESS_PATTERNS[chain.type]).test(value);
+}
 
 export const FAMILY_NAMES: Record<ChainType, string> = {
   EVM: 'EVM',
@@ -47,3 +66,7 @@ export const FAMILY_NAMES: Record<ChainType, string> = {
   UTXO: 'Bitcoin',
   MVM: 'Sui',
 };
+
+/** "Dash address", "Solana address": UTXO chains by their own name. */
+export const addressName = (chain: BrChain) =>
+  chain.type === 'UTXO' ? chain.name : FAMILY_NAMES[chain.type];

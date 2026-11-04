@@ -1,4 +1,5 @@
 import { ChainType, FeeLine, NoRoute, Provider, QuoteRequest } from '../types';
+import { tr } from '../i18n';
 import { amountUSD, getJson, humanAmount, isNativeToken, sameChain } from './common';
 
 /**
@@ -35,7 +36,7 @@ function tokenOf(req: QuoteRequest, side: 'from' | 'to'): string {
   if (!isNativeToken(chain, token)) return token.address;
   if (chain.type === 'EVM') return '0x0000000000000000000000000000000000000000';
   if (chain.type === 'SVM') return '11111111111111111111111111111111';
-  throw new NoRoute(`native ${chain.nativeSymbol} is not mapped for deBridge`);
+  throw new NoRoute(tr('native {symbol} is not mapped for deBridge', { symbol: chain.nativeSymbol }));
 }
 
 export function debridgeChainId(lifiChainId: number): number {

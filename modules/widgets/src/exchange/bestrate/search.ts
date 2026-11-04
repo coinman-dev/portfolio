@@ -7,6 +7,7 @@ import { kyberswapProvider } from './providers/kyberswap';
 import { cowProvider } from './providers/cow';
 import { debridgeProvider } from './providers/debridge';
 import { nearProvider } from './providers/near';
+import { mayaProvider } from './providers/maya';
 
 export const PROVIDERS: Provider[] = [
   socketProvider,
@@ -15,6 +16,7 @@ export const PROVIDERS: Provider[] = [
   cowProvider,
   debridgeProvider,
   nearProvider,
+  mayaProvider,
   lifiProvider,
 ];
 
@@ -26,6 +28,7 @@ export const PROVIDER_FEES: Record<ProviderId, string> = {
   cow: '0.003% stable pairs, 0.02% others, same chain only',
   debridge: '0.04% + a fixed fee in the native coin',
   near: '0.25% without a key; 0.01% stables / 0.20% others with one',
+  maya: 'none; pool and outbound fees are in the price',
   lifi: '0.25% (jumper.xyz: none)',
   jumper: 'none — site only',
 };

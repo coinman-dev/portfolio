@@ -52,7 +52,8 @@ export const lifiProvider: Provider = {
       body: JSON.stringify(lifiRoutesBody(req)),
     });
 
-    const site = { name: 'jumper.xyz', url: jumperUrl(req) };
+    // Opens the app's Jumper Exchange tab (see openSite).
+    const site = { name: 'Jumper', url: jumperUrl(req), inApp: true };
     const routes: RouteQuote[] = [];
     for (const route of body.routes ?? []) {
       const costs = (route.steps ?? []).flatMap((step: any) => step.estimate?.feeCosts ?? []);

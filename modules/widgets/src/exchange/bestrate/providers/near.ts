@@ -1,6 +1,7 @@
 import { NoRoute, Provider, QuoteRequest } from '../types';
 import { getJson, isNativeToken, receiverOf, senderOf } from './common';
-import { isStable } from '../catalog';
+import { tr } from '../i18n';
+import { DASH_CHAIN_ID, isStable } from '../catalog';
 
 /**
  * NEAR Intents' 1Click API: solvers compete to fill; funds go to a one-time
@@ -29,6 +30,8 @@ const BLOCKCHAINS: Record<number, string> = {
   728126428: 'tron',
   1151111081099710: 'sol',
   20000000000001: 'btc',
+  20000000000005: 'zec',
+  [DASH_CHAIN_ID]: 'dash',
   9270000000000000: 'sui',
 };
 
@@ -48,7 +51,7 @@ async function assetOf(req: QuoteRequest, side: 'from' | 'to'): Promise<string> 
   const chain = side === 'from' ? req.fromChain : req.toChain;
   const token = side === 'from' ? req.fromToken : req.toToken;
   const code = BLOCKCHAINS[chain.id];
-  if (!code) throw new NoRoute(`${chain.name} is not supported`);
+  if (!code) throw new NoRoute(tr('{chain} is not supported', { chain: chain.name }));
   const list = await oneClickTokens();
   const native = isNativeToken(chain, token);
   const match = list.find((t) =>
@@ -57,7 +60,7 @@ async function assetOf(req: QuoteRequest, side: 'from' | 'to'): Promise<string> 
       ? !t.contractAddress && t.symbol === chain.nativeSymbol
       : (t.contractAddress ?? '').toLowerCase() === token.address.toLowerCase())
   );
-  if (!match) throw new NoRoute(`${token.symbol} on ${chain.name} is not supported`);
+  if (!match) throw new NoRoute(tr('{symbol} on {chain} is not supported', { symbol: token.symbol, chain: chain.name }));
   return match.assetId;
 }
 
@@ -102,7 +105,7 @@ export const nearProvider: Provider = {
         id: `near:${body.correlationId ?? 'quote'}`,
         provider: 'near',
         providerName: 'NEAR Intents',
-        via: 'NEAR Intents solvers',
+        via: tr('NEAR Intents solvers'),
         toAmount: BigInt(quote.amountOut),
         toAmountMin: quote.minAmountOut ? BigInt(quote.minAmountOut) : undefined,
         toUSD: Number(quote.amountOutUsd) || 0,

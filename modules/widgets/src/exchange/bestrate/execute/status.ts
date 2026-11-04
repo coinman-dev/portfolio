@@ -1,4 +1,5 @@
 import { StatusRef } from './plan';
+import { tr } from '../i18n';
 
 export type DeliveryState = 'pending' | 'done' | 'refunded' | 'failed';
 
@@ -78,7 +79,7 @@ export async function watchDelivery(
       // A missed poll is not a failed transfer — try again.
     }
     if (Date.now() - started > GIVE_UP_MS) {
-      const stale: Delivery = { state: 'pending', detail: 'still in progress after an hour — check the explorer' };
+      const stale: Delivery = { state: 'pending', detail: tr('still in progress after an hour — check the explorer') };
       onUpdate(stale);
       return stale;
     }
