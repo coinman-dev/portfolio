@@ -46,7 +46,7 @@ export interface QuoteRequest {
   nearApiKey?: string;
 }
 
-export type ProviderId = 'lifi' | 'jumper' | 'socket' | 'relay' | 'kyberswap' | 'cow' | 'debridge' | 'near' | 'maya';
+export type ProviderId = 'lifi' | 'jumper' | 'socket' | 'relay' | 'kyberswap' | 'cow' | 'debridge' | 'near' | 'maya' | 'thorchain';
 
 /** 3 — long-running, heavily used; 2 — established but newer or thinner; 1 — unknown. */
 export type Reliability = 1 | 2 | 3;
@@ -88,8 +88,8 @@ export interface RouteQuote {
   /** A figure worked out from another quote — only reachable on the site. */
   estimateOnly?: boolean;
   note?: string;
-  /** Maya Protocol route: streamed in sub-swaps or swapped at once. */
-  maya?: { streaming: boolean };
+  /** Maya Protocol / THORChain route: streamed in sub-swaps or swapped at once. */
+  thorlike?: { streaming: boolean };
   /** The pools or reserves are thin for this size: it may fill only partly. */
   capacityWarning?: string;
 }

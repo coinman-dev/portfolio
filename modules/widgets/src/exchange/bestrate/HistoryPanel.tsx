@@ -3,6 +3,7 @@ import { openExternal } from '../../earn/openExternal';
 import { SwapRecord, SwapStatus, loadHistory, onHistoryChange, resumePending } from './history';
 import { formatAmount, shortAddress } from './format';
 import { intlLocale, useT } from './i18n';
+import { thorlikeConfig } from './providers/thorlike';
 
 const STATUS_LABELS: Record<SwapStatus, string> = {
   sending: 'Sending',
@@ -19,6 +20,10 @@ const STEP_LABELS: Record<string, string> = { reset: 'reset', approve: 'approve'
 function trackerUrl(record: SwapRecord): string | null {
   const swap = record.txs.find((tx) => tx.step === 'swap');
   if (record.statusRef.kind === 'lifi' && swap) return `https://scan.li.fi/tx/${swap.hash}`;
+  if (record.statusRef.kind === 'thorlike' && swap) {
+    const cfg = thorlikeConfig(record.statusRef.provider);
+    if (cfg) return cfg.tracker.tx(swap.hash.replace(/^0x/i, '').toUpperCase());
+  }
   if (record.statusRef.kind === 'debridge') {
     return `https://app.debridge.finance/order?orderId=${record.statusRef.orderId}`;
   }

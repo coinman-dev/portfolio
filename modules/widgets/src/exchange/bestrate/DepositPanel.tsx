@@ -4,9 +4,9 @@ import { openExternal } from '../../earn/openExternal';
 import { QuoteRequest } from './types';
 import { RankedRoute } from './search';
 import { amountUSD, humanAmount } from './providers/common';
-import { MayaDeposit, mayaDeposit } from './providers/maya';
+import { ThorLikeDeposit, thorlikeConfig, thorlikeDeposit } from './providers/thorlike';
 import { formatAmount, formatDuration, formatUSD } from './format';
-import { tr, useT } from './i18n';
+import { subSwaps, tr, useT } from './i18n';
 
 const LARGE_USD = 50_000;
 
@@ -18,7 +18,7 @@ const CORE_WALLETS: Record<string, string> = { dash: 'Dash Core', btc: 'Bitcoin 
  * the memo as an OP_RETURN output, funded at the vault's fee rate, signed,
  * checked and sent. Each step takes the hex printed by the one before.
  */
-function coreCommands(deposit: MayaDeposit, amount: string): string[] {
+function coreCommands(deposit: ThorLikeDeposit, amount: string): string[] {
   // sats/byte → coins per kB, the unit Core's feeRate option takes.
   const feeRate = ((Math.max(deposit.gasRate, 1) * 1000) / 1e8).toFixed(8);
   return [
@@ -64,7 +64,10 @@ export const DepositPanel: React.FC<DepositPanelProps> = (props) => {
   const [{ route, req }] = useState(() => ({ route: props.route, req: props.req }));
   const { onClose } = props;
   const t = useT();
-  const [deposit, setDeposit] = useState<MayaDeposit | null>(null);
+  // DepositPanel only opens for Maya / THORChain routes.
+  const cfg = thorlikeConfig(route.provider)!;
+  const provider = cfg.name;
+  const [deposit, setDeposit] = useState<ThorLikeDeposit | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(() => Date.now());
@@ -79,22 +82,22 @@ export const DepositPanel: React.FC<DepositPanelProps> = (props) => {
     setError(null);
     setDeposit(null);
     try {
-      const found = await mayaDeposit(req, route.maya?.streaming ?? false, controller.signal);
+      const found = await thorlikeDeposit(cfg, req, route.thorlike?.streaming ?? false, controller.signal);
       if (controller.signal.aborted) return;
       setDeposit(found);
       diag(
         'info',
         'BESTRATE',
-        `Maya deposit ${req.fromToken.symbol} → ${req.toToken.symbol} (${req.toChain.name}): vault ${found.vault}, memo ${found.memo}`
+        `${cfg.name} deposit ${req.fromToken.symbol} → ${req.toToken.symbol} (${req.toChain.name}): vault ${found.vault}, memo ${found.memo}`
       );
     } catch (err: any) {
       if (controller.signal.aborted) return;
       setError(err?.message ?? String(err));
-      diag('warn', 'BESTRATE', `Maya deposit not prepared: ${err?.message ?? err}`);
+      diag('warn', 'BESTRATE', `${cfg.name} deposit not prepared: ${err?.message ?? err}`);
     } finally {
       if (!controller.signal.aborted) setLoading(false);
     }
-  }, [req, route]);
+  }, [req, route, cfg]);
 
   useEffect(() => {
     void load();
@@ -113,7 +116,7 @@ export const DepositPanel: React.FC<DepositPanelProps> = (props) => {
   const trackable = /^[0-9a-fA-F]{64}$/.test(txid.trim());
 
   return (
-    <div className="br-modal" role="dialog" aria-label={t('Deposit to Maya')} onMouseDown={onClose}>
+    <div className="br-modal" role="dialog" aria-label={t('Deposit to {provider}', { provider })} onMouseDown={onClose}>
       <div className="br-modal__panel br-exec br-deposit" onMouseDown={(e) => e.stopPropagation()}>
         <div className="br-modal__head">
           <h3>
@@ -124,7 +127,7 @@ export const DepositPanel: React.FC<DepositPanelProps> = (props) => {
           </button>
         </div>
 
-        {loading && <div className="br-muted br-pad">{t("Getting a fresh quote and Maya's current vault…")}</div>}
+        {loading && <div className="br-muted br-pad">{t("Getting a fresh quote and {provider}'s current vault…", { provider })}</div>}
         {error && <div className="br-exec__sim is-bad">{error}</div>}
 
         {deposit && (
@@ -143,11 +146,11 @@ export const DepositPanel: React.FC<DepositPanelProps> = (props) => {
                 </span>
               </div>
               <div>
-                <span className="br-muted">{t("To Maya's vault")}</span>
+                <span className="br-muted">{t("To {provider}'s vault", { provider })}</span>
                 <strong className="br-mono">
                   {deposit.vault} <Copy value={deposit.vault} />
                 </strong>
-                <span className="br-ok">{t('✓ the vault Maya publishes right now, not halted')}</span>
+                <span className="br-ok">{t('✓ the vault {provider} publishes right now, not halted', { provider })}</span>
               </div>
               <div>
                 <span className="br-muted">{t('With the memo (OP_RETURN)')}</span>
@@ -180,7 +183,7 @@ export const DepositPanel: React.FC<DepositPanelProps> = (props) => {
                   {t('then about {time} to arrive{parts}; fee rate at least {rate} {units}', {
                     time: formatDuration(deposit.durationSec),
                     parts:
-                      deposit.streamingParts > 1 ? ` (${t('{count} sub-swaps', { count: deposit.streamingParts })})` : '',
+                      deposit.streamingParts > 1 ? ` (${subSwaps(deposit.streamingParts)})` : '',
                     rate: deposit.gasRate,
                     units: deposit.gasRateUnits,
                   })}
@@ -194,7 +197,8 @@ export const DepositPanel: React.FC<DepositPanelProps> = (props) => {
               <li>
                 <strong>{t('The memo must be in the transaction.')}</strong>{' '}
                 {t(
-                  'Without it Maya cannot tell what to do and refunds the deposit minus fees. A wallet that cannot add OP_RETURN data will not work.'
+                  'Without it {provider} cannot tell what to do and refunds the deposit minus fees. A wallet that cannot add OP_RETURN data will not work.',
+                  { provider }
                 )}
               </li>
               <li>
@@ -234,7 +238,7 @@ export const DepositPanel: React.FC<DepositPanelProps> = (props) => {
               <span className="br-side__label">{t('After sending: your transaction ID')}</span>
               <input
                 className="br-input br-mono"
-                placeholder={t('txid, to follow the swap on MayaScan')}
+                placeholder={t('txid, to follow the swap on {tracker}', { tracker: cfg.tracker.name })}
                 spellCheck={false}
                 value={txid}
                 onChange={(e) => setTxid(e.target.value)}
@@ -249,9 +253,9 @@ export const DepositPanel: React.FC<DepositPanelProps> = (props) => {
               type="button"
               className="br-btn br-btn--ghost"
               disabled={!trackable}
-              onClick={() => openExternal(`https://www.mayascan.org/tx/${txid.trim().toUpperCase()}`)}
+              onClick={() => openExternal(cfg.tracker.tx(txid.trim().toUpperCase()))}
             >
-              {t('Track on MayaScan')} ↗
+              {t('Track on {tracker}', { tracker: cfg.tracker.name })} ↗
             </button>
           )}
           {(expired || error) && (

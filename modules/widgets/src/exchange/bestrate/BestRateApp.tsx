@@ -21,7 +21,7 @@ import { Logo, TokenSelect } from './TokenSelect';
 import { RouteCard, RouteSection } from './RouteCard';
 import { ExecutePanel } from './ExecutePanel';
 import { DepositPanel } from './DepositPanel';
-import { isMayaDepositChain } from './providers/maya';
+import { isDepositChain, thorlikeConfig } from './providers/thorlike';
 import { HistoryPanel } from './HistoryPanel';
 import { resumePending } from './history';
 import { executionBlocker } from './execute/plan';
@@ -60,7 +60,7 @@ function openSite(url: string): void {
 /** Chains the wallet connection can send on. */
 const WALLET_CHAINS = wagmiConfig.chains.map((c) => c.id as number);
 /** Services whose routes get a Swap button (others only link to their site). */
-const SIGNABLE: ProviderId[] = ['relay', 'socket', 'kyberswap', 'debridge', 'lifi'];
+const SIGNABLE: ProviderId[] = ['relay', 'socket', 'kyberswap', 'debridge', 'lifi', 'maya', 'thorchain'];
 
 interface Pick {
   chainId: number;
@@ -352,8 +352,11 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
       !route.estimateOnly &&
       request.fromChain.type === 'EVM' &&
       WALLET_CHAINS.includes(request.fromChain.id);
-    // Maya from Bitcoin, Dash or Zcash: the user sends to the vault by hand.
-    const depositHere = (route: RankedRoute) => route.provider === 'maya' && isMayaDepositChain(request.fromChain);
+    // Maya or THORChain from Bitcoin, Dash or Zcash: the user sends to the vault by hand.
+    const depositHere = (route: RankedRoute) => {
+      const cfg = thorlikeConfig(route.provider);
+      return !!cfg && isDepositChain(cfg, request.fromChain);
+    };
     return {
       here: ranking.ranked.filter(signableHere),
       deposit: ranking.ranked.filter(depositHere),
@@ -707,7 +710,7 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
               {sections.deposit.length > 0 && (
                 <RouteSection
                   title={t('Send from your own wallet')}
-                  hint={t("no wallet connection: send to Maya's vault with the memo shown")}
+                  hint={t("no wallet connection: send to the network's vault with the memo shown")}
                   empty=""
                   routes={sections.deposit}
                   expanded={expanded.deposit}

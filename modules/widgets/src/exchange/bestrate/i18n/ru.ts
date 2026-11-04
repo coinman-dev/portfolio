@@ -59,7 +59,6 @@ export const RU: Record<string, string> = {
   'This wallet is view only — reconnect it (Exchange → Wallet Connect) to swap':
     'Кошелёк только для просмотра — переподключите его (Exchange → Wallet Connect), чтобы обменять',
   'Send from your own wallet': 'Отправка из своего кошелька',
-  "no wallet connection: send to Maya's vault with the memo shown": 'без подключения кошелька: отправьте в хранилище Maya с указанным memo',
   'enter the {chain} receiver address': 'введите адрес получателя в сети {chain}',
   "On the service's site": 'У самого сервиса',
   'opens the service with the pair filled in — in its tab here or on its own site':
@@ -136,15 +135,8 @@ export const RU: Record<string, string> = {
   'Outbound network fee': 'Комиссия сети за отправку',
   'CoW batch auction': 'пакетный аукцион CoW',
   'NEAR Intents solvers': 'солверы NEAR Intents',
-  'Maya Protocol · stream': 'Maya Protocol · поток',
-  'Maya pools, {count} sub-swaps': 'пулы Maya, {count} частей',
-  'Maya pools': 'пулы Maya',
-  'Streams {count} sub-swaps over about {minutes} min; any part that cannot fill within your slippage is refunded.':
-    'Поток из {count} частей примерно за {minutes} мин; часть, которая не уложится в ваше проскальзывание, вернётся.',
-  "Maya's vaults hold only {held} {symbol} on {chain}, less than this payout: it completes only as arbitrage refills them, and whatever does not fill is refunded. Split it into smaller swaps over time.":
-    'В хранилищах Maya всего {held} {symbol} в сети {chain} — меньше этой выплаты: обмен пройдёт только по мере пополнения арбитражем, а неисполненное вернётся. Разбейте сумму на несколько обменов с перерывами.',
-  "Large for Maya's pools ({pct}% of a pool's depth): the swap relies on arbitrage between sub-swaps, so parts may be refunded. Smaller swaps are safer.":
-    'Много для пулов Maya ({pct}% глубины пула): обмен зависит от арбитража между частями, поэтому часть может вернуться. Меньшие обмены надёжнее.',
+  'Streams {parts} over about {minutes} min; any part that cannot fill within your slippage is refunded.':
+    'Поток: {parts} примерно за {minutes} мин; часть, которая не уложится в ваше проскальзывание, вернётся.',
 
   // ---------- why a service has no route ----------
   'needs a {chain} sender address': 'нужен адрес отправителя в сети {chain}',
@@ -276,26 +268,19 @@ export const RU: Record<string, string> = {
   'minimum received is above the quote': 'минимум к получению выше котировки',
   'no minimum amount to receive': 'нет минимальной суммы к получению',
 
-  // ---------- Maya deposit ----------
+  // ---------- deposit by hand ----------
   '<hex from step {n}>': '<hex из шага {n}>',
   copied: 'скопировано',
   copy: 'копировать',
-  'Deposit to Maya': 'Депозит в Maya',
-  "Getting a fresh quote and Maya's current vault…": 'Получаю свежую котировку и текущее хранилище Maya…',
   'Send exactly': 'Отправьте ровно',
   '{usd} from your own {chain} wallet; the network fee is paid on top': '{usd} из своего кошелька {chain}; комиссия сети оплачивается сверху',
-  "To Maya's vault": 'В хранилище Maya',
-  '✓ the vault Maya publishes right now, not halted': '✓ хранилище, которое Maya публикует сейчас, не остановлено',
   'With the memo (OP_RETURN)': 'С memo (OP_RETURN)',
   'at least {amount} on {chain}, to': 'не меньше {amount} в сети {chain}, на адрес',
   Timing: 'Сроки',
   'Quote expired': 'Котировка устарела',
   'Send within {time}': 'Отправьте в течение {time}',
   'then about {time} to arrive{parts}; fee rate at least {rate} {units}': 'затем около {time} до поступления{parts}; ставка комиссии не ниже {rate} {units}',
-  '{count} sub-swaps': '{count} частей',
   'The memo must be in the transaction.': 'Memo должно быть в транзакции.',
-  'Without it Maya cannot tell what to do and refunds the deposit minus fees. A wallet that cannot add OP_RETURN data will not work.':
-    'Без него Maya не поймёт, что делать, и вернёт депозит за вычетом комиссий. Кошелёк, который не умеет добавлять данные OP_RETURN, не подойдёт.',
   'Send from your own wallet, not from an exchange.': 'Отправляйте со своего кошелька, а не с биржи.',
   'Refunds — when the price moves past your {pct}% slippage or the memo is wrong — go back to the sending address.':
     'Возвраты — если цена уйдёт дальше вашего проскальзывания {pct}% или memo неверно — идут на адрес отправителя.',
@@ -307,16 +292,43 @@ export const RU: Record<string, string> = {
   'Unlock the wallet first if it is encrypted (walletpassphrase). In step 4 check that one output pays {amount} {symbol} to {vault} and one is nulldata (OP_RETURN) with the memo hex; only then send.':
     'Если кошелёк зашифрован, сначала разблокируйте его (walletpassphrase). На шаге 4 проверьте, что один выход платит {amount} {symbol} на {vault}, а другой — nulldata (OP_RETURN) с hex memo; только потом отправляйте.',
   'After sending: your transaction ID': 'После отправки: ID вашей транзакции',
-  'txid, to follow the swap on MayaScan': 'txid — чтобы следить за обменом на MayaScan',
-  'Track on MayaScan': 'Отследить на MayaScan',
   'New quote': 'Новая котировка',
-  '{chain} is not a Maya deposit chain': 'сеть {chain} не подходит для депозита в Maya',
   'Enter your {chain} receiver address first': 'Сначала введите адрес получателя в сети {chain}',
-  'Maya publishes no {chain} vault right now': 'Maya сейчас не публикует хранилище для сети {chain}',
-  'Maya has halted {chain} — do not send anything now': 'Maya остановила сеть {chain} — сейчас ничего не отправляйте',
-  'The quote names a different vault than Maya publishes — try again in a minute':
-    'В котировке другое хранилище, чем публикует Maya — попробуйте через минуту',
-  "The amount is below Maya's minimum for this swap ({amount} {symbol})": 'Сумма меньше минимума Maya для этого обмена ({amount} {symbol})',
-  'Unexpected memo from Maya ({memo}) — not sending': 'Неожиданное memo от Maya ({memo}) — не отправляю',
   'The memo is {bytes} bytes, more than the chain can carry': 'Memo занимает {bytes} байт — больше, чем вмещает сеть',
+
+  // ---------- Maya Protocol / THORChain ----------
+  stream: 'поток',
+  '{provider} pools, {parts}': 'пулы {provider}, {parts}',
+  '{provider} pools': 'пулы {provider}',
+  'One swap at once: large amounts lose more to pool slippage than a stream.':
+    'Один обмен сразу: крупные суммы теряют на проскальзывании в пуле больше, чем при потоке.',
+  "{provider}'s vaults hold only {held} {symbol} on {chain}, less than this payout: it completes only as arbitrage refills them, and whatever does not fill is refunded. Split it into smaller swaps over time.":
+    'В хранилищах {provider} всего {held} {symbol} в сети {chain} — меньше этой выплаты: обмен пройдёт только по мере пополнения арбитражем, а неисполненное вернётся. Разбейте сумму на несколько обменов с перерывами.',
+  "Large for {provider}'s pools ({pct}% of a pool's depth): the swap relies on arbitrage between sub-swaps, so parts may be refunded. Smaller swaps are safer.":
+    'Много для пулов {provider} ({pct}% глубины пула): обмен зависит от арбитража между частями, поэтому часть может вернуться. Меньшие обмены надёжнее.',
+  "no wallet connection: send to the network's vault with the memo shown": 'без подключения кошелька: отправьте в хранилище сети с указанным memo',
+  '{chain} is not a {provider} deposit chain': 'сеть {chain} не подходит для депозита в {provider}',
+  '{provider} publishes no {chain} vault right now': '{provider} сейчас не публикует хранилище для сети {chain}',
+  '{provider} has halted {chain} — do not send anything now': '{provider} остановил сеть {chain} — сейчас ничего не отправляйте',
+  '{provider} has halted {chain}, where the payout goes — try later': '{provider} остановил сеть {chain}, куда идёт выплата — попробуйте позже',
+  'The quote names a different vault than {provider} publishes — try again in a minute':
+    'В котировке другое хранилище, чем публикует {provider} — попробуйте через минуту',
+  "The amount is below {provider}'s minimum for this swap ({amount} {symbol})": 'Сумма меньше минимума {provider} для этого обмена ({amount} {symbol})',
+  'Unexpected memo from {provider} ({memo}) — not sending': 'Неожиданное memo от {provider} ({memo}) — не отправляю',
+  '{provider} has no router listed here for {chain}': 'для сети {chain} у {provider} нет роутера в нашем списке',
+  '{provider} named router {address}, not the one on its published list — not sending':
+    '{provider} указал роутер {address}, которого нет в опубликованном списке — не отправляю',
+  'the quote is about to expire — try again': 'котировка вот-вот истечёт — попробуйте ещё раз',
+  'part was refunded': 'часть вернулась',
+  'waiting for the network to see the deposit': 'жду, пока сеть увидит депозит',
+  swapping: 'идёт обмен',
+  'sending the payout': 'отправляется выплата',
+  'Deposit to {provider}': 'Депозит в {provider}',
+  "Getting a fresh quote and {provider}'s current vault…": 'Получаю свежую котировку и текущее хранилище {provider}…',
+  "To {provider}'s vault": 'В хранилище {provider}',
+  '✓ the vault {provider} publishes right now, not halted': '✓ хранилище, которое {provider} публикует сейчас, не остановлено',
+  'Without it {provider} cannot tell what to do and refunds the deposit minus fees. A wallet that cannot add OP_RETURN data will not work.':
+    'Без него {provider} не поймёт, что делать, и вернёт депозит за вычетом комиссий. Кошелёк, который не умеет добавлять данные OP_RETURN, не подойдёт.',
+  'txid, to follow the swap on {tracker}': 'txid — чтобы следить за обменом на {tracker}',
+  'Track on {tracker}': 'Отследить на {tracker}',
 };

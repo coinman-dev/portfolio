@@ -1,5 +1,6 @@
 import { ProviderId } from '../types';
 import { lifiDiamond } from '../../lifiGuard';
+import { thorlikeConfig } from '../providers/thorlike';
 
 /**
  * The only contracts a Best Rate transaction may call, or approve, per
@@ -48,6 +49,12 @@ export function allowedContracts(provider: ProviderId, chainId: number): Set<str
     case 'lifi': {
       const diamond = lifiDiamond(chainId);
       return new Set(diamond ? [diamond] : []);
+    }
+    // Maya / THORChain: the router the network publishes for the chain.
+    case 'maya':
+    case 'thorchain': {
+      const router = thorlikeConfig(provider)?.routers[chainId];
+      return new Set(router ? [router] : []);
     }
     default:
       return new Set();

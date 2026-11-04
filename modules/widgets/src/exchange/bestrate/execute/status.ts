@@ -1,4 +1,5 @@
 import { StatusRef } from './plan';
+import { thorlikeConfig, thorlikeTxStatus } from '../providers/thorlike';
 import { tr } from '../i18n';
 
 export type DeliveryState = 'pending' | 'done' | 'refunded' | 'failed';
@@ -58,6 +59,10 @@ async function checkOnce(ref: StatusRef, hash: string, signal: AbortSignal): Pro
       }
       if (body.status === 'FAILED' || body.status === 'INVALID') return { state: 'failed', detail: body.substatusMessage };
       return { state: 'pending', detail: body.substatus };
+    }
+    case 'thorlike': {
+      const cfg = thorlikeConfig(ref.provider);
+      return cfg ? thorlikeTxStatus(cfg, hash, signal) : { state: 'pending' };
     }
   }
 }

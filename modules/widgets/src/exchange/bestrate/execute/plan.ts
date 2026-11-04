@@ -1,4 +1,4 @@
-import { decodeFunctionData, parseAbi } from 'viem';
+import { decodeFunctionData, encodeFunctionData, parseAbi } from 'viem';
 import { NoRoute, ProviderId, QuoteRequest } from '../types';
 import { RankedRoute } from '../search';
 import { getJson, isNativeToken } from '../providers/common';
@@ -8,6 +8,7 @@ import { socketQuoteUrl } from '../providers/socket';
 import { kyberBuildUrl, kyberRoutesUrl } from '../providers/kyberswap';
 import { debridgeChainId, debridgeCreateTxUrl } from '../providers/debridge';
 import { lifiRoutesBody, lifiToolNames } from '../providers/lifi';
+import { ThorLikeId, thorlikeConfig, thorlikeEvmSend } from '../providers/thorlike';
 import { TrVars, tr } from '../i18n';
 
 /** What gets tracked after the source transaction lands. */
@@ -16,7 +17,8 @@ export type StatusRef =
   | { kind: 'relay'; requestId: string }
   | { kind: 'debridge'; orderId: string }
   | { kind: 'socket'; quoteId: string }
-  | { kind: 'lifi'; bridge: string; fromChain: number; toChain: number };
+  | { kind: 'lifi'; bridge: string; fromChain: number; toChain: number }
+  | { kind: 'thorlike'; provider: ThorLikeId };
 
 type Hex = `0x${string}`;
 
@@ -46,7 +48,7 @@ export interface ExecPlan {
 const MAX_EXTRA_FEE_USD = 25;
 
 /** Services whose routes can be signed here; the rest open their site. */
-const EXECUTABLE: ProviderId[] = ['relay', 'socket', 'kyberswap', 'debridge', 'lifi'];
+const EXECUTABLE: ProviderId[] = ['relay', 'socket', 'kyberswap', 'debridge', 'lifi', 'maya', 'thorchain'];
 
 export function executionBlocker(
   route: RankedRoute,
@@ -68,6 +70,10 @@ export function executionBlocker(
 }
 
 const APPROVE_ABI = parseAbi(['function approve(address spender, uint256 amount)']);
+const THORLIKE_ROUTER_ABI = parseAbi([
+  'function depositWithExpiry(address vault, address asset, uint256 amount, string memo, uint256 expiration) payable',
+]);
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
 const ORDER_CREATION =
   '(address giveTokenAddress,uint256 giveAmount,bytes takeTokenAddress,uint256 takeAmount,uint256 takeChainId,bytes receiverDst,address givePatchAuthoritySrc,bytes orderAuthorityAddressDst,bytes allowedTakerDst,bytes externalCall,bytes allowedCancelBeneficiarySrc)';
@@ -274,6 +280,33 @@ async function lifiPlan(route: RankedRoute, req: QuoteRequest, signal: AbortSign
   };
 }
 
+/**
+ * Maya / THORChain from an EVM wallet: one call to the network's router, which
+ * moves the input to the vault with the memo. The payout always comes later
+ * in a transaction of its own, so even ETH → USDT is tracked as a transfer.
+ */
+async function thorlikePlan(route: RankedRoute, req: QuoteRequest, signal: AbortSignal): Promise<ExecPlan> {
+  const cfg = thorlikeConfig(route.provider);
+  if (!cfg) fail('{provider} cannot be executed here', { provider: route.providerName });
+  const send = await thorlikeEvmSend(cfg, req, route.thorlike?.streaming ?? false, signal);
+  const native = isNativeToken(req.fromChain, req.fromToken);
+  const data = encodeFunctionData({
+    abi: THORLIKE_ROUTER_ABI,
+    functionName: 'depositWithExpiry',
+    args: [send.vault, (native ? ZERO_ADDRESS : req.fromToken.address) as Hex, req.amount, send.memo, send.expiry],
+  });
+  return {
+    ...baseFields(route, req),
+    sameChain: false,
+    spender: native ? undefined : send.router,
+    tx: { to: send.router, data, value: native ? req.amount : 0n },
+    extraValue: 0n,
+    toAmount: send.expectedOut,
+    toAmountMin: send.minOut,
+    status: { kind: 'thorlike', provider: cfg.id },
+  };
+}
+
 export async function buildPlan(route: RankedRoute, req: QuoteRequest, signal: AbortSignal): Promise<ExecPlan> {
   if (!req.fromAddress || !req.toAddress) fail('sender and receiver addresses are required');
   const builders: Partial<Record<ProviderId, typeof relayPlan>> = {
@@ -282,6 +315,8 @@ export async function buildPlan(route: RankedRoute, req: QuoteRequest, signal: A
     kyberswap: kyberPlan,
     debridge: debridgePlan,
     lifi: lifiPlan,
+    maya: thorlikePlan,
+    thorchain: thorlikePlan,
   };
   const build = builders[route.provider];
   if (!build) fail('{provider} cannot be executed here', { provider: route.providerName });
