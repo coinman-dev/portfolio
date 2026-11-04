@@ -60,7 +60,7 @@ function openSite(url: string): void {
 /** Chains the wallet connection can send on. */
 const WALLET_CHAINS = wagmiConfig.chains.map((c) => c.id as number);
 /** Services whose routes get a Swap button (others only link to their site). */
-const SIGNABLE: ProviderId[] = ['relay', 'socket', 'kyberswap', 'debridge', 'lifi', 'maya', 'thorchain'];
+const SIGNABLE: ProviderId[] = ['relay', 'socket', 'across', 'kyberswap', 'velora', 'debridge', 'lifi', 'maya', 'thorchain'];
 
 interface Pick {
   chainId: number;

@@ -20,6 +20,7 @@ const STEP_LABELS: Record<string, string> = { reset: 'reset', approve: 'approve'
 function trackerUrl(record: SwapRecord): string | null {
   const swap = record.txs.find((tx) => tx.step === 'swap');
   if (record.statusRef.kind === 'lifi' && swap) return `https://scan.li.fi/tx/${swap.hash}`;
+  if (record.statusRef.kind === 'across' && swap) return `https://app.across.to/transactions`;
   if (record.statusRef.kind === 'thorlike' && swap) {
     const cfg = thorlikeConfig(record.statusRef.provider);
     if (cfg) return cfg.tracker.tx(swap.hash.replace(/^0x/i, '').toUpperCase());
@@ -33,7 +34,7 @@ function trackerUrl(record: SwapRecord): string | null {
 function HistoryRow({ record }: { record: SwapRecord }) {
   const t = useT();
   const tracker = trackerUrl(record);
-  const toOther = record.receiver.toLowerCase() !== record.user.toLowerCase();
+  const toOther = !!record.user && record.receiver.toLowerCase() !== record.user.toLowerCase();
   return (
     <div className="br-hist__row">
       <div className="br-hist__top">

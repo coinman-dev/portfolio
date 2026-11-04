@@ -8,11 +8,15 @@ import { cowProvider } from './providers/cow';
 import { debridgeProvider } from './providers/debridge';
 import { nearProvider } from './providers/near';
 import { mayaProvider, thorchainProvider } from './providers/thorlike';
+import { acrossProvider } from './providers/across';
+import { veloraProvider } from './providers/velora';
 
 export const PROVIDERS: Provider[] = [
   socketProvider,
   relayProvider,
+  acrossProvider,
   kyberswapProvider,
+  veloraProvider,
   cowProvider,
   debridgeProvider,
   nearProvider,
@@ -31,6 +35,8 @@ export const PROVIDER_FEES: Record<ProviderId, string> = {
   near: '0.25% without a key; 0.01% stables / 0.20% others with one',
   maya: 'none; pool and outbound fees are in the price',
   thorchain: 'none; pool and outbound fees are in the price',
+  across: "none; the relayer's capital fee is about 0.01%",
+  velora: 'none, same chain only',
   lifi: '0.25% (jumper.xyz: none)',
   jumper: 'none — site only',
 };
@@ -162,10 +168,36 @@ export interface OtherSite {
   note: string;
 }
 
+/** DefiLlama's chain names for LlamaSwap links. */
+const LLAMA_CHAINS: Record<number, string> = {
+  1: 'ethereum',
+  10: 'optimism',
+  56: 'bsc',
+  100: 'gnosis',
+  137: 'polygon',
+  146: 'sonic',
+  324: 'zksync',
+  8453: 'base',
+  42161: 'arbitrum',
+  43114: 'avax',
+  59144: 'linea',
+  81457: 'blast',
+  534352: 'scroll',
+};
+
+/** LlamaSwap compares the big aggregators within one EVM chain and adds no fee. */
+function llamaSwap(req: QuoteRequest): OtherSite[] {
+  const chain = LLAMA_CHAINS[req.fromChain.id];
+  if (!chain || req.fromChain.id !== req.toChain.id) return [];
+  const params = new URLSearchParams({ chain, from: req.fromToken.address, to: req.toToken.address });
+  return [{ name: 'LlamaSwap', url: `https://swap.defillama.com/?${params}`, note: 'meta-aggregator, no fee of its own' }];
+}
+
 /** Sites worth a look that the comparison cannot quote directly. */
 export function otherSites(req: QuoteRequest): OtherSite[] {
   return [
     { name: 'Rango', url: 'https://app.rango.exchange/', note: 'no fee on its own site' },
     { name: 'Jumper', url: jumperUrl(req), note: 'LI.FI without the 0.25% fee' },
+    ...llamaSwap(req),
   ];
 }

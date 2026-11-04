@@ -7,24 +7,33 @@ import { amountUSD, humanAmount } from './providers/common';
 import { ThorLikeDeposit, thorlikeConfig, thorlikeDeposit } from './providers/thorlike';
 import { formatAmount, formatDuration, formatUSD } from './format';
 import { subSwaps, tr, useT } from './i18n';
+import { recordDeposit, saveRecord } from './history';
+import { Delivery, watchDelivery } from './execute/status';
 
 const LARGE_USD = 50_000;
 
-/** Chains whose Core wallet console can build the OP_RETURN transaction. */
-const CORE_WALLETS: Record<string, string> = { dash: 'Dash Core', btc: 'Bitcoin Core' };
+/** Chains whose Core wallet console can build the OP_RETURN transaction, and its signing command. */
+const CORE_WALLETS: Record<string, { name: string; sign: string }> = {
+  dash: { name: 'Dash Core', sign: 'signrawtransactionwithwallet' },
+  btc: { name: 'Bitcoin Core', sign: 'signrawtransactionwithwallet' },
+  ltc: { name: 'Litecoin Core', sign: 'signrawtransactionwithwallet' },
+  bch: { name: 'Bitcoin Cash Node', sign: 'signrawtransactionwithwallet' },
+  // Dogecoin Core 1.14 predates the rename.
+  doge: { name: 'Dogecoin Core', sign: 'signrawtransaction' },
+};
 
 /**
  * Console commands for a Core wallet: a raw transaction paying the vault with
  * the memo as an OP_RETURN output, funded at the vault's fee rate, signed,
  * checked and sent. Each step takes the hex printed by the one before.
  */
-function coreCommands(deposit: ThorLikeDeposit, amount: string): string[] {
+function coreCommands(deposit: ThorLikeDeposit, amount: string, sign: string): string[] {
   // sats/byte → coins per kB, the unit Core's feeRate option takes.
   const feeRate = ((Math.max(deposit.gasRate, 1) * 1000) / 1e8).toFixed(8);
   return [
     `createrawtransaction '[]' '{"${deposit.vault}":${amount},"data":"${deposit.memoHex}"}'`,
     `fundrawtransaction ${tr('<hex from step {n}>', { n: 1 })} '{"feeRate":${feeRate}}'`,
-    `signrawtransactionwithwallet ${tr('<hex from step {n}>', { n: 2 })}`,
+    `${sign} ${tr('<hex from step {n}>', { n: 2 })}`,
     `decoderawtransaction ${tr('<hex from step {n}>', { n: 3 })}`,
     `sendrawtransaction ${tr('<hex from step {n}>', { n: 3 })}`,
   ];
@@ -72,7 +81,34 @@ export const DepositPanel: React.FC<DepositPanelProps> = (props) => {
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(() => Date.now());
   const [txid, setTxid] = useState('');
+  /** Set once the user says the deposit went out: the swap is followed from then on. */
+  const [following, setFollowing] = useState(false);
+  const [delivery, setDelivery] = useState<Delivery | null>(null);
   const abort = useRef<AbortController | null>(null);
+  const watch = useRef(new AbortController());
+
+  useEffect(() => () => watch.current.abort(), []);
+
+  /** Writes the deposit into the history and follows it; closing the window leaves that to the history. */
+  const follow = (hash: string) => {
+    if (!deposit) return;
+    const statusRef = { kind: 'thorlike' as const, provider: cfg.id };
+    const record = recordDeposit({
+      provider: route.provider,
+      providerName: route.providerName,
+      via: route.via,
+      req,
+      expected: deposit.expectedOut,
+      min: deposit.minOut,
+      hash,
+      statusRef,
+    });
+    setFollowing(true);
+    diag('info', 'BESTRATE', `${cfg.name} deposit sent by hand: ${hash}`);
+    void watchDelivery(statusRef, hash, setDelivery, watch.current.signal).then((result) => {
+      if (result.state !== 'pending') void saveRecord({ ...record, status: result.state, detail: result.detail });
+    });
+  };
 
   const load = useCallback(async () => {
     abort.current?.abort();
@@ -150,7 +186,7 @@ export const DepositPanel: React.FC<DepositPanelProps> = (props) => {
                 <strong className="br-mono">
                   {deposit.vault} <Copy value={deposit.vault} />
                 </strong>
-                <span className="br-ok">{t('✓ the vault {provider} publishes right now, not halted', { provider })}</span>
+                <span className="br-ok">{t('✓ an active {provider} vault, the chain is not halted', { provider })}</span>
               </div>
               <div>
                 <span className="br-muted">{t('With the memo (OP_RETURN)')}</span>
@@ -191,7 +227,12 @@ export const DepositPanel: React.FC<DepositPanelProps> = (props) => {
               </div>
             </div>
 
-            {deposit.capacityWarning && <div className="br-exec__sim is-bad">{deposit.capacityWarning}</div>}
+            {deposit.capacityWarning && (
+              <div className="br-exec__sim is-bad">
+                <strong>{t('Thin liquidity')} ({t('available: {amount}', { amount: deposit.capacityWarning.available })})</strong>.{' '}
+                {deposit.capacityWarning.text}
+              </div>
+            )}
 
             <ul className="br-deposit__rules">
               <li>
@@ -217,9 +258,9 @@ export const DepositPanel: React.FC<DepositPanelProps> = (props) => {
 
             {core && !expired && (
               <details className="br-deposit__core">
-                <summary>{t('Commands for the {wallet} console (Window → Console)', { wallet: core })}</summary>
+                <summary>{t('Commands for the {wallet} console (Window → Console)', { wallet: core.name })}</summary>
                 <ol>
-                  {coreCommands(deposit, amount).map((command, i) => (
+                  {coreCommands(deposit, amount, core.sign).map((command, i) => (
                     <li key={i}>
                       <code className="br-mono">{command}</code> <Copy value={command} />
                     </li>
@@ -241,9 +282,22 @@ export const DepositPanel: React.FC<DepositPanelProps> = (props) => {
                 placeholder={t('txid, to follow the swap on {tracker}', { tracker: cfg.tracker.name })}
                 spellCheck={false}
                 value={txid}
+                disabled={following}
                 onChange={(e) => setTxid(e.target.value)}
               />
             </label>
+            {following && (
+              <div className={`br-exec__sim${delivery?.state === 'done' ? ' br-ok' : delivery?.state === 'refunded' ? ' br-warn' : ''}`}>
+                {delivery?.state === 'done'
+                  ? t('Done — the funds have arrived.')
+                  : delivery?.state === 'refunded'
+                    ? t('{provider} refunded the deposit to the sending address.', { provider })
+                    : t('Following the swap{detail}… You can close this window; it stays in History.', {
+                        detail: delivery?.detail ? ` (${delivery.detail})` : '',
+                      })}{' '}
+                {delivery?.detail && delivery.state === 'done' ? `(${delivery.detail})` : ''}
+              </div>
+            )}
           </>
         )}
 
@@ -258,7 +312,12 @@ export const DepositPanel: React.FC<DepositPanelProps> = (props) => {
               {t('Track on {tracker}', { tracker: cfg.tracker.name })} ↗
             </button>
           )}
-          {(expired || error) && (
+          {deposit && trackable && !following && (
+            <button type="button" className="br-btn br-btn--primary" onClick={() => follow(txid.trim())}>
+              {t('I sent it — follow the swap')}
+            </button>
+          )}
+          {(expired || error) && !following && (
             <button type="button" className="br-btn br-btn--primary" onClick={() => void load()}>
               {t('New quote')}
             </button>

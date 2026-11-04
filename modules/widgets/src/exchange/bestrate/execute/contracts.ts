@@ -1,6 +1,8 @@
 import { ProviderId } from '../types';
 import { lifiDiamond } from '../../lifiGuard';
 import { thorlikeConfig } from '../providers/thorlike';
+import { ACROSS_SPOKE_POOLS, acrossPeriphery } from '../providers/across';
+import { VELORA_AUGUSTUS } from '../providers/velora';
 
 /**
  * The only contracts a Best Rate transaction may call, or approve, per
@@ -50,6 +52,13 @@ export function allowedContracts(provider: ProviderId, chainId: number): Set<str
       const diamond = lifiDiamond(chainId);
       return new Set(diamond ? [diamond] : []);
     }
+    // Across: the chain's SpokePool (tokens) and SpokePoolPeriphery (native ETH).
+    case 'across': {
+      const pool = ACROSS_SPOKE_POOLS[chainId];
+      return new Set(pool ? [pool, acrossPeriphery(chainId)] : []);
+    }
+    case 'velora':
+      return new Set([VELORA_AUGUSTUS]);
     // Maya / THORChain: the router the network publishes for the chain.
     case 'maya':
     case 'thorchain': {

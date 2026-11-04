@@ -1,7 +1,7 @@
 import { BrChain, BrToken, FeeLine, NoRoute, Provider, QuoteRequest, Reliability, RouteQuote, SiteLink } from '../types';
 import { amountUSD, isNativeToken, receiverOf, toUnits } from './common';
-import { DASH_CHAIN_ID } from '../catalog';
-import { subSwaps, tr } from '../i18n';
+import { BCH_CHAIN_ID, DASH_CHAIN_ID, DOGE_CHAIN_ID, LTC_CHAIN_ID } from '../catalog';
+import { intlLocale, subSwaps, tr } from '../i18n';
 
 /**
  * Maya Protocol and THORChain: native-asset pools (no bridges, no wrapped
@@ -35,7 +35,7 @@ export interface ThorLikeConfig {
 export const MAYA: ThorLikeConfig = {
   id: 'maya',
   name: 'Maya Protocol',
-  nodes: ['https://mayanode.mayachain.info/mayachain'],
+  nodes: ['https://mayanode.mayachain.info/mayachain', 'https://api-maya.liquify.com/mayachain'],
   chainIds: { ETH: 1, ARB: 42161, BTC: 20000000000001, ZEC: 20000000000005, DASH: DASH_CHAIN_ID },
   routers: {
     1: '0xe3985e6b61b814f7cdb188766562ba71b446b46d',
@@ -60,6 +60,9 @@ export const THORCHAIN: ThorLikeConfig = {
     AVAX: 43114,
     BTC: 20000000000001,
     ZEC: 20000000000005,
+    LTC: LTC_CHAIN_ID,
+    DOGE: DOGE_CHAIN_ID,
+    BCH: BCH_CHAIN_ID,
     SOL: 1151111081099710,
     TRON: 728126428,
   },
@@ -160,31 +163,51 @@ async function vaultHoldings(cfg: ThorLikeConfig, asset: string, signal: AbortSi
   return held;
 }
 
-const units = (amount: bigint) => toUnits(amount, 8).toLocaleString('en-US', { maximumFractionDigits: 2 });
+const units = (amount: bigint) => toUnits(amount, 8).toLocaleString(intlLocale(), { maximumFractionDigits: 2 });
+
+/** Why a stream may fill only partly, and how much the tight side holds ("193,718 USDT"). */
+export interface Capacity {
+  text: string;
+  available: string;
+}
 
 /**
  * Whether the pools and vaults can carry this size. A quote assumes arbitrage
  * refills the pools between sub-swaps; when it does not, the parts that miss
  * the limit come back as a refund — no loss, but only part of the swap done.
  */
-async function capacityWarning(cfg: ThorLikeConfig, req: QuoteRequest, q: any, signal: AbortSignal) {
+async function capacityWarning(cfg: ThorLikeConfig, req: QuoteRequest, q: any, signal: AbortSignal): Promise<Capacity | undefined> {
   const [list, held] = await Promise.all([availablePools(cfg, signal), vaultHoldings(cfg, q.toAsset, signal)]);
   const amountIn = toUnits1e8(req.amount, req.fromToken.decimals);
   const amountOut = BigInt(String(q.expected_amount_out));
   if (held > 0n && amountOut > held) {
-    return tr(
-      "{provider}'s vaults hold only {held} {symbol} on {chain}, less than this payout: it completes only as arbitrage refills them, and whatever does not fill is refunded. Split it into smaller swaps over time.",
-      { provider: cfg.name, held: units(held), symbol: req.toToken.symbol, chain: req.toChain.name }
-    );
+    const available = `${units(held)} ${req.toToken.symbol}`;
+    return {
+      available,
+      text: tr(
+        "{provider}'s vaults hold only {held} {symbol} on {chain}, less than this payout: it completes only as arbitrage refills them, and whatever does not fill is refunded. Split it into smaller swaps over time.",
+        { provider: cfg.name, held: units(held), symbol: req.toToken.symbol, chain: req.toChain.name }
+      ),
+    };
   }
   const depth = (asset: string) => list.find((p) => p.asset === asset)?.depth ?? 0n;
   const share = (amount: bigint, pool: bigint) => (pool > 0n ? Number((amount * 1000n) / pool) / 1000 : 0);
-  const worst = Math.max(share(amountIn, depth(q.fromAsset)), share(amountOut, depth(q.toAsset)));
+  const inShare = share(amountIn, depth(q.fromAsset));
+  const outShare = share(amountOut, depth(q.toAsset));
+  const worst = Math.max(inShare, outShare);
   if (worst > DEEP_SHARE) {
-    return tr(
-      "Large for {provider}'s pools ({pct}% of a pool's depth): the swap relies on arbitrage between sub-swaps, so parts may be refunded. Smaller swaps are safer.",
-      { provider: cfg.name, pct: Math.round(worst * 100) }
-    );
+    // The pool that limits the swap, in its own coin.
+    const available =
+      inShare >= outShare
+        ? `${units(depth(q.fromAsset))} ${req.fromToken.symbol}`
+        : `${units(depth(q.toAsset))} ${req.toToken.symbol}`;
+    return {
+      available,
+      text: tr(
+        "Large for {provider}'s pools ({pct}% of a pool's depth): the swap relies on arbitrage between sub-swaps, so parts may be refunded. Smaller swaps are safer.",
+        { provider: cfg.name, pct: Math.round(worst * 100) }
+      ),
+    };
   }
   return undefined;
 }
@@ -229,7 +252,7 @@ async function fetchQuote(cfg: ThorLikeConfig, req: QuoteRequest, streaming: boo
   return { ...body, fromAsset, toAsset };
 }
 
-function toRoute(cfg: ThorLikeConfig, req: QuoteRequest, q: any, streaming: boolean, warning?: string): RouteQuote {
+function toRoute(cfg: ThorLikeConfig, req: QuoteRequest, q: any, streaming: boolean, warning?: Capacity): RouteQuote {
   const out = (value: unknown) => from1e8(BigInt(String(value ?? 0)), req.toToken.decimals);
   const toAmount = out(q.expected_amount_out);
   const fees: FeeLine[] = [
@@ -271,7 +294,8 @@ function toRoute(cfg: ThorLikeConfig, req: QuoteRequest, q: any, streaming: bool
         ? undefined
         : 'One swap at once: large amounts lose more to pool slippage than a stream.',
     thorlike: { streaming },
-    capacityWarning: warning,
+    capacityWarning: warning?.text,
+    capacityAvailable: warning?.available,
   };
 }
 
@@ -323,10 +347,27 @@ export const memoHex = (memo: string) =>
 /** A chain is usable when its vault exists and neither it nor its trading is halted. */
 const isOpen = (entry: any) => !!entry && !entry.halted && !entry.chain_trading_paused && !entry.global_trading_paused;
 
+/**
+ * Addresses of the network's active vaults on one chain, read fresh. Several
+ * vaults are active at once and the recommended one changes, so a quote may
+ * name another active vault than inbound_addresses does a moment later.
+ */
+async function activeVaults(cfg: ThorLikeConfig, code: string, signal: AbortSignal): Promise<Set<string>> {
+  const vaults: any[] = await nodeJson(cfg, '/vaults/asgard', signal);
+  const found = new Set<string>();
+  for (const vault of vaults) {
+    if (vault.status !== 'ActiveVault') continue;
+    for (const entry of vault.addresses ?? []) if (entry.chain === code) found.add(String(entry.address).toLowerCase());
+  }
+  return found;
+}
+
 interface CheckedSend {
   q: any;
-  /** The source chain's inbound_addresses entry. */
+  /** The source chain's inbound_addresses entry: halt flags, gas rate, router. */
   vault: any;
+  /** Where to send: the quote's vault, checked to be one of the network's active vaults. */
+  vaultAddress: string;
   memo: string;
   expectedOut: bigint;
   minOut: bigint;
@@ -362,7 +403,8 @@ async function checkedSend(cfg: ThorLikeConfig, req: QuoteRequest, streaming: bo
   if (payout && !isOpen(payout)) {
     throw new Error(tr('{provider} has halted {chain}, where the payout goes — try later', { provider: cfg.name, chain: req.toChain.name }));
   }
-  if (String(vault.address).toLowerCase() !== String(q.inbound_address).toLowerCase()) {
+  const quoted = String(q.inbound_address);
+  if (quoted.toLowerCase() !== String(vault.address).toLowerCase() && !(await activeVaults(cfg, code, signal)).has(quoted.toLowerCase())) {
     throw new Error(tr('The quote names a different vault than {provider} publishes — try again in a minute', { provider: cfg.name }));
   }
 
@@ -398,6 +440,7 @@ async function checkedSend(cfg: ThorLikeConfig, req: QuoteRequest, streaming: bo
   return {
     q,
     vault,
+    vaultAddress: quoted,
     memo,
     expectedOut: from1e8(expected, req.toToken.decimals),
     minOut: from1e8(expandLimit(limit), req.toToken.decimals),
@@ -421,7 +464,7 @@ export interface ThorLikeDeposit {
   durationSec: number;
   streamingParts: number;
   /** Set when the pools or vaults are thin for this size. */
-  capacityWarning?: string;
+  capacityWarning?: Capacity;
 }
 
 /** Instructions for a deposit sent by hand from a UTXO wallet, memo in OP_RETURN. */
@@ -434,9 +477,9 @@ export async function thorlikeDeposit(
   if (!isDepositChain(cfg, req.fromChain)) {
     throw new Error(tr('{chain} is not a {provider} deposit chain', { chain: req.fromChain.name, provider: cfg.name }));
   }
-  const { q, vault, memo, expectedOut, minOut } = await checkedSend(cfg, req, streaming, signal);
+  const { q, vault, vaultAddress, memo, expectedOut, minOut } = await checkedSend(cfg, req, streaming, signal);
   return {
-    vault: vault.address,
+    vault: vaultAddress,
     memo,
     memoHex: memoHex(memo),
     amount: req.amount,
@@ -476,7 +519,7 @@ export async function thorlikeEvmSend(
   if (req.fromChain.type !== 'EVM' || !known) {
     throw new NoRoute(tr('{provider} has no router listed here for {chain}', { provider: cfg.name, chain: req.fromChain.name }));
   }
-  const { q, vault, memo, expectedOut, minOut } = await checkedSend(cfg, req, streaming, signal);
+  const { q, vault, vaultAddress, memo, expectedOut, minOut } = await checkedSend(cfg, req, streaming, signal);
   const quoted = String(q.router ?? '').toLowerCase();
   const published = String(vault.router ?? '').toLowerCase();
   if (quoted !== known || published !== known) {
@@ -489,7 +532,7 @@ export async function thorlikeEvmSend(
   }
   const expiry = BigInt(Number(q.expiry) || 0);
   if (expiry <= BigInt(Math.floor(Date.now() / 1000) + 60)) throw new NoRoute(tr('the quote is about to expire — try again'));
-  return { router: known as `0x${string}`, vault: vault.address as `0x${string}`, memo, expiry, expectedOut, minOut };
+  return { router: known as `0x${string}`, vault: vaultAddress as `0x${string}`, memo, expiry, expectedOut, minOut };
 }
 
 /** Where a deposit stands, from the network's own tx status. */

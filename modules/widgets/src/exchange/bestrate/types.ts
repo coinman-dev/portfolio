@@ -46,7 +46,7 @@ export interface QuoteRequest {
   nearApiKey?: string;
 }
 
-export type ProviderId = 'lifi' | 'jumper' | 'socket' | 'relay' | 'kyberswap' | 'cow' | 'debridge' | 'near' | 'maya' | 'thorchain';
+export type ProviderId = 'lifi' | 'jumper' | 'socket' | 'relay' | 'kyberswap' | 'cow' | 'debridge' | 'near' | 'maya' | 'thorchain' | 'across' | 'velora';
 
 /** 3 — long-running, heavily used; 2 — established but newer or thinner; 1 — unknown. */
 export type Reliability = 1 | 2 | 3;
@@ -92,6 +92,8 @@ export interface RouteQuote {
   thorlike?: { streaming: boolean };
   /** The pools or reserves are thin for this size: it may fill only partly. */
   capacityWarning?: string;
+  /** What the tight pool or vault holds, e.g. "193,718 USDT". */
+  capacityAvailable?: string;
 }
 
 export interface Provider {

@@ -8,24 +8,38 @@ const LIFI_API = 'https://li.quest/v1';
 const CACHE_MS = 10 * 60_000;
 
 /**
- * Dash is not on LI.FI; Maya Protocol and NEAR Intents swap it. Its id is our
- * own, from a range LI.FI leaves unused (its UTXO chains are 20000000000001…).
+ * UTXO coins that are not on LI.FI but that Maya Protocol, THORChain or NEAR
+ * Intents swap. Their ids are our own, from a range LI.FI leaves unused (its
+ * UTXO chains are 20000000000001…); prices come from CoinGecko.
  */
+interface ExtraCoin {
+  chain: BrChain;
+  name: string;
+  coingeckoId: string;
+}
+
+const extraCoin = (id: number, key: string, name: string, symbol: string, logo: string, explorer: string, coingeckoId: string): ExtraCoin => ({
+  chain: { id, key, name, type: 'UTXO', logo, nativeSymbol: symbol, nativeAddress: key, explorer },
+  name,
+  coingeckoId,
+});
+
 export const DASH_CHAIN_ID = 30000000000001;
-const DASH_LOGO = 'https://assets.coingecko.com/coins/images/19/standard/dash-logo.png';
-const DASH_CHAIN: BrChain = {
-  id: DASH_CHAIN_ID,
-  key: 'dash',
-  name: 'Dash',
-  type: 'UTXO',
-  logo: DASH_LOGO,
-  nativeSymbol: 'DASH',
-  nativeAddress: 'dash',
-  explorer: 'https://insight.dash.org/insight',
-};
+export const LTC_CHAIN_ID = 30000000000002;
+export const DOGE_CHAIN_ID = 30000000000003;
+export const BCH_CHAIN_ID = 30000000000004;
+
+const CG_IMAGES = 'https://assets.coingecko.com/coins/images';
+const EXTRA_COINS: ExtraCoin[] = [
+  extraCoin(DASH_CHAIN_ID, 'dash', 'Dash', 'DASH', `${CG_IMAGES}/19/standard/dash-logo.png`, 'https://insight.dash.org/insight', 'dash'),
+  extraCoin(LTC_CHAIN_ID, 'ltc', 'Litecoin', 'LTC', `${CG_IMAGES}/2/standard/litecoin.png`, 'https://litecoinspace.org', 'litecoin'),
+  extraCoin(DOGE_CHAIN_ID, 'doge', 'Dogecoin', 'DOGE', `${CG_IMAGES}/5/standard/dogecoin.png`, 'https://dogechain.info', 'dogecoin'),
+  extraCoin(BCH_CHAIN_ID, 'bch', 'Bitcoin Cash', 'BCH', `${CG_IMAGES}/780/standard/bitcoin-cash-circle.png`, 'https://bch.loping.net', 'bitcoin-cash'),
+];
+const extraOf = (chainId: number) => EXTRA_COINS.find((coin) => coin.chain.id === chainId);
 
 /** Shown first, in this order; the rest follow by name. */
-const POPULAR = [1, 42161, 8453, 56, 10, 137, 43114, 728126428, 1151111081099710, 20000000000001, DASH_CHAIN_ID];
+const POPULAR = [1, 42161, 8453, 56, 10, 137, 43114, 728126428, 1151111081099710, 20000000000001, DASH_CHAIN_ID, LTC_CHAIN_ID];
 
 let chainsCache: { at: number; promise: Promise<BrChain[]> } | null = null;
 
@@ -49,7 +63,7 @@ export function fetchChains(): Promise<BrChain[]> {
           nativeAddress: c.nativeToken?.address ?? '0x0000000000000000000000000000000000000000',
           explorer: String(c.metamask?.blockExplorerUrls?.[0] ?? '').replace(/\/+$/, '') || undefined,
         }));
-      if (!chains.some((c) => c.id === DASH_CHAIN_ID)) chains.push(DASH_CHAIN);
+      for (const coin of EXTRA_COINS) if (!chains.some((c) => c.id === coin.chain.id)) chains.push(coin.chain);
       const rank = (id: number) => {
         const i = POPULAR.indexOf(id);
         return i === -1 ? POPULAR.length : i;
@@ -168,31 +182,32 @@ async function confirmByCoinGecko(tokens: BrToken[], chain?: BrChain): Promise<B
   );
 }
 
-/** DASH's USD price: CoinGecko, or Maya's pool price when CoinGecko is unavailable. */
-async function dashPrice(): Promise<number> {
+/** USD price from CoinGecko; DASH falls back to Maya's pool price. */
+async function extraPrice(coin: ExtraCoin): Promise<number> {
   try {
-    const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=dash&vs_currencies=usd');
-    const price = Number((await res.json())?.dash?.usd);
+    const res = await fetch(`${COINGECKO_API}/simple/price?ids=${coin.coingeckoId}&vs_currencies=usd`);
+    const price = Number((await res.json())?.[coin.coingeckoId]?.usd);
     if (price > 0) return price;
   } catch {
-    /* fall through to Maya */
+    /* fall through */
   }
+  if (coin.chain.id !== DASH_CHAIN_ID) return 0;
   const res = await fetch('https://midgard.mayachain.info/v2/pool/DASH.DASH');
   return Number((await res.json())?.assetPriceUSD) || 0;
 }
 
-async function dashTokens(): Promise<BrToken[]> {
+async function extraTokens(coin: ExtraCoin): Promise<BrToken[]> {
   return [
     {
-      chainId: DASH_CHAIN_ID,
-      address: DASH_CHAIN.nativeAddress,
-      symbol: 'DASH',
-      name: 'Dash',
+      chainId: coin.chain.id,
+      address: coin.chain.nativeAddress,
+      symbol: coin.chain.nativeSymbol,
+      name: coin.name,
       decimals: 8,
-      logo: DASH_LOGO,
-      priceUSD: await dashPrice().catch(() => 0),
+      logo: coin.chain.logo,
+      priceUSD: await extraPrice(coin).catch(() => 0),
       status: 'verified',
-      coinKey: 'DASH',
+      coinKey: coin.chain.nativeSymbol,
     },
   ];
 }
@@ -200,7 +215,8 @@ async function dashTokens(): Promise<BrToken[]> {
 export function fetchTokens(chainId: number): Promise<BrToken[]> {
   const hit = tokensCache.get(chainId);
   if (hit && Date.now() - hit.at < CACHE_MS) return hit.promise;
-  const promise = chainId === DASH_CHAIN_ID ? dashTokens() : Promise.all([
+  const extra = extraOf(chainId);
+  const promise = extra ? extraTokens(extra) : Promise.all([
     fetch(`${LIFI_API}/tokens?chains=${chainId}`).then((res) => {
       if (!res.ok) throw new Error(`tokens: ${res.status}`);
       return res.json();
@@ -220,7 +236,7 @@ export function fetchTokens(chainId: number): Promise<BrToken[]> {
 
 /** One token by address — for pasted addresses and fresh prices. */
 export async function fetchToken(chainId: number, address: string): Promise<BrToken | null> {
-  if (chainId === DASH_CHAIN_ID) {
+  if (extraOf(chainId)) {
     return (await fetchTokens(chainId)).find((t) => t.address === address.trim().toLowerCase()) ?? null;
   }
   const res = await fetch(`${LIFI_API}/token?chain=${chainId}&token=${encodeURIComponent(address)}`);

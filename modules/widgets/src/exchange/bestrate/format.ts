@@ -43,6 +43,10 @@ const UTXO_PATTERNS: Record<string, RegExp> = {
   // Transparent addresses only: the swap services cannot pay shielded ones.
   zec: /^t[13][1-9A-HJ-NP-Za-km-z]{33}$/,
   dash: /^[X7][1-9A-HJ-NP-Za-km-z]{33}$/,
+  ltc: /^(ltc1[0-9a-z]{25,87}|[LM3][1-9A-HJ-NP-Za-km-z]{25,34})$/,
+  doge: /^[DA9][1-9A-HJ-NP-Za-km-z]{25,34}$/,
+  // CashAddr without the "bitcoincash:" prefix (its colon would break a memo), or legacy.
+  bch: /^([qp][0-9a-z]{41}|[13][1-9A-HJ-NP-Za-km-z]{25,34})$/,
 };
 
 /**

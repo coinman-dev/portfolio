@@ -1,5 +1,6 @@
 import { StatusRef } from './plan';
 import { thorlikeConfig, thorlikeTxStatus } from '../providers/thorlike';
+import { acrossStatusUrl } from '../providers/across';
 import { tr } from '../i18n';
 
 export type DeliveryState = 'pending' | 'done' | 'refunded' | 'failed';
@@ -59,6 +60,14 @@ async function checkOnce(ref: StatusRef, hash: string, signal: AbortSignal): Pro
       }
       if (body.status === 'FAILED' || body.status === 'INVALID') return { state: 'failed', detail: body.substatusMessage };
       return { state: 'pending', detail: body.substatus };
+    }
+    case 'across': {
+      const body = await json(acrossStatusUrl(ref.originChainId, hash), signal);
+      const status = String(body.status ?? '').toLowerCase();
+      if (status === 'filled') return { state: 'done' };
+      if (status === 'refunded') return { state: 'refunded' };
+      if (status === 'expired') return { state: 'pending', detail: tr('expired — Across refunds it to your wallet') };
+      return { state: 'pending', detail: status };
     }
     case 'thorlike': {
       const cfg = thorlikeConfig(ref.provider);

@@ -9,6 +9,8 @@ import { kyberBuildUrl, kyberRoutesUrl } from '../providers/kyberswap';
 import { debridgeChainId, debridgeCreateTxUrl } from '../providers/debridge';
 import { lifiRoutesBody, lifiToolNames } from '../providers/lifi';
 import { ThorLikeId, thorlikeConfig, thorlikeEvmSend } from '../providers/thorlike';
+import { ACROSS_SPOKE_POOLS, acrossPeriphery, acrossSwapUrl } from '../providers/across';
+import { VELORA_AUGUSTUS, veloraBuild, veloraPriceUrl } from '../providers/velora';
 import { TrVars, tr } from '../i18n';
 
 /** What gets tracked after the source transaction lands. */
@@ -18,7 +20,8 @@ export type StatusRef =
   | { kind: 'debridge'; orderId: string }
   | { kind: 'socket'; quoteId: string }
   | { kind: 'lifi'; bridge: string; fromChain: number; toChain: number }
-  | { kind: 'thorlike'; provider: ThorLikeId };
+  | { kind: 'thorlike'; provider: ThorLikeId }
+  | { kind: 'across'; originChainId: number };
 
 type Hex = `0x${string}`;
 
@@ -48,7 +51,7 @@ export interface ExecPlan {
 const MAX_EXTRA_FEE_USD = 25;
 
 /** Services whose routes can be signed here; the rest open their site. */
-const EXECUTABLE: ProviderId[] = ['relay', 'socket', 'kyberswap', 'debridge', 'lifi', 'maya', 'thorchain'];
+const EXECUTABLE: ProviderId[] = ['relay', 'socket', 'across', 'kyberswap', 'velora', 'debridge', 'lifi', 'maya', 'thorchain'];
 
 export function executionBlocker(
   route: RankedRoute,
@@ -74,6 +77,13 @@ const THORLIKE_ROUTER_ABI = parseAbi([
   'function depositWithExpiry(address vault, address asset, uint256 amount, string memo, uint256 expiration) payable',
 ]);
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
+
+const ACROSS_DEPOSIT = parseAbi([
+  'function deposit(bytes32 depositor, bytes32 recipient, bytes32 inputToken, bytes32 outputToken, uint256 inputAmount, uint256 outputAmount, uint256 destinationChainId, bytes32 exclusiveRelayer, uint32 quoteTimestamp, uint32 fillDeadline, uint32 exclusivityParameter, bytes message)',
+  'function depositNative(address spokePool, address depositor, bytes32 recipient, address inputToken, uint256 inputAmount, bytes32 outputToken, uint256 outputAmount, uint256 destinationChainId, bytes32 exclusiveRelayer, uint32 quoteTimestamp, uint32 fillDeadline, uint32 exclusivityParameter, bytes message)',
+]);
+/** An EVM address as Across writes it in bytes32. */
+const bytes32 = (address: string) => `0x${address.toLowerCase().replace(/^0x/, '').padStart(64, '0')}`;
 
 const ORDER_CREATION =
   '(address giveTokenAddress,uint256 giveAmount,bytes takeTokenAddress,uint256 takeAmount,uint256 takeChainId,bytes receiverDst,address givePatchAuthoritySrc,bytes orderAuthorityAddressDst,bytes allowedTakerDst,bytes externalCall,bytes allowedCancelBeneficiarySrc)';
@@ -281,6 +291,87 @@ async function lifiPlan(route: RankedRoute, req: QuoteRequest, signal: AbortSign
 }
 
 /**
+ * Across: the deposit is decoded and every field compared with what was
+ * asked — depositor, receiver, tokens, amounts, destination, no call on the
+ * other side. Routes that swap first go through the periphery's swap entry,
+ * which cannot be checked this way, so they are signed on app.across.to.
+ */
+async function acrossPlan(route: RankedRoute, req: QuoteRequest, signal: AbortSignal): Promise<ExecPlan> {
+  const body = await getJson(acrossSwapUrl(req, req.fromAddress!, req.toAddress!), { signal });
+  if (body.crossSwapType !== 'bridgeableToBridgeable') fail('this Across route swaps first — open it on app.across.to');
+  const tx = body.swapTx;
+  if (!tx?.to || !tx?.data) fail('Across returned no transaction');
+  if (Number(tx.chainId) !== req.fromChain.id) fail('transaction is for another chain');
+  if (!same(body.outputToken?.address, req.toToken.address)) fail('Across quoted another output token');
+  const pool = ACROSS_SPOKE_POOLS[req.fromChain.id];
+  const native = isNativeToken(req.fromChain, req.fromToken);
+  const value = BigInt(tx.value ?? 0);
+  const minOut = BigInt(body.minOutputAmount);
+  const { functionName, args } = decodeFunctionData({ abi: ACROSS_DEPOSIT, data: tx.data });
+  const a = args as readonly any[];
+  // deposit: depositor, recipient, inputToken, outputToken, inputAmount, outputAmount, destinationChainId, …, message
+  // depositNative: spokePool, depositor, recipient, inputToken, inputAmount, outputToken, outputAmount, destinationChainId, …, message
+  const f = native
+    ? { pool: a[0], depositor: bytes32(a[1]), recipient: a[2], input: a[4], outputToken: a[5], output: a[6], dest: a[7], message: a[12] }
+    : { pool: tx.to, depositor: a[0], recipient: a[1], input: a[4], outputToken: a[3], output: a[5], dest: a[6], message: a[11] };
+  if (native ? functionName !== 'depositNative' || !same(tx.to, acrossPeriphery(req.fromChain.id)) : functionName !== 'deposit') {
+    fail('Across asked for an unexpected call');
+  }
+  if (!native && !same(a[2], bytes32(req.fromToken.address))) fail('Across deposit takes a different token');
+  if (!same(f.pool, pool)) fail('Across deposit goes to another SpokePool');
+  if (!same(f.depositor, bytes32(req.fromAddress!))) fail('Across deposit is credited to another address');
+  if (!same(f.recipient, bytes32(req.toAddress!))) fail('Across deposit pays a different receiver');
+  if (!same(f.outputToken, bytes32(body.steps?.bridge?.tokenOut?.address ?? ''))) fail('Across deposit pays a different token');
+  if (f.input !== req.amount) fail('Across deposit takes a different amount');
+  if (f.output !== minOut) fail('Across deposit promises a different amount');
+  if (Number(f.dest) !== req.toChain.id) fail('Across deposit targets another chain');
+  if (f.message !== '0x') fail('Across deposit carries a call on the destination chain');
+  if (value !== (native ? req.amount : 0n)) fail('the transaction sends more native coin than the swap needs');
+  const spender = body.checks?.allowance?.spender;
+  if (!native && !same(spender, pool)) fail('Across asked to approve another contract');
+  return {
+    ...baseFields(route, req),
+    spender: native ? undefined : (pool as Hex),
+    tx: { to: tx.to, data: tx.data, value },
+    extraValue: 0n,
+    toAmount: BigInt(body.expectedOutputAmount),
+    toAmountMin: minOut,
+    status: { kind: 'across', originChainId: req.fromChain.id },
+  };
+}
+
+/** Velora: same chain only, so the simulation checks what reaches the receiver. */
+async function veloraPlan(route: RankedRoute, req: QuoteRequest, signal: AbortSignal): Promise<ExecPlan> {
+  const price = await getJson(veloraPriceUrl(req), { signal });
+  const priceRoute = price.priceRoute;
+  if (!priceRoute?.destAmount) fail('Velora returned no route');
+  if (!same(priceRoute.contractAddress, VELORA_AUGUSTUS) || !same(priceRoute.tokenTransferProxy, VELORA_AUGUSTUS)) {
+    fail('Velora named a contract that is not Augustus v6.2');
+  }
+  if (Number(priceRoute.partnerFee ?? 0) > 0) fail('Velora added a partner fee');
+  const { url, body } = veloraBuild(req, priceRoute);
+  const tx = await getJson(url, {
+    method: 'POST',
+    signal,
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!tx?.to || !tx?.data) fail('Velora did not build a transaction');
+  if (Number(tx.chainId) !== req.fromChain.id) fail('transaction is for another chain');
+  const native = isNativeToken(req.fromChain, req.fromToken);
+  const toAmount = BigInt(priceRoute.destAmount);
+  return {
+    ...baseFields(route, req),
+    spender: native ? undefined : (VELORA_AUGUSTUS as Hex),
+    tx: { to: tx.to, data: tx.data, value: BigInt(tx.value ?? 0) },
+    extraValue: 0n,
+    toAmount,
+    toAmountMin: (toAmount * BigInt(10_000 - req.slippageBps)) / 10_000n,
+    status: { kind: 'none' },
+  };
+}
+
+/**
  * Maya / THORChain from an EVM wallet: one call to the network's router, which
  * moves the input to the vault with the memo. The payout always comes later
  * in a transaction of its own, so even ETH → USDT is tracked as a transfer.
@@ -313,6 +404,8 @@ export async function buildPlan(route: RankedRoute, req: QuoteRequest, signal: A
     relay: relayPlan,
     socket: socketPlan,
     kyberswap: kyberPlan,
+    velora: veloraPlan,
+    across: acrossPlan,
     debridge: debridgePlan,
     lifi: lifiPlan,
     maya: thorlikePlan,

@@ -67,6 +67,7 @@ export const RouteCard: React.FC<RouteCardProps> = ({
           {route.capacityWarning && (
             <span className="br-badge br-badge--bad" title={route.capacityWarning}>
               {t('Thin liquidity')}
+              {route.capacityAvailable && ` (${t('available: {amount}', { amount: route.capacityAvailable })})`}
             </span>
           )}
         </div>

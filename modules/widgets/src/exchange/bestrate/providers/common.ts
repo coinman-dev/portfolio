@@ -16,6 +16,9 @@ const UTXO_STAND_IN: Record<string, string> = {
   btc: '1111111111111111111114oLvT2',
   dash: 'XagqqFetxiDb9wbartKDrXgnqLah6SqX2S',
   zec: 't1Hsc1LR8yKnbbe3twRp88p6vFfC5t7DLbs',
+  ltc: 'LKDxGDJq5fF4FohAB8zJH24mDDNHDNtqsE',
+  doge: 'D596YFweJQuHY1BbjazZYmAbt8jJPbKehC',
+  bch: '1111111111111111111114oLvT2',
 };
 
 const standIn = (chain: BrChain) => (chain.type === 'UTXO' ? UTXO_STAND_IN[chain.key] : STAND_IN[chain.type]);
