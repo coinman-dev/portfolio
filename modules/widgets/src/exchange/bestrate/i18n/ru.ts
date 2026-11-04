@@ -283,6 +283,8 @@ export const RU: Record<string, string> = {
   'then about {time} to arrive{parts}; fee rate at least {rate} {units}': 'затем около {time} до поступления{parts}; ставка комиссии не ниже {rate} {units}',
   'The memo must be in the transaction.': 'Memo должно быть в транзакции.',
   'Send from your own wallet, not from an exchange.': 'Отправляйте со своего кошелька, а не с биржи.',
+  'Refunds — when the price moves past your {pct}% slippage or the memo is wrong — go to the address of the transaction’s first input, one of your wallet’s addresses. That input must be an ordinary single-signature address: a bare multisig one is not credited.':
+    'Возвраты — если цена уйдёт дальше вашего проскальзывания {pct}% или memo неверно — идут на адрес первого входа транзакции, то есть на один из адресов вашего кошелька. Этот вход должен быть обычным адресом с одной подписью: голый multisig сеть не засчитает.',
   'Refunds — when the price moves past your {pct}% slippage or the memo is wrong — go back to the sending address.':
     'Возвраты — если цена уйдёт дальше вашего проскальзывания {pct}% или memo неверно — идут на адрес отправителя.',
   'Send once, before the timer runs out.': 'Отправьте один раз, пока не истёк таймер.',

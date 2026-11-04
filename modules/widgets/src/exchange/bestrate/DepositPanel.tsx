@@ -249,7 +249,9 @@ export const DepositPanel: React.FC<DepositPanelProps> = (props) => {
               <li>
                 <strong>{t('Send from your own wallet, not from an exchange.')}</strong>{' '}
                 {t(
-                  'Refunds — when the price moves past your {pct}% slippage or the memo is wrong — go back to the sending address.',
+                  xrp
+                    ? 'Refunds — when the price moves past your {pct}% slippage or the memo is wrong — go back to the sending address.'
+                    : 'Refunds — when the price moves past your {pct}% slippage or the memo is wrong — go to the address of the transaction’s first input, one of your wallet’s addresses. That input must be an ordinary single-signature address: a bare multisig one is not credited.',
                   { pct: req.slippageBps / 100 }
                 )}
               </li>
