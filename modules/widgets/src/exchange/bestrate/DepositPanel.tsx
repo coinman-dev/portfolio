@@ -12,6 +12,17 @@ import { Delivery, watchDelivery } from './execute/status';
 
 const LARGE_USD = 50_000;
 
+/**
+ * Electrum wallets whose "Pay to" field takes one output per line, a script
+ * written as "OP_RETURN <hex>" among them (paytoedit.parse_script). Works
+ * with their hardware-wallet support too.
+ */
+const ELECTRUM_WALLETS: Record<string, string> = { dash: 'Dash Electrum', btc: 'Electrum', ltc: 'Electrum-LTC' };
+
+/** The "Pay to" text: the vault with the amount, then the memo as a 0-value OP_RETURN output. */
+const electrumPayTo = (deposit: ThorLikeDeposit, amount: string) =>
+  `${deposit.vault}, ${amount}\nOP_RETURN ${deposit.memoHex}, 0`;
+
 /** Chains whose Core wallet console can build the OP_RETURN transaction, and its signing command. */
 const CORE_WALLETS: Record<string, { name: string; sign: string }> = {
   dash: { name: 'Dash Core', sign: 'signrawtransactionwithwallet' },
@@ -149,6 +160,7 @@ export const DepositPanel: React.FC<DepositPanelProps> = (props) => {
   const amount = humanAmount(req.amount, req.fromToken.decimals);
   const inputUSD = amountUSD(req.amount, req.fromToken);
   const core = CORE_WALLETS[req.fromChain.key];
+  const electrum = ELECTRUM_WALLETS[req.fromChain.key];
   const trackable = /^[0-9a-fA-F]{64}$/.test(txid.trim());
   // XRP carries the memo in the transaction's MemoData field, UTXO chains in OP_RETURN.
   const xrp = req.fromChain.type === 'XRPL';
@@ -262,6 +274,24 @@ export const DepositPanel: React.FC<DepositPanelProps> = (props) => {
               {inputUSD >= LARGE_USD && <li>{t('Large amount: send a small test deposit first.')}</li>}
             </ul>
 
+            {electrum && !expired && deposit && (
+              <details className="br-deposit__core">
+                <summary>{t('For {wallet}: paste into "Pay to"', { wallet: electrum })}</summary>
+                <ol>
+                  <li>
+                    <code className="br-mono" style={{ whiteSpace: 'pre-wrap' }}>
+                      {electrumPayTo(deposit, amount)}
+                    </code>{' '}
+                    <Copy value={electrumPayTo(deposit, amount)} />
+                  </li>
+                </ol>
+                <p className="br-muted">
+                  {t(
+                    'Two lines, one output each: the vault with the amount, and the memo as an OP_RETURN output of 0. To choose which address pays (and so gets any refund), pick its coins on the Coins tab first (Spend). Before signing, check the preview shows both outputs.'
+                  )}
+                </p>
+              </details>
+            )}
             {core && !expired && (
               <details className="br-deposit__core">
                 <summary>{t('Commands for the {wallet} console (Window → Console)', { wallet: core.name })}</summary>

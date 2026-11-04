@@ -294,6 +294,9 @@ export const RU: Record<string, string> = {
   'Commands for the {wallet} console (Window → Console)': 'Команды для консоли {wallet} (Окно → Консоль)',
   'Unlock the wallet first if it is encrypted (walletpassphrase). In step 4 check that one output pays {amount} {symbol} to {vault} and one is nulldata (OP_RETURN) with the memo hex; only then send.':
     'Если кошелёк зашифрован, сначала разблокируйте его (walletpassphrase). На шаге 4 проверьте, что один выход платит {amount} {symbol} на {vault}, а другой — nulldata (OP_RETURN) с hex memo; только потом отправляйте.',
+  'For {wallet}: paste into "Pay to"': 'Для {wallet}: вставьте в поле «Pay to» (Оплатить)',
+  'Two lines, one output each: the vault with the amount, and the memo as an OP_RETURN output of 0. To choose which address pays (and so gets any refund), pick its coins on the Coins tab first (Spend). Before signing, check the preview shows both outputs.':
+    'Две строки — два выхода: хранилище с суммой и memo как выход OP_RETURN на 0. Чтобы выбрать, с какого адреса платить (и куда придёт возможный возврат), сначала отметьте его монеты на вкладке «Coins» (Spend). Перед подписью проверьте в предпросмотре, что выходов два.',
   'After sending: your transaction ID': 'После отправки: ID вашей транзакции',
   'New quote': 'Новая котировка',
   'Enter your {chain} receiver address first': 'Сначала введите адрес получателя в сети {chain}',
