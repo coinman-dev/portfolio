@@ -1,4 +1,5 @@
 mod approvals;
+mod dash_core;
 mod diag_log;
 mod exchange_history;
 mod jumper;
@@ -606,6 +607,11 @@ pub fn run() {
             load_revoke_history,
             save_revoke_record,
             approvals::approvals_hypersync,
+            dash_core::dash_core_inspect,
+            dash_core::dash_core_pick_folder,
+            dash_core::dash_core_save,
+            dash_core::dash_core_saved,
+            dash_core::dash_core_rpc,
             jumper::jumper_show,
             jumper::jumper_hide,
             jumper::jumper_wallet_response,

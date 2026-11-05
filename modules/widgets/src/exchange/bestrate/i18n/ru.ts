@@ -83,7 +83,8 @@ export const RU: Record<string, string> = {
   'Too good to be true': 'Слишком хорошо, чтобы быть правдой',
   'Loses over 3%': 'Потери больше 3%',
   'Thin liquidity': 'Мало ликвидности',
-  'available: {amount}': 'всего: {amount}',
+  'in vaults: {amount}': 'в хранилищах: {amount}',
+  '{symbol} pool: {amount}, this swap is {pct}% of it': 'пул {symbol}: {amount}, ваш обмен — {pct}% от него',
   via: 'через',
   'Review and sign this route from your wallet': 'Проверить и подписать маршрут из кошелька',
   Swap: 'Обменять',
@@ -310,8 +311,8 @@ export const RU: Record<string, string> = {
     'Один обмен сразу: крупные суммы теряют на проскальзывании в пуле больше, чем при потоке.',
   "{provider}'s vaults hold only {held} {symbol} on {chain}, less than this payout: it completes only as arbitrage refills them, and whatever does not fill is refunded. Split it into smaller swaps over time.":
     'В хранилищах {provider} всего {held} {symbol} в сети {chain} — меньше этой выплаты: обмен пройдёт только по мере пополнения арбитражем, а неисполненное вернётся. Разбейте сумму на несколько обменов с перерывами.',
-  "Large for {provider}'s pools ({pct}% of a pool's depth): the swap relies on arbitrage between sub-swaps, so parts may be refunded. Smaller swaps are safer.":
-    'Много для пулов {provider} ({pct}% глубины пула): обмен зависит от арбитража между частями, поэтому часть может вернуться. Меньшие обмены надёжнее.',
+  "{provider}'s {symbol} pool holds only {amount}, and this swap is {pct}% of it. The network splits it into parts and relies on arbitrage to bring the price back between them; whatever cannot fill within your price limit is refunded in the coin you sent. Smaller swaps are safer.":
+    'В пуле {symbol} у {provider} всего {amount}, а ваш обмен — {pct}% от него. Сеть делит обмен на части и рассчитывает, что между ними арбитраж вернёт цену; то, что не исполнится в пределах вашего лимита цены, вернётся в той монете, которую вы отправили. Меньшие обмены надёжнее.',
   "no wallet connection: send to the network's vault with the memo shown": 'без подключения кошелька: отправьте в хранилище сети с указанным memo',
   '{chain} is not a {provider} deposit chain': 'сеть {chain} не подходит для депозита в {provider}',
   '{provider} publishes no {chain} vault right now': '{provider} сейчас не публикует хранилище для сети {chain}',
@@ -383,4 +384,53 @@ export const RU: Record<string, string> = {
     'Без него {provider} не поймёт, что делать, и вернёт депозит за вычетом комиссий. Вставьте его в поле memo своего XRP-кошелька (например, Xaman); тег назначения не нужен.',
   'The receiving XRP address must already be activated (hold the 1 XRP reserve); send to your own wallet, not to an exchange address that needs a destination tag.':
     'XRP-адрес получателя должен быть уже активирован (держать резерв 1 XRP); отправляйте на свой кошелёк, а не на биржевой адрес, которому нужен тег назначения.',
+  // Send from Dash Core
+  'Dash Core is still synchronising: {pct}% — wait until Dash-Qt finishes.':
+    'Dash Core ещё синхронизируется: {pct}% — дождитесь, пока Dash-Qt закончит.',
+  'No wallet is open in Dash-Qt — open one (File → Open Wallet).':
+    'В Dash-Qt не открыт ни один кошелёк — откройте его (Файл → Открыть кошелёк).',
+  'Dash Core is not ready': 'Dash Core не готов',
+  'Have Dash Core? Connect it (Exchange → Connect wallet → Dash Core) to send this deposit from it, without copying anything.':
+    'Есть Dash Core? Подключите его (Exchange → Connect wallet → Dash Core), чтобы отправить этот депозит прямо из него, ничего не копируя.',
+  'Connect Dash Core': 'Подключить Dash Core',
+  'Send from Dash Core': 'Отправить из Dash Core',
+  'ready': 'готов',
+  'not ready — check': 'не готов — проверить',
+  'Reading the wallets…': 'Читаю кошельки…',
+  'Choose the sending address': 'Выбрать адрес отправителя',
+  'No confirmed DASH on ordinary (X…) addresses in the open wallets.':
+    'В открытых кошельках нет подтверждённых DASH на обычных адресах (X…).',
+  'Pay from (refunds come back here)': 'Платить с адреса (возврат придёт сюда же)',
+  'default wallet': 'кошелёк по умолчанию',
+  'not enough': 'не хватает',
+  'Masternode collateral (1000 / 4000 DASH coins) is never spent.':
+    'Залог мастерноды (монеты ровно 1000 / 4000 DASH) никогда не тратится.',
+  'Building…': 'Собираю…',
+  'Build the transaction': 'Собрать транзакцию',
+  'From': 'С адреса',
+  '{n} coins, {total} DASH': 'монет: {n}, всего {total} DASH',
+  'Outputs': 'Выходы',
+  'change': 'сдача',
+  'Network fee': 'Комиссия сети',
+  '{rate} duffs per byte': '{rate} duff за байт',
+  '✓ Dash Core decoded it: exactly these inputs and outputs, nothing else.':
+    '✓ Dash Core разобрал её: ровно эти входы и выходы, ничего лишнего.',
+  'Wallet password (unlocks it for one minute, not stored)':
+    'Пароль кошелька (открывает его на одну минуту, не сохраняется)',
+  'Back': 'Назад',
+  'Signing and sending…': 'Подписываю и отправляю…',
+  'Sign and send {amount} DASH': 'Подписать и отправить {amount} DASH',
+  'Sent from Dash Core.': 'Отправлено из Dash Core.',
+  'Dash Core needs the desktop app': 'Dash Core работает только в настольном приложении',
+  'The memo is longer than 80 bytes': 'Memo длиннее 80 байт',
+  'Dash Core built other inputs than chosen': 'Dash Core собрал другие входы, чем выбраны',
+  'The transaction has unexpected outputs': 'В транзакции лишние выходы',
+  'The vault output does not pay the quoted amount': 'Выход на хранилище не равен сумме из котировки',
+  'The OP_RETURN output does not carry the memo': 'Выход OP_RETURN не содержит memo',
+  'The change does not go back to the sending address': 'Сдача уходит не на адрес отправителя',
+  'Not enough DASH at this address for the amount and the fee':
+    'На этом адресе не хватает DASH на сумму и комиссию',
+  'Enter the wallet password': 'Введите пароль кошелька',
+  'Dash Core could not sign every input: {error}': 'Dash Core не смог подписать все входы: {error}',
+  'The network would reject it: {error}': 'Сеть её не примет: {error}',
 };

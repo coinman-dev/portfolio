@@ -182,7 +182,7 @@ async function capacityWarning(cfg: ThorLikeConfig, req: QuoteRequest, q: any, s
   const amountIn = toUnits1e8(req.amount, req.fromToken.decimals);
   const amountOut = BigInt(String(q.expected_amount_out));
   if (held > 0n && amountOut > held) {
-    const available = `${units(held)} ${req.toToken.symbol}`;
+    const available = tr('in vaults: {amount}', { amount: `${units(held)} ${req.toToken.symbol}` });
     return {
       available,
       text: tr(
@@ -197,16 +197,19 @@ async function capacityWarning(cfg: ThorLikeConfig, req: QuoteRequest, q: any, s
   const outShare = share(amountOut, depth(q.toAsset));
   const worst = Math.max(inShare, outShare);
   if (worst > DEEP_SHARE) {
-    // The pool that limits the swap, in its own coin.
-    const available =
-      inShare >= outShare
-        ? `${units(depth(q.fromAsset))} ${req.fromToken.symbol}`
-        : `${units(depth(q.toAsset))} ${req.toToken.symbol}`;
+    // The pool that limits the swap, in its own coin, and the swap's share of it.
+    const [pool, symbol] =
+      inShare >= outShare ? [depth(q.fromAsset), req.fromToken.symbol] : [depth(q.toAsset), req.toToken.symbol];
+    const available = tr('{symbol} pool: {amount}, this swap is {pct}% of it', {
+      symbol,
+      amount: `${units(pool)} ${symbol}`,
+      pct: Math.round(worst * 100),
+    });
     return {
       available,
       text: tr(
-        "Large for {provider}'s pools ({pct}% of a pool's depth): the swap relies on arbitrage between sub-swaps, so parts may be refunded. Smaller swaps are safer.",
-        { provider: cfg.name, pct: Math.round(worst * 100) }
+        "{provider}'s {symbol} pool holds only {amount}, and this swap is {pct}% of it. The network splits it into parts and relies on arbitrage to bring the price back between them; whatever cannot fill within your price limit is refunded in the coin you sent. Smaller swaps are safer.",
+        { provider: cfg.name, symbol, amount: `${units(pool)} ${symbol}`, pct: Math.round(worst * 100) }
       ),
     };
   }

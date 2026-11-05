@@ -744,6 +744,28 @@
   font-size: 13px;
 }
 
+/* Send from Dash Core: one framed block above the copy-by-hand options. */
+.br-dashcore {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--br-accent);
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.br-dashcore__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.br-dashcore select.br-input {
+  width: 100%;
+}
+
 .br-deposit__core summary {
   cursor: pointer;
 }

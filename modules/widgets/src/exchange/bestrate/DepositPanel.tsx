@@ -9,6 +9,7 @@ import { formatAmount, formatDuration, formatUSD } from './format';
 import { subSwaps, tr, useT } from './i18n';
 import { recordDeposit, saveRecord } from './history';
 import { Delivery, watchDelivery } from './execute/status';
+import { DashCoreSend } from './DashCoreSend';
 
 const LARGE_USD = 50_000;
 
@@ -243,7 +244,7 @@ export const DepositPanel: React.FC<DepositPanelProps> = (props) => {
 
             {deposit.capacityWarning && (
               <div className="br-exec__sim is-bad">
-                <strong>{t('Thin liquidity')} ({t('available: {amount}', { amount: deposit.capacityWarning.available })})</strong>.{' '}
+                <strong>{t('Thin liquidity')} ({deposit.capacityWarning.available})</strong>.{' '}
                 {deposit.capacityWarning.text}
               </div>
             )}
@@ -274,6 +275,16 @@ export const DepositPanel: React.FC<DepositPanelProps> = (props) => {
               {inputUSD >= LARGE_USD && <li>{t('Large amount: send a small test deposit first.')}</li>}
             </ul>
 
+            {req.fromChain.key === 'dash' && (
+              <DashCoreSend
+                deposit={deposit}
+                disabled={expired || following}
+                onSent={(hash) => {
+                  setTxid(hash);
+                  follow(hash);
+                }}
+              />
+            )}
             {electrum && !expired && deposit && (
               <details className="br-deposit__core">
                 <summary>{t('For {wallet}: paste into "Pay to"', { wallet: electrum })}</summary>

@@ -111,9 +111,14 @@
 			</div>
 			<div class="menu-item" id="menu-item-exchange" onclick="toggleDropdown('exchange-dropdown', event)"> Exchange
 				<div class="dropdown-menu" id="exchange-dropdown">
-					<div class="dropdown-item dropdown-item-wallet" id="menu-exchange-wallet" onclick="AppExchange.handleWalletClick(event)">
+					<div class="dropdown-heading">Connect wallet</div>
+					<div class="dropdown-item dropdown-item-wallet dropdown-item-sub" id="menu-exchange-wallet" onclick="AppExchange.handleWalletClick(event)">
 						<span class="wallet-menu-label">Wallet Connect</span>
 						<span class="wallet-menu-status" id="menu-wallet-status"></span>
+					</div>
+					<div class="dropdown-item dropdown-item-wallet dropdown-item-sub" id="menu-exchange-dashcore" onclick="AppDashCore.open(event)">
+						<span class="wallet-menu-label">Dash Core</span>
+						<span class="wallet-menu-status" id="menu-dashcore-status"></span>
 					</div>
 					<div class="dropdown-divider"></div>
 					<div class="dropdown-item" id="menu-exchange-bestrate" onclick="AppExchange.selectExchangeModule('bestrate')">
@@ -533,6 +538,34 @@
 			<button id="wallet-modal-add-btn" class="btn btn-orange" onclick="AppExchange.handleAddWallet()">CONNECT ANOTHER WALLET</button>
 			<button id="wallet-modal-remove-btn" class="btn btn-red" onclick="AppExchange.handleRemoveSelectedWallet()">REMOVE SELECTED WALLET</button>
 			<button class="btn btn-outline" onclick="AppExchange.closeWalletModal()">CLOSE</button>
+		</div>
+	</div>
+</div>
+<div id="modal-dash-core" class="modal">
+	<div class="modal-content dashcore-modal">
+		<div class="modal-header">
+			<span>Dash Core</span>
+			<span class="close-btn" onclick="AppDashCore.close()">&times;</span>
+		</div>
+		<div class="modal-body">
+			<p class="wallet-modal-intro">
+				Send DASH deposits for Best Rate swaps (Maya, THORChain) straight from your Dash Core wallet: CoinMan builds the
+				transaction with the memo, shows it to you and sends it only after you confirm. Keys stay in Dash Core.
+			</p>
+			<p class="wallet-modal-intro wallet-modal-note">
+				Choose the folder Dash Core is installed in or keeps its data in. Dash-Qt must be running and synchronised, with
+				<code>server=1</code> in <code>dash.conf</code>; the RPC login is read from <code>dash.conf</code> or the <code>.cookie</code> file at each use and is not stored.
+			</p>
+			<div class="dashcore-folder">
+				<input type="text" id="dashcore-dir" class="form-input" placeholder="For example H:\Wallet\DashCore" spellcheck="false"/>
+				<button class="btn btn-outline" onclick="AppDashCore.pickFolder()">CHOOSE FOLDER…</button>
+				<button class="btn btn-orange" onclick="AppDashCore.check()">CHECK</button>
+			</div>
+			<div id="dashcore-result" class="dashcore-result"></div>
+		</div>
+		<div class="modal-footer wallet-modal-footer">
+			<button id="dashcore-forget-btn" class="btn btn-red" onclick="AppDashCore.forget()">DISCONNECT</button>
+			<button class="btn btn-outline" onclick="AppDashCore.close()">CLOSE</button>
 		</div>
 	</div>
 </div>
@@ -1162,6 +1195,7 @@
 <script src="index.js"></script>
 <script src="modules-common.js"></script>
 <script src="exchange.js"></script>
+<script src="dashcore.js"></script>
 <script src="earn.js"></script>
 </body>
 </html>
