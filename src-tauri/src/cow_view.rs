@@ -81,14 +81,15 @@ fn show<R: Runtime>(app: &AppHandle<R>, bounds: Bounds, url: Option<String>) -> 
         .background_color(tauri::utils::config::Color(18, 19, 24, 255))
         .initialization_script(PAGE_SCRIPT)
         .incognito(true)
-        // Stay on swap.cow.fi; anything else opens in the system browser.
+        // Stay on swap.cow.fi. This also sees the page's own iframes (analytics
+        // such as Google Tag Manager), so other addresses are just refused —
+        // opening them in the browser would pop tabs nobody asked for. Links
+        // the user opens in a new window go to the browser (on_new_window).
         .on_navigation(|url| {
             if is_cow(url) || url.scheme() == "about" {
                 return true;
             }
-            if url.scheme() == "https" {
-                crate::open_url(url.to_string());
-            }
+            log::debug!("[cowswap] navigation refused: {}", url.host_str().unwrap_or(""));
             false
         })
         .on_new_window(|url, _features| {

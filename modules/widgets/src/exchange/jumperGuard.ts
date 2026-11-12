@@ -17,7 +17,7 @@ import {
  *
  * Jumper's backend adds its own routes to LI.FI's: Uniswap, CoW Swap, Velora
  * Delta and FYND (Tycho). Their contracts are whitelisted here, each address
- * confirmed in the protocol's own deployment list; docs/jumper-whitelist.md
+ * confirmed in the protocol's own deployment list; doc/jumper-whitelist.md
  * names the sources so the list can be checked again. Anything else — LI.FI
  * Composer included, whose factory is not in LI.FI's published deployments —
  * is refused.

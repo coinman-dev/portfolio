@@ -101,9 +101,9 @@ Extract portable builds into a writable folder: the app keeps data and optional 
 
 These screenshots show portfolio views from an earlier version; the Exchange and Earn modules are described above.
 
-![CoinMan Portfolio Tracker — Current tab](docs/screenshots/screenshot1.png)
+![CoinMan Portfolio Tracker — Current tab](doc/screenshots/screenshot1.png)
 
-![CoinMan Portfolio Tracker — Sold tab](docs/screenshots/screenshot2.png)
+![CoinMan Portfolio Tracker — Sold tab](doc/screenshots/screenshot2.png)
 
 ---
 
