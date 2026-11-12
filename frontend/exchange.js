@@ -310,6 +310,20 @@ var AppExchange = (function () {
     }
 
     var pendingJumperUrl = null;
+    var pendingCowTrade = null;
+
+    /**
+     * Opens the CoW Swap tab on a pair (Best Rate routes):
+     * { chainId, sell, buy, sellAmount } with token addresses.
+     */
+    function openCowSwap(trade) {
+        if (cowswapInstance && trade && typeof cowswapInstance.setTrade === 'function') {
+            cowswapInstance.setTrade(trade);
+        } else {
+            pendingCowTrade = trade || null;
+        }
+        selectExchangeModule('cowswap');
+    }
 
     function showJumper() {
         var container = document.getElementById('exchange-jumper-container');
@@ -419,9 +433,12 @@ var AppExchange = (function () {
 
         try {
             if (window.CoinmanExchangeCowSwap && typeof window.CoinmanExchangeCowSwap.mount === 'function') {
+                var trade = pendingCowTrade;
+                pendingCowTrade = null;
                 cowswapInstance = await window.CoinmanExchangeCowSwap.mount({
                     container: cowswapContainer,
                     initialSettings: exchangeSettings || {},
+                    trade: trade || undefined,
                     onSettingsChange: function (updated) {
                         exchangeSettings = Object.assign({}, exchangeSettings || {}, updated);
                         saveExchangeSettings(exchangeSettings);
@@ -503,6 +520,7 @@ var AppExchange = (function () {
         selectExchangeModule: selectExchangeModule,
         updateExchangeViews: updateExchangeViews,
         openJumper: openJumper,
+        openCowSwap: openCowSwap,
     };
 })();
 

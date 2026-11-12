@@ -4,7 +4,7 @@ import { ExchangeMountOptions } from '../../types';
 import { getWalletStatus, subscribeWalletStatus, wagmiConfig } from '../../wallet/wallet';
 import { openExternal } from '../../earn/openExternal';
 import { diag } from '../../diag';
-import { BrChain, BrToken, ChainType, ProviderId, QuoteRequest, RouteQuote } from './types';
+import { BrChain, BrToken, ProviderId, QuoteRequest, RouteQuote } from './types';
 import { fetchChains, fetchToken, fetchTokens, isNative } from './catalog';
 import {
   CLOSE_PCT,
@@ -16,22 +16,42 @@ import {
   rankRoutes,
   searchRoutes,
 } from './search';
-import { FAMILY_NAMES, formatAmount, formatUSD, isAddressFor, shortAddress } from './format';
+import { addressKey, addressName, formatAmount, formatUSD, isAddressFor, shortAddress } from './format';
 import { Logo, TokenSelect } from './TokenSelect';
 import { RouteCard, RouteSection } from './RouteCard';
 import { ExecutePanel } from './ExecutePanel';
+import { DepositPanel } from './DepositPanel';
+import { isDepositChain, thorlikeConfig } from './providers/thorlike';
 import { HistoryPanel } from './HistoryPanel';
 import { resumePending } from './history';
 import { executionBlocker } from './execute/plan';
 import { readBalance } from './execute/balance';
 import { RankedRoute } from './search';
+import { Lang, intlLocale, plural, setLang, tr, useLang, useSavedLang, useT } from './i18n';
 import './bestrate.css';
 
-/** jumper.xyz opens in the Jumper Exchange tab (with the CoinMan wallet); other sites in the browser. */
+/** swap.cow.fi/#/<chain>/swap/<sell>/<buy>?sellAmount=… → the pair for the CoW Swap tab. */
+function cowTrade(url: string) {
+  const match = /^https:\/\/swap\.cow\.fi\/#\/(\d+)\/swap\/([^/?]+)\/([^/?]+)(?:\?(.*))?$/.exec(url);
+  if (!match) return null;
+  const sellAmount = new URLSearchParams(match[4] ?? '').get('sellAmount') ?? undefined;
+  return { chainId: Number(match[1]), sell: match[2], buy: match[3], sellAmount };
+}
+
+/**
+ * Services the app has a tab for open there with the pair filled in: jumper.xyz
+ * in the Jumper Exchange tab (with the CoinMan wallet), CoW Swap in its own
+ * tab; other sites in the browser.
+ */
 function openSite(url: string): void {
   const exchange = (window as any).AppExchange;
   if (url.startsWith('https://jumper.xyz/') && typeof exchange?.openJumper === 'function') {
     exchange.openJumper(url);
+    return;
+  }
+  const trade = cowTrade(url);
+  if (trade && typeof exchange?.openCowSwap === 'function') {
+    exchange.openCowSwap(trade);
     return;
   }
   openExternal(url);
@@ -40,7 +60,7 @@ function openSite(url: string): void {
 /** Chains the wallet connection can send on. */
 const WALLET_CHAINS = wagmiConfig.chains.map((c) => c.id as number);
 /** Services whose routes get a Swap button (others only link to their site). */
-const SIGNABLE: ProviderId[] = ['relay', 'socket', 'kyberswap', 'debridge', 'lifi'];
+const SIGNABLE: ProviderId[] = ['relay', 'socket', 'across', 'kyberswap', 'velora', 'sushi', 'debridge', 'lifi', 'maya', 'thorchain'];
 
 interface Pick {
   chainId: number;
@@ -54,9 +74,13 @@ interface BestRateSettings {
   slippageBps?: number;
   feeCapPct?: number;
   disabled?: ProviderId[];
-  /** Typed-in addresses for the non-EVM families (EVM comes from the wallet). */
-  addresses?: Partial<Record<ChainType, string>>;
+  /**
+   * Typed-in addresses, keyed by `addressKey`: one per non-EVM family, one per
+   * UTXO chain (EVM comes from the wallet). `UTXO` is an older Bitcoin entry.
+   */
+  addresses?: Partial<Record<string, string>>;
   nearApiKey?: string;
+  lang?: Lang;
 }
 
 const DEFAULT_FROM: Pick = { chainId: 1, token: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' };
@@ -64,6 +88,28 @@ const DEFAULT_TO: Pick = { chainId: 42161, token: '0xaf88d065e77c8cC2239327C5EDb
 const SLIPPAGES = [10, 25, 50, 100];
 const FEE_CAPS = [0, 0.05, 0.1, FEE_CAP_PCT];
 const SEARCH_DELAY_MS = 700;
+
+const LANGS: Lang[] = ['ru', 'en'];
+
+const LangSwitch: React.FC = () => {
+  const t = useT();
+  const lang = useLang();
+  return (
+    <div className="br-lang" role="group" aria-label={t('Switch language')}>
+      {LANGS.map((code) => (
+        <button
+          key={code}
+          type="button"
+          className={lang === code ? 'is-active' : ''}
+          aria-pressed={lang === code}
+          onClick={() => setLang(code)}
+        >
+          {code.toUpperCase()}
+        </button>
+      ))}
+    </div>
+  );
+};
 
 async function resolveToken(pick: Pick): Promise<BrToken | null> {
   const list = await fetchTokens(pick.chainId).catch(() => [] as BrToken[]);
@@ -84,6 +130,12 @@ function parseAmount(text: string, decimals: number): bigint | null {
 export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, onSettingsChange }) => {
   const saved = (initialSettings?.bestRate ?? {}) as BestRateSettings;
   const [settings, setSettings] = useState<BestRateSettings>(saved);
+  // `update` is defined further down; the save only runs from an effect, after it exists.
+  useSavedLang(saved.lang, (next) => update({ lang: next }));
+  const t = useT();
+  const lang = useLang();
+  const services = (n: number) =>
+    lang === 'ru' ? plural(n, 'сервис', 'сервиса', 'сервисов') : n === 1 ? 'service' : 'services';
   const [chains, setChains] = useState<BrChain[]>([]);
   const [fromToken, setFromToken] = useState<BrToken | null>(null);
   const [toToken, setToToken] = useState<BrToken | null>(null);
@@ -102,11 +154,12 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
   const [executing, setExecuting] = useState<RankedRoute | null>(null);
+  const [depositing, setDepositing] = useState<RankedRoute | null>(null);
   /** The wallet's balance of the input token; null when it cannot be read here. */
   const [balance, setBalance] = useState<bigint | null>(null);
   // Sending to someone else is set per session and never saved: after a
   // restart swaps go back to the user's own address.
-  const [customReceiver, setCustomReceiver] = useState(false);
+  const [receiverBox, setReceiverBox] = useState(false);
   const [receiverText, setReceiverText] = useState('');
   const [showHistory, setShowHistory] = useState(false);
   const closeHistory = useCallback(() => setShowHistory(false), []);
@@ -142,7 +195,7 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
   useEffect(() => {
     fetchChains()
       .then(setChains)
-      .catch((err) => setLoadError(`Could not load networks: ${err?.message ?? err}`));
+      .catch((err) => setLoadError(tr('Could not load networks: {error}', { error: err?.message ?? err })));
     void resolveToken(saved.from ?? DEFAULT_FROM).then(setFromToken);
     void resolveToken(saved.to ?? DEFAULT_TO).then(setToToken);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -182,18 +235,34 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
 
   const amount = fromToken ? parseAmount(amountText, fromToken.decimals) : null;
   const addresses = settings.addresses ?? {};
+  const typedAddress = (chain: BrChain) => {
+    const key = addressKey(chain);
+    return addresses[key] ?? (key === 'btc' ? addresses.UTXO : undefined) ?? '';
+  };
   const addressOf = (chain?: BrChain) =>
-    !chain ? undefined : chain.type === 'EVM' ? evmAddress : addresses[chain.type]?.trim() || undefined;
+    !chain ? undefined : chain.type === 'EVM' ? evmAddress : typedAddress(chain).trim() || undefined;
   const fromAddress = addressOf(fromChain);
+  // Only an EVM receiver defaults to the wallet and so needs the "another
+  // address" box; elsewhere the typed-in address field already is the receiver.
+  const receiverChoice = toChain?.type === 'EVM';
+  const customReceiver = receiverBox && receiverChoice;
   // A custom receiver replaces the default one; with the box ticked but the
   // field empty or wrong there is no receiver at all, so nothing can be sent.
   const toAddress = customReceiver ? receiverText.trim() || undefined : addressOf(toChain);
-  const receiverInvalid = customReceiver && !!toChain && receiverText.trim() !== '' && !isAddressFor(toChain.type, receiverText);
-  const families = [
-    ...new Set(
-      [fromChain?.type, customReceiver ? undefined : toChain?.type].filter((t): t is ChainType => !!t && t !== 'EVM')
-    ),
-  ];
+  const receiverInvalid = customReceiver && !!toChain && receiverText.trim() !== '' && !isAddressFor(toChain, receiverText);
+  // One address field per non-EVM chain in use (Bitcoin and Dash need their own).
+  // Coins sent by hand (UTXO, XRP) need none on the sending side: Maya and
+  // THORChain refund to the address the deposit came from, and NEAR, signed
+  // on its own site, asks there.
+  const sentByHand = fromChain?.type === 'UTXO' || fromChain?.type === 'XRPL';
+  const addressChains = [sentByHand ? undefined : fromChain, customReceiver ? undefined : toChain]
+    .filter((c): c is BrChain => !!c && c.type !== 'EVM')
+    .filter((c, i, list) => list.findIndex((o) => addressKey(o) === addressKey(c)) === i);
+  // Quotes run on a stand-in for these; deposits and swaps wait for the real one.
+  const missing = addressChains.filter((c) => !isAddressFor(c, typedAddress(c)));
+  const missingNames = missing.map(addressName).join(t(' and '));
+  // Only a missing receiver holds up a deposit or swap; a sender stand-in only shapes quotes.
+  const receiverMissing = !!toChain && missing.some((c) => addressKey(c) === addressKey(toChain));
 
   const request: QuoteRequest | null = useMemo(() => {
     if (!fromChain || !toChain || !fromToken || !toToken || !amount) return null;
@@ -204,8 +273,8 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
       fromToken,
       toToken,
       amount,
-      fromAddress: fromAddress && isAddressFor(fromChain.type, fromAddress) ? fromAddress : undefined,
-      toAddress: toAddress && isAddressFor(toChain.type, toAddress) ? toAddress : undefined,
+      fromAddress: fromAddress && isAddressFor(fromChain, fromAddress) ? fromAddress : undefined,
+      toAddress: toAddress && isAddressFor(toChain, toAddress) ? toAddress : undefined,
       slippageBps: settings.slippageBps ?? 50,
       fromNativePriceUSD: nativePrice,
       nearApiKey: settings.nearApiKey?.trim() || undefined,
@@ -226,6 +295,8 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
         request.nearApiKey ? 'key' : '',
         [...disabled].sort().join(','),
         refreshTick,
+        // Notes and reasons come back in the language asked for.
+        lang,
       ].join('|')
     : '';
   const requestRef = useRef(request);
@@ -277,7 +348,7 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
   const bestNet = ranking?.ranked.find((r) => r.badges.includes('best'))?.netUSD;
   // Routes signable in the app first, site-only ones below; each list shows
   // its best two (from different services) until expanded.
-  const [expanded, setExpanded] = useState({ here: false, site: false });
+  const [expanded, setExpanded] = useState({ here: false, deposit: false, site: false });
   const sections = useMemo(() => {
     if (!ranking || !request) return null;
     const signableHere = (route: RankedRoute) =>
@@ -285,9 +356,15 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
       !route.estimateOnly &&
       request.fromChain.type === 'EVM' &&
       WALLET_CHAINS.includes(request.fromChain.id);
+    // Maya or THORChain from Bitcoin, Dash or Zcash: the user sends to the vault by hand.
+    const depositHere = (route: RankedRoute) => {
+      const cfg = thorlikeConfig(route.provider);
+      return !!cfg && isDepositChain(cfg, request.fromChain);
+    };
     return {
       here: ranking.ranked.filter(signableHere),
-      site: ranking.ranked.filter((route) => !signableHere(route)),
+      deposit: ranking.ranked.filter(depositHere),
+      site: ranking.ranked.filter((route) => !signableHere(route) && !depositHere(route)),
     };
   }, [ranking, request]);
 
@@ -315,40 +392,43 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
       <div className="br-layout">
         <section className="br-card br-form">
           <div className="br-form__head">
-            <h2>Best rate</h2>
+            <h2>{t('Best rate')}</h2>
+            <LangSwitch />
             {/* Same wallet list as the Exchange menu's "Wallet Connect". */}
             <button
               type="button"
               className={`br-wallet${evmAddress ? (viewOnly ? ' is-view' : '') : ' is-empty'}`}
               title={
                 evmAddress
-                  ? `${evmAddress}${viewOnly ? ' — view only, reconnect to sign' : ''}`
-                  : 'No wallet connected — quotes use a stand-in address'
+                  ? `${evmAddress}${viewOnly ? t(' — view only, reconnect to sign') : ''}`
+                  : t('No wallet connected — quotes use a stand-in address')
               }
               onClick={() => void (window as any).AppExchange?.handleWalletClick?.()}
             >
-              {evmAddress ? shortAddress(evmAddress) : 'Connect wallet'}
-              {evmAddress && viewOnly && <span className="br-wallet__view">view only</span>}
+              {evmAddress ? shortAddress(evmAddress) : t('Connect wallet')}
+              {evmAddress && viewOnly && <span className="br-wallet__view">{t('view only')}</span>}
             </button>
             <button
               type="button"
               className="br-icon-btn"
-              aria-label="Settings"
-              title="Settings"
+              aria-label={t('Settings')}
+              title={t('Settings')}
               onClick={() => setShowSettings(!showSettings)}
             >
               ⚙
             </button>
           </div>
           <p className="br-muted br-form__lead">
-            Compares {PROVIDERS.length} services side by side. Swap signs the route from your wallet after checking
-            the contract and simulating it; the site button opens the service itself.
+            {t(
+              'Compares {count} services side by side. Swap signs the route from your wallet after checking the contract and simulating it; the site button opens the service itself.',
+              { count: PROVIDERS.length }
+            )}
           </p>
 
           {showSettings && (
             <div className="br-settings">
               <label>
-                Slippage
+                {t('Slippage')}
                 <span className="br-seg">
                   {SLIPPAGES.map((bps) => (
                     <button
@@ -363,7 +443,7 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
                 </span>
               </label>
               <label>
-                Max service fee
+                {t('Max service fee')}
                 <span className="br-seg">
                   {FEE_CAPS.map((cap) => (
                     <button
@@ -391,17 +471,17 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
                       }}
                     />
                     <span>
-                      <strong>{p.name}</strong> <span className="br-muted">{PROVIDER_FEES[p.id]}</span>
+                      <strong>{p.name}</strong> <span className="br-muted">{t(PROVIDER_FEES[p.id])}</span>
                     </span>
                   </label>
                 ))}
               </div>
               <label className="br-settings__key">
-                NEAR Intents API key
+                {t('NEAR Intents API key')}
                 <input
                   className="br-input"
                   type="password"
-                  placeholder="From partners.near-intents.org — lowers its fee"
+                  placeholder={t('From partners.near-intents.org — lowers its fee')}
                   value={settings.nearApiKey ?? ''}
                   onChange={(e) => update({ nearApiKey: e.target.value })}
                 />
@@ -410,18 +490,18 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
           )}
 
           <div className="br-side">
-            <span className="br-side__label">You send</span>
+            <span className="br-side__label">{t('You send')}</span>
             <button type="button" className="br-pick" onClick={() => setPicker('from')} disabled={!chains.length}>
               {fromToken && fromChain ? (
                 <>
                   <Logo src={fromToken.logo} alt={fromToken.symbol} />
                   <span>
                     <strong>{fromToken.symbol}</strong>
-                    <span className="br-muted"> on {fromChain.name}</span>
+                    <span className="br-muted"> {t('on {chain}', { chain: fromChain.name })}</span>
                   </span>
                 </>
               ) : (
-                <span className="br-muted">Loading…</span>
+                <span className="br-muted">{t('Loading…')}</span>
               )}
             </button>
             <input
@@ -441,7 +521,7 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
               <span className="br-muted">{inputUSD ? formatUSD(inputUSD) : ''}</span>
               {balance != null && fromToken && (
                 <span className={amount && balance < amount ? 'br-warn' : 'br-muted'}>
-                  Balance {formatAmount(balance, fromToken.decimals)} {fromToken.symbol}
+                  {t('Balance')} {formatAmount(balance, fromToken.decimals)} {fromToken.symbol}
                   {fromChain && !isNative(fromChain, fromToken) && balance > 0n && (
                     <button
                       type="button"
@@ -452,56 +532,62 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
                         update({ amount: text });
                       }}
                     >
-                      Max
+                      {t('Max')}
                     </button>
                   )}
                 </span>
               )}
             </span>
             {fromToken && fromToken.status !== 'verified' && (
-              <span className="br-warn">This token is {fromToken.status} — check the address.</span>
+              <span className="br-warn">
+                {t('This token is {status} — check the address.', { status: t(fromToken.status) })}
+              </span>
             )}
           </div>
 
-          <button type="button" className="br-flip" aria-label="Swap direction" onClick={flip}>
+          <button type="button" className="br-flip" aria-label={t('Swap direction')} onClick={flip}>
             ⇅
           </button>
 
           <div className="br-side">
-            <span className="br-side__label">You receive</span>
+            <span className="br-side__label">{t('You receive')}</span>
             <button type="button" className="br-pick" onClick={() => setPicker('to')} disabled={!chains.length}>
               {toToken && toChain ? (
                 <>
                   <Logo src={toToken.logo} alt={toToken.symbol} />
                   <span>
                     <strong>{toToken.symbol}</strong>
-                    <span className="br-muted"> on {toChain.name}</span>
+                    <span className="br-muted"> {t('on {chain}', { chain: toChain.name })}</span>
                   </span>
                 </>
               ) : (
-                <span className="br-muted">Loading…</span>
+                <span className="br-muted">{t('Loading…')}</span>
               )}
             </button>
             {toToken && toToken.status !== 'verified' && (
-              <span className="br-warn">This token is {toToken.status} — check the address.</span>
+              <span className="br-warn">
+                {t('This token is {status} — check the address.', { status: t(toToken.status) })}
+              </span>
             )}
-            <label className="br-check br-receiver-toggle">
-              <input
-                type="checkbox"
-                checked={customReceiver}
-                onChange={(e) => {
-                  setCustomReceiver(e.target.checked);
-                  if (!e.target.checked) setReceiverText('');
-                }}
-              />
-              <span>Send to another address</span>
-            </label>
+            {receiverChoice && (
+              <label className="br-check br-receiver-toggle">
+                <input
+                  type="checkbox"
+                  checked={customReceiver}
+                  onChange={(e) => {
+                    setReceiverBox(e.target.checked);
+                    if (!e.target.checked) setReceiverText('');
+                  }}
+                />
+                <span>{t('Send to another address')}</span>
+              </label>
+            )}
             {customReceiver && toChain && (
               <label className="br-address">
-                <span className="br-side__label">Receiver on {toChain.name}</span>
+                <span className="br-side__label">{t('Receiver on {chain}', { chain: toChain.name })}</span>
                 <input
                   className={`br-input br-mono${receiverInvalid ? ' is-invalid' : ''}`}
-                  placeholder={`${FAMILY_NAMES[toChain.type]} address of the receiver`}
+                  placeholder={t('{name} address of the receiver', { name: addressName(toChain) })}
                   spellCheck={false}
                   autoComplete="off"
                   value={receiverText}
@@ -509,30 +595,36 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
                 />
                 {receiverInvalid && (
                   <span className="br-warn">
-                    Not a valid {FAMILY_NAMES[toChain.type]} address
-                    {toChain.type === 'EVM' ? ' (or a checksum typo)' : ''}.
+                    {t(
+                      toChain.type === 'EVM'
+                        ? 'Not a valid {name} address (or a checksum typo).'
+                        : 'Not a valid {name} address.',
+                      { name: addressName(toChain) }
+                    )}
                   </span>
                 )}
-                <span className="br-muted">Funds sent to a wrong address cannot be recovered.</span>
+                <span className="br-muted">{t('Funds sent to a wrong address cannot be recovered.')}</span>
               </label>
             )}
           </div>
 
-          {families.length > 0 && (
+          {addressChains.length > 0 && (
           <div className="br-addresses">
-            {families.map((family) => {
-              const value = addresses[family] ?? '';
-              const invalid = value.trim() !== '' && !isAddressFor(family, value);
+            {addressChains.map((chain) => {
+              const key = addressKey(chain);
+              const value = typedAddress(chain);
+              const invalid = value.trim() !== '' && !isAddressFor(chain, value);
+              const name = addressName(chain);
               return (
-                <label key={family} className="br-address">
-                  <span className="br-side__label">{FAMILY_NAMES[family]} address</span>
+                <label key={key} className="br-address">
+                  <span className="br-side__label">{t('{name} address', { name })}</span>
                   <input
                     className={`br-input${invalid ? ' is-invalid' : ''}`}
-                    placeholder={`Your ${FAMILY_NAMES[family]} address — needed for quotes`}
+                    placeholder={t('Your {name} address — for quotes, payouts and refunds', { name })}
                     value={value}
-                    onChange={(e) => update({ addresses: { ...addresses, [family]: e.target.value } })}
+                    onChange={(e) => update({ addresses: { ...addresses, [key]: e.target.value } })}
                   />
-                  {invalid && <span className="br-warn">Not a valid {FAMILY_NAMES[family]} address.</span>}
+                  {invalid && <span className="br-warn">{t('Not a valid {name} address.', { name })}</span>}
                 </label>
               );
             })}
@@ -540,11 +632,11 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
           )}
 
           <div className="br-sites">
-            <span className="br-side__label">Also check on their own sites</span>
+            <span className="br-side__label">{t('Also check on their own sites')}</span>
             {request &&
               otherSites(request).map((site) => (
                 <button key={site.name} type="button" className="br-link" onClick={() => openSite(site.url)}>
-                  {site.name} ↗ <span className="br-muted">{site.note}</span>
+                  {site.name} ↗ <span className="br-muted">{t(site.note)}</span>
                 </button>
               ))}
           </div>
@@ -552,16 +644,16 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
 
         <section className="br-card br-results">
           <div className="br-results__head">
-            <h3>Routes</h3>
+            <h3>{t('Routes')}</h3>
             <span className="br-muted">
               {pending > 0
-                ? `Asking ${pending} more service${pending > 1 ? 's' : ''}…`
+                ? t('Asking {count} more {services}…', { count: pending, services: services(pending) })
                 : updatedAt
-                  ? `Updated ${updatedAt.toLocaleTimeString()}`
+                  ? t('Updated {time}', { time: updatedAt.toLocaleTimeString(intlLocale()) })
                   : ''}
             </span>
             <button type="button" className="br-btn br-btn--ghost" onClick={() => setShowHistory(true)}>
-              History
+              {t('History')}
             </button>
             <button
               type="button"
@@ -569,23 +661,37 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
               disabled={!request || pending > 0}
               onClick={() => setRefreshTick((n) => n + 1)}
             >
-              Refresh
+              {t('Refresh')}
             </button>
           </div>
 
           {loadError && <div className="br-warn">{loadError}</div>}
-          {!request && !loadError && <div className="br-muted br-pad">Enter an amount to compare routes.</div>}
-          {request && !ranking?.ranked.length && pending > 0 && <div className="br-muted br-pad">Searching…</div>}
+          {!request && !loadError && <div className="br-muted br-pad">{t('Enter an amount to compare routes.')}</div>}
+          {request && !ranking?.ranked.length && pending > 0 && <div className="br-muted br-pad">{t('Searching…')}</div>}
           {request && !ranking?.ranked.length && pending === 0 && updatedAt && (
-            <div className="br-muted br-pad">No route under your fee limit.</div>
+            <div className="br-muted br-pad">
+              {missingNames
+                ? t('No route yet — enter your {name} address; some services need it to quote.', { name: missingNames })
+                : t('No route under your fee limit.')}
+            </div>
+          )}
+          {request && missingNames && !!ranking?.ranked.length && (
+            <div className="br-muted br-pad">
+              {t(
+                receiverMissing
+                  ? 'Quoted for a placeholder {name} address — enter yours to deposit or swap.'
+                  : 'Quoted for a placeholder {name} address.',
+                { name: missingNames }
+              )}
+            </div>
           )}
 
           {sections && toToken && request && ranking!.ranked.length > 0 && (
             <>
               <RouteSection
-                title="Swap here"
-                hint="signed from your wallet after the contract check and simulation"
-                empty="None of these services can be signed here for this pair."
+                title={t('Swap here')}
+                hint={t('signed from your wallet after the contract check and simulation')}
+                empty={t('None of these services can be signed here for this pair.')}
                 routes={sections.here}
                 expanded={expanded.here}
                 onToggle={() => setExpanded((prev) => ({ ...prev, here: !prev.here }))}
@@ -598,17 +704,40 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
                     onOpenSite={openSite}
                     swapBlocker={
                       viewOnly
-                        ? 'This wallet is view only — reconnect it (Exchange → Wallet Connect) to swap'
+                        ? t('This wallet is view only — reconnect it (Exchange → Wallet Connect) to swap')
                         : executionBlocker(route, request, WALLET_CHAINS, balance)
                     }
                     onSwap={() => setExecuting(route)}
                   />
                 )}
               />
+              {sections.deposit.length > 0 && (
+                <RouteSection
+                  title={t('Send from your own wallet')}
+                  hint={t("no wallet connection: send to the network's vault with the memo shown")}
+                  empty=""
+                  routes={sections.deposit}
+                  expanded={expanded.deposit}
+                  onToggle={() => setExpanded((prev) => ({ ...prev, deposit: !prev.deposit }))}
+                  renderCard={(route) => (
+                    <RouteCard
+                      key={route.id}
+                      route={route}
+                      toToken={toToken}
+                      bestNetUSD={bestNet}
+                      onOpenSite={openSite}
+                      depositBlocker={
+                        request.toAddress ? null : t('enter the {chain} receiver address', { chain: request.toChain.name })
+                      }
+                      onDeposit={() => setDepositing(route)}
+                    />
+                  )}
+                />
+              )}
               <RouteSection
-                title="On the service's site"
-                hint="opens the official site with the pair filled in"
-                empty="Nothing extra on the services' own sites."
+                title={t("On the service's site")}
+                hint={t('opens the service with the pair filled in — in its tab here or on its own site')}
+                empty={t("Nothing extra on the services' own sites.")}
                 routes={sections.site}
                 expanded={expanded.site}
                 onToggle={() => setExpanded((prev) => ({ ...prev, site: !prev.site }))}
@@ -627,11 +756,16 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
 
           {ranking && ranking.overCap.length > 0 && (
             <details className="br-more">
-              <summary>Over your {feeCap}% fee limit ({ranking.overCap.length})</summary>
+              <summary>{t('Over your {cap}% fee limit ({count})', { cap: feeCap, count: ranking.overCap.length })}</summary>
               {ranking.overCap.map((route) => (
                 <div key={route.id} className="br-muted">
-                  {route.providerName} via {route.via}: {formatAmount(route.toAmount, toToken!.decimals)}{' '}
-                  {toToken!.symbol}, fee {route.serviceFeePct?.toFixed(2)}%
+                  {t('{provider} via {via}: {amount} {symbol}, fee {fee}%', {
+                    provider: route.providerName,
+                    via: route.via,
+                    amount: formatAmount(route.toAmount, toToken!.decimals),
+                    symbol: toToken!.symbol,
+                    fee: route.serviceFeePct?.toFixed(2) ?? '?',
+                  })}
                 </div>
               ))}
             </details>
@@ -639,23 +773,29 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
 
           {failures.length > 0 && (
             <details className="br-more">
-              <summary>No route from {failures.length} service{failures.length > 1 ? 's' : ''}</summary>
+              <summary>
+                {t('No route from {count} {services}', { count: failures.length, services: services(failures.length) })}
+              </summary>
               {failures.map((f) => (
                 <div key={f.provider} className="br-muted">
-                  {f.name}: {f.reason}
+                  {f.name}: {t(f.reason)}
                 </div>
               ))}
             </details>
           )}
 
           <p className="br-muted br-footnote">
-            Net = amount received minus gas and fees paid on top. When routes are within {CLOSE_PCT}% of each other,
-            the more reliable service is recommended. Quotes move every few seconds.
+            {t(
+              'Net = amount received minus gas and fees paid on top. When routes are within {pct}% of each other, the more reliable service is recommended. Quotes move every few seconds.',
+              { pct: CLOSE_PCT }
+            )}
           </p>
         </section>
       </div>
 
       {showHistory && <HistoryPanel onClose={closeHistory} />}
+
+      {depositing && request && <DepositPanel route={depositing} req={request} onClose={() => setDepositing(null)} />}
 
       {executing && request && (
         <ExecutePanel
@@ -670,7 +810,7 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
 
       {picker && chains.length > 0 && (
         <TokenSelect
-          title={picker === 'from' ? 'You send' : 'You receive'}
+          title={picker === 'from' ? t('You send') : t('You receive')}
           chains={chains}
           chainId={(picker === 'from' ? fromToken?.chainId : toToken?.chainId) ?? 1}
           onSelect={(chain, token) => choose(picker, chain, token)}

@@ -10,6 +10,7 @@ import { encodeFunctionData, parseAbi, type PublicClient } from 'viem';
 import { wagmiConfig } from '../../../wallet/wallet';
 import { diag } from '../../../diag';
 import { QuoteRequest } from '../types';
+import { tr } from '../i18n';
 import { ExecPlan, checkPlan } from './plan';
 
 type Hex = `0x${string}`;
@@ -59,7 +60,7 @@ async function send(
   diag('info', 'BESTRATE', `${plan.providerName} ${step} sent: ${hash}`);
   onProgress({ step, state: 'pending', hash });
   const receipt = await waitForTransactionReceipt(wagmiConfig, { hash, chainId: plan.chainId as any });
-  if (receipt.status !== 'success') throw new Error(`The ${step} transaction reverted (${hash}).`);
+  if (receipt.status !== 'success') throw new Error(tr('The {step} transaction reverted ({hash}).', { step: tr(step), hash }));
   onProgress({ step, state: 'done', hash });
   return hash;
 }
@@ -77,7 +78,7 @@ export async function runPlan(
   checkPlan(plan, req);
   const account = getAccount(wagmiConfig);
   if (!account.address || account.address.toLowerCase() !== plan.user.toLowerCase()) {
-    throw new Error('The connected wallet changed — review the swap again.');
+    throw new Error(tr('The connected wallet changed — review the swap again.'));
   }
   if (account.chainId !== plan.chainId) {
     await switchChain(wagmiConfig, { chainId: plan.chainId as any });
@@ -98,7 +99,9 @@ export async function runPlan(
   try {
     await client.call({ account: plan.user, to: plan.tx.to, data: plan.tx.data, value: plan.tx.value });
   } catch (err: any) {
-    throw new Error(`The swap would fail right now (${err?.shortMessage ?? err?.message ?? err}). It was not sent.`);
+    throw new Error(
+      tr('The swap would fail right now ({reason}). It was not sent.', { reason: err?.shortMessage ?? err?.message ?? err })
+    );
   }
   return send(plan, 'swap', plan.tx, onProgress);
 }

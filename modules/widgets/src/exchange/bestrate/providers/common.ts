@@ -1,23 +1,42 @@
 import { BrChain, BrToken, ChainType, NoRoute, QuoteRequest, Reliability } from '../types';
+import { addressKey } from '../format';
+import { tr } from '../i18n';
 
 /**
- * Stand-in sender for quotes before a wallet is connected. Only EVM has one
- * that every service accepts; the other families need a real address.
+ * Stand-in addresses for quotes before the user's own are known. Execution
+ * and deposits never use them: they take `fromAddress`/`toAddress` only.
+ * Tron and the UTXO chains get the all-zero key hash, which nobody holds a
+ * key for; Solana and Sui still need a real address.
  */
 const STAND_IN: Partial<Record<ChainType, string>> = {
   EVM: '0x000000000000000000000000000000000000dEaD',
+  TVM: 'T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb',
+  // ACCOUNT_ZERO, the XRP Ledger's all-zero account.
+  XRPL: 'rrrrrrrrrrrrrrrrrrrrrhoLvTp',
+};
+const UTXO_STAND_IN: Record<string, string> = {
+  btc: '1111111111111111111114oLvT2',
+  dash: 'XagqqFetxiDb9wbartKDrXgnqLah6SqX2S',
+  zec: 't1Hsc1LR8yKnbbe3twRp88p6vFfC5t7DLbs',
+  ltc: 'LKDxGDJq5fF4FohAB8zJH24mDDNHDNtqsE',
+  doge: 'D596YFweJQuHY1BbjazZYmAbt8jJPbKehC',
+  bch: '1111111111111111111114oLvT2',
 };
 
+const standIn = (chain: BrChain) => (chain.type === 'UTXO' ? UTXO_STAND_IN[chain.key] : STAND_IN[chain.type]);
+
 export function senderOf(req: QuoteRequest): string {
-  const address = req.fromAddress || STAND_IN[req.fromChain.type];
-  if (!address) throw new NoRoute(`needs a ${req.fromChain.name} sender address`);
+  const address = req.fromAddress || standIn(req.fromChain);
+  if (!address) throw new NoRoute(tr('needs a {chain} sender address', { chain: req.fromChain.name }));
   return address;
 }
 
 export function receiverOf(req: QuoteRequest): string {
-  const sameFamily = req.fromChain.type === req.toChain.type;
-  const address = req.toAddress || (sameFamily ? req.fromAddress : undefined) || STAND_IN[req.toChain.type];
-  if (!address) throw new NoRoute(`needs a ${req.toChain.name} receiver address`);
+  // The sender's address doubles as the receiver only where the format is
+  // shared (any EVM chain); Bitcoin and Dash are both UTXO but differ.
+  const sameFormat = addressKey(req.fromChain) === addressKey(req.toChain);
+  const address = req.toAddress || (sameFormat ? req.fromAddress : undefined) || standIn(req.toChain);
+  if (!address) throw new NoRoute(tr('needs a {chain} receiver address', { chain: req.toChain.name }));
   return address;
 }
 

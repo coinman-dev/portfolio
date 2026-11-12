@@ -17,7 +17,8 @@ body {
     background-color: var(--color-bg-modal);
     margin: 0;
     color: var(--color-text);
-    padding: 24px 0 26px;
+    /* menu bar 24px + window tabs 28px on top, status bar below */
+    padding: 52px 0 26px;
     box-sizing: border-box;
     min-height: 100vh;
 }
@@ -910,6 +911,92 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     position: static !important;
 }
 
+/* --- WINDOW TABS (under the menu bar) --- */
+.window-tabs-bar {
+    position: fixed;
+    top: 25px;
+    left: 0;
+    right: 0;
+    height: 27px;
+    background-color: var(--color-bg-dark);
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    padding: 0 6px;
+    font-size: 12px;
+    z-index: 9998;
+    user-select: none;
+    -webkit-user-select: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+}
+
+.window-tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 23px;
+    padding: 0 8px 0 10px;
+    max-width: 200px;
+    flex-shrink: 0;
+    border: 1px solid var(--color-border);
+    border-bottom: none;
+    border-radius: 5px 5px 0 0;
+    color: var(--color-text-dim);
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+.window-tab:hover {
+    color: var(--color-text);
+    background-color: var(--color-border);
+}
+
+.window-tab.active {
+    color: var(--color-text);
+    background-color: var(--color-bg-modal);
+    border-color: var(--color-accent);
+    box-shadow: inset 0 2px 0 var(--color-accent);
+}
+
+.window-tabs-bar.dragging,
+.window-tabs-bar.dragging .window-tab {
+    cursor: grabbing;
+}
+
+body.window-tabs-dragging {
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: grabbing;
+}
+
+.window-tab.drag-source {
+    opacity: 0.6;
+}
+
+.window-tab-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.window-tab-close {
+    width: 16px;
+    height: 16px;
+    line-height: 15px;
+    text-align: center;
+    border-radius: 3px;
+    font-size: 14px;
+    color: var(--color-text-dim);
+}
+
+.window-tab-close:hover {
+    background-color: #d32f2f;
+    color: #fff;
+}
+
 /* --- TOP MENU BAR --- */
 .desktop-menu-bar {
     position: fixed;
@@ -1295,6 +1382,10 @@ body.show-cur-price .col-cur-price {
 .modal-md .modal-content {
     width: 420px;
 }
+/* 5% wider than .modal-md: the description line did not fit. */
+#modal-unlock-database .modal-content {
+    width: 441px;
+}
 .modal-lg .modal-content {
     width: 440px;
 }
@@ -1431,8 +1522,8 @@ body.show-cur-price .col-cur-price {
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 50px);
-    min-height: calc(100vh - 50px);
+    height: calc(100vh - 78px);
+    min-height: calc(100vh - 78px);
     overflow-y: auto;
 }
 
@@ -1536,3 +1627,71 @@ body.show-cur-price .col-cur-price {
     display: block;
     overflow-y: auto !important;
 }
+
+/* --- Exchange → Connect wallet: heading and the two kinds --- */
+.dropdown-heading {
+    padding: 6px 15px 2px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-muted);
+    cursor: default;
+    white-space: nowrap;
+}
+.dropdown-item-sub {
+    padding-left: 26px;
+}
+
+/* --- DASH CORE MODAL --- */
+.dashcore-modal {
+    max-width: 640px;
+}
+.dashcore-modal code {
+    font-size: 12px;
+}
+.dashcore-folder {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 12px;
+}
+.dashcore-folder .form-input {
+    flex: 1;
+    min-width: 0;
+}
+.dashcore-folder .btn {
+    white-space: nowrap;
+}
+.dashcore-result {
+    font-size: 13px;
+    line-height: 1.5;
+}
+.dashcore-checks {
+    list-style: none;
+    margin: 0 0 10px;
+    padding: 0;
+}
+.dashcore-checks li {
+    display: grid;
+    grid-template-columns: 18px 170px 1fr;
+    gap: 6px;
+    padding: 3px 0;
+}
+.dashcore-checks .is-ok { color: #4caf50; }
+.dashcore-checks .is-bad { color: #e57373; }
+.dashcore-checks .is-info { color: var(--color-text-muted); }
+.dashcore-checks .dashcore-hint {
+    color: var(--color-text-dim);
+    overflow-wrap: anywhere;
+}
+.dashcore-wallets {
+    margin: 6px 0 0;
+    padding-left: 18px;
+    color: var(--color-text-dim);
+}
+.dashcore-summary {
+    margin: 8px 0 0;
+    font-weight: bold;
+}
+.dashcore-summary.is-ok { color: #4caf50; }
+.dashcore-summary.is-bad { color: #e57373; }

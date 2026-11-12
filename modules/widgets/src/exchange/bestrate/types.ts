@@ -1,5 +1,5 @@
-/** LI.FI's chain families; every other service is mapped onto these ids. */
-export type ChainType = 'EVM' | 'SVM' | 'UTXO' | 'MVM' | 'TVM';
+/** LI.FI's chain families (plus the XRP Ledger, which LI.FI lacks); every other service is mapped onto these ids. */
+export type ChainType = 'EVM' | 'SVM' | 'UTXO' | 'MVM' | 'TVM' | 'XRPL';
 
 export interface BrChain {
   /** LI.FI chain id — the one id the whole comparison uses. */
@@ -46,7 +46,7 @@ export interface QuoteRequest {
   nearApiKey?: string;
 }
 
-export type ProviderId = 'lifi' | 'jumper' | 'socket' | 'relay' | 'kyberswap' | 'cow' | 'debridge' | 'near';
+export type ProviderId = 'lifi' | 'jumper' | 'socket' | 'relay' | 'kyberswap' | 'cow' | 'debridge' | 'near' | 'maya' | 'thorchain' | 'across' | 'velora' | 'sushi' | 'jupiter' | 'cetus' | 'mayan';
 
 /** 3 — long-running, heavily used; 2 — established but newer or thinner; 1 — unknown. */
 export type Reliability = 1 | 2 | 3;
@@ -61,6 +61,8 @@ export interface FeeLine {
 export interface SiteLink {
   name: string;
   url: string;
+  /** Opens in one of the app's own tabs rather than the browser. */
+  inApp?: boolean;
 }
 
 export interface RouteQuote {
@@ -86,6 +88,12 @@ export interface RouteQuote {
   /** A figure worked out from another quote — only reachable on the site. */
   estimateOnly?: boolean;
   note?: string;
+  /** Maya Protocol / THORChain route: streamed in sub-swaps or swapped at once. */
+  thorlike?: { streaming: boolean };
+  /** The pools or reserves are thin for this size: it may fill only partly. */
+  capacityWarning?: string;
+  /** What the tight pool or vault holds, e.g. "193,718 USDT". */
+  capacityAvailable?: string;
 }
 
 export interface Provider {

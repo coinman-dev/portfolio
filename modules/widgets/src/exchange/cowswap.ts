@@ -13,17 +13,39 @@ import {
 } from '../wallet/wallet';
 import { diag } from '../diag';
 
+/** A pair to open the widget on, e.g. from a Best Rate route. */
+export interface CowTrade {
+  chainId: number;
+  /** Token addresses; native ETH is 0xEeee…EEeE. */
+  sell: string;
+  buy: string;
+  /** Human amount of the sell token, e.g. "1000.5". */
+  sellAmount?: string;
+}
+
 export interface CowSwapMountOptions {
   container: HTMLElement;
   initialSettings?: any;
   onSettingsChange?: (settings: any) => void;
+  trade?: CowTrade;
 }
 
 export interface CowSwapInstance {
   unmount: () => void;
   updateProvider: (provider?: any) => void;
   getHandler: () => CowSwapWidgetHandler;
+  /** Switches the open widget to this pair and amount. */
+  setTrade: (trade: CowTrade) => void;
 }
+
+const tradeParams = (trade?: CowTrade): Partial<CowSwapWidgetParams> =>
+  trade
+    ? {
+        chainId: trade.chainId as CowSwapWidgetParams['chainId'],
+        sell: { asset: trade.sell, ...(trade.sellAmount ? { amount: trade.sellAmount } : {}) },
+        buy: { asset: trade.buy },
+      }
+    : {};
 
 // @cowprotocol/iframe-transport (checked up to 2.3.8) never removes its RPC message
 // listener on disconnect: it unregisters the raw handler, not the wrapper it added.
@@ -108,7 +130,7 @@ function withDedupedRequests(provider: any): any {
 }
 
 export async function mountCowSwap(options: CowSwapMountOptions): Promise<CowSwapInstance> {
-  const { container, initialSettings, onSettingsChange: _onSettingsChange } = options;
+  const { container, initialSettings, onSettingsChange: _onSettingsChange, trade } = options;
 
   let currentProvider: any = undefined;
   try {
@@ -122,7 +144,7 @@ export async function mountCowSwap(options: CowSwapMountOptions): Promise<CowSwa
     ? Math.max(1, Math.round(Number(initialSettings.slippage) * 100))
     : undefined;
 
-  const params: CowSwapWidgetParams = {
+  let params: CowSwapWidgetParams = {
     appCode: 'CoinMan-Portfolio',
     rootStyle: {
       width: '100%',
@@ -139,6 +161,7 @@ export async function mountCowSwap(options: CowSwapMountOptions): Promise<CowSwa
     // button inside the widget, even while no wallet is connected.
     standaloneMode: false,
     ...(slippageBps ? { slippageBps } : {}),
+    ...tradeParams(trade),
   };
 
   let widgetProvider = withDedupedRequests(currentProvider);
@@ -216,5 +239,12 @@ export async function mountCowSwap(options: CowSwapMountOptions): Promise<CowSwa
     },
     updateProvider: setWidgetProvider,
     getHandler: () => handler,
+    setTrade: (next: CowTrade) => {
+      diag('info', 'COW', `open pair ${next.sell} → ${next.buy} on chain ${next.chainId}`);
+      // Kept in the props too, so a widget rebuilt for another wallet stays on the pair.
+      params = { ...params, ...tradeParams(next) };
+      widgetProps.params = params;
+      handler.updateParams(params);
+    },
   };
 }

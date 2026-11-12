@@ -1,6 +1,7 @@
 import { getBalance, readContract } from '@wagmi/core';
 import { parseAbi } from 'viem';
 import { wagmiConfig } from '../../../wallet/wallet';
+import { tr } from '../i18n';
 
 const BALANCE_ABI = parseAbi(['function balanceOf(address owner) view returns (uint256)']);
 
@@ -24,8 +25,8 @@ export async function readBalance(chainId: number, token: Hex | null, owner: Hex
 /** Turns the usual "cannot pull the tokens" reverts into plain words. */
 export function explainRevert(message: string, symbol: string): string {
   if (/TRANSFER_FROM_FAILED|exceeds balance|insufficient (funds|balance)|transfer amount exceeds/i.test(message)) {
-    return `the wallet does not hold enough ${symbol} for this amount.`;
+    return tr('the wallet does not hold enough {symbol} for this amount.', { symbol });
   }
-  if (/allowance/i.test(message)) return `the ${symbol} approval is missing or too small.`;
+  if (/allowance/i.test(message)) return tr('the {symbol} approval is missing or too small.', { symbol });
   return message;
 }

@@ -40,3 +40,10 @@ rand = "0.8"
 base64 = "0.22"
 reqwest = { version = "0.12", features = ["json"] }
 tokio = { version = "1", features = ["rt"] }
+
+# Linux: Tauri packs child webviews into the window's GtkBox under the main one
+# and ignores their position; jumper.rs moves the Jumper view into a GtkOverlay.
+# Same versions Tauri already uses.
+[target.'cfg(target_os = "linux")'.dependencies]
+gtk = "0.18"
+webkit2gtk = "2.0"

@@ -1,4 +1,4 @@
-import { decodeFunctionData, parseAbi } from 'viem';
+import { decodeFunctionData, encodeFunctionData, parseAbi } from 'viem';
 import { NoRoute, ProviderId, QuoteRequest } from '../types';
 import { RankedRoute } from '../search';
 import { getJson, isNativeToken } from '../providers/common';
@@ -8,6 +8,11 @@ import { socketQuoteUrl } from '../providers/socket';
 import { kyberBuildUrl, kyberRoutesUrl } from '../providers/kyberswap';
 import { debridgeChainId, debridgeCreateTxUrl } from '../providers/debridge';
 import { lifiRoutesBody, lifiToolNames } from '../providers/lifi';
+import { ThorLikeId, thorlikeConfig, thorlikeEvmSend } from '../providers/thorlike';
+import { ACROSS_SPOKE_POOLS, acrossPeriphery, acrossSwapUrl } from '../providers/across';
+import { VELORA_AUGUSTUS, veloraBuild, veloraPriceUrl } from '../providers/velora';
+import { sushiRouter, sushiUrl } from '../providers/sushi';
+import { TrVars, tr } from '../i18n';
 
 /** What gets tracked after the source transaction lands. */
 export type StatusRef =
@@ -15,7 +20,9 @@ export type StatusRef =
   | { kind: 'relay'; requestId: string }
   | { kind: 'debridge'; orderId: string }
   | { kind: 'socket'; quoteId: string }
-  | { kind: 'lifi'; bridge: string; fromChain: number; toChain: number };
+  | { kind: 'lifi'; bridge: string; fromChain: number; toChain: number }
+  | { kind: 'thorlike'; provider: ThorLikeId }
+  | { kind: 'across'; originChainId: number };
 
 type Hex = `0x${string}`;
 
@@ -45,7 +52,7 @@ export interface ExecPlan {
 const MAX_EXTRA_FEE_USD = 25;
 
 /** Services whose routes can be signed here; the rest open their site. */
-const EXECUTABLE: ProviderId[] = ['relay', 'socket', 'kyberswap', 'debridge', 'lifi'];
+const EXECUTABLE: ProviderId[] = ['relay', 'socket', 'across', 'kyberswap', 'velora', 'sushi', 'debridge', 'lifi', 'maya', 'thorchain'];
 
 export function executionBlocker(
   route: RankedRoute,
@@ -54,17 +61,30 @@ export function executionBlocker(
   /** The wallet's balance of the input token, when known. */
   balance?: bigint | null
 ): string | null {
-  if (route.estimateOnly) return 'only available on the site';
-  if (!EXECUTABLE.includes(route.provider)) return `${route.providerName} runs on its own site`;
-  if (req.fromChain.type !== 'EVM') return 'sending from this network is not supported here yet';
-  if (!walletChains.includes(req.fromChain.id)) return `${req.fromChain.name} is not enabled in the wallet connection`;
-  if (!req.fromAddress) return 'connect a wallet first';
-  if (!req.toAddress) return `enter the ${req.toChain.name} receiver address`;
-  if (balance != null && balance < req.amount) return `not enough ${req.fromToken.symbol} in the wallet`;
+  if (route.estimateOnly) return tr('only available on the site');
+  if (!EXECUTABLE.includes(route.provider)) return tr('{provider} runs on its own site', { provider: route.providerName });
+  if (req.fromChain.type !== 'EVM') return tr('sending from this network is not supported here yet');
+  if (!walletChains.includes(req.fromChain.id)) {
+    return tr('{chain} is not enabled in the wallet connection', { chain: req.fromChain.name });
+  }
+  if (!req.fromAddress) return tr('connect a wallet first');
+  if (!req.toAddress) return tr('enter the {chain} receiver address', { chain: req.toChain.name });
+  if (balance != null && balance < req.amount) return tr('not enough {symbol} in the wallet', { symbol: req.fromToken.symbol });
   return null;
 }
 
 const APPROVE_ABI = parseAbi(['function approve(address spender, uint256 amount)']);
+const THORLIKE_ROUTER_ABI = parseAbi([
+  'function depositWithExpiry(address vault, address asset, uint256 amount, string memo, uint256 expiration) payable',
+]);
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
+
+const ACROSS_DEPOSIT = parseAbi([
+  'function deposit(bytes32 depositor, bytes32 recipient, bytes32 inputToken, bytes32 outputToken, uint256 inputAmount, uint256 outputAmount, uint256 destinationChainId, bytes32 exclusiveRelayer, uint32 quoteTimestamp, uint32 fillDeadline, uint32 exclusivityParameter, bytes message)',
+  'function depositNative(address spokePool, address depositor, bytes32 recipient, address inputToken, uint256 inputAmount, bytes32 outputToken, uint256 outputAmount, uint256 destinationChainId, bytes32 exclusiveRelayer, uint32 quoteTimestamp, uint32 fillDeadline, uint32 exclusivityParameter, bytes message)',
+]);
+/** An EVM address as Across writes it in bytes32. */
+const bytes32 = (address: string) => `0x${address.toLowerCase().replace(/^0x/, '').padStart(64, '0')}`;
 
 const ORDER_CREATION =
   '(address giveTokenAddress,uint256 giveAmount,bytes takeTokenAddress,uint256 takeAmount,uint256 takeChainId,bytes receiverDst,address givePatchAuthoritySrc,bytes orderAuthorityAddressDst,bytes allowedTakerDst,bytes externalCall,bytes allowedCancelBeneficiarySrc)';
@@ -75,8 +95,9 @@ const DLN_ABI = parseAbi([
 
 const same = (a?: string, b?: string) => !!a && !!b && a.toLowerCase() === b.toLowerCase();
 
-function fail(reason: string): never {
-  throw new NoRoute(reason);
+/** Refuses the plan; `reason` is English source text with `{name}` placeholders. */
+function fail(reason: string, vars?: TrVars): never {
+  throw new NoRoute(tr(reason, vars));
 }
 
 function baseFields(route: RankedRoute, req: QuoteRequest) {
@@ -107,7 +128,7 @@ async function relayPlan(route: RankedRoute, req: QuoteRequest, signal: AbortSig
   if (items.some(({ step }: any) => step.kind !== 'transaction')) fail('this Relay route needs a signature — use relay.link');
   const approvals = items.filter(({ step }: any) => step.id === 'approve');
   const mains = items.filter(({ step }: any) => step.id !== 'approve');
-  if (mains.length !== 1) fail(`Relay returned ${mains.length} transactions; expected one`);
+  if (mains.length !== 1) fail('Relay returned {count} transactions; expected one', { count: mains.length });
   const main = mains[0];
   const data = main.item.data;
   if (Number(data.chainId) !== req.fromChain.id) fail('Relay transaction is for another chain');
@@ -144,7 +165,7 @@ async function socketPlan(route: RankedRoute, req: QuoteRequest, signal: AbortSi
   const picked = routes.find((r) => protocols(r) === route.via) ?? routes[0];
   if (!picked) fail('Socket returned no route');
   const kind = picked.txData?.kind;
-  if (kind && kind !== 'evm' && kind !== 'evm_tx') fail(`Socket route of kind ${kind} is not supported`);
+  if (kind && kind !== 'evm' && kind !== 'evm_tx') fail('Socket route of kind {kind} is not supported', { kind });
   const object = picked.txData?.object;
   if (!object?.to || !object?.data) fail('Socket returned no transaction');
   return {
@@ -270,17 +291,149 @@ async function lifiPlan(route: RankedRoute, req: QuoteRequest, signal: AbortSign
   };
 }
 
+/**
+ * Across: the deposit is decoded and every field compared with what was
+ * asked — depositor, receiver, tokens, amounts, destination, no call on the
+ * other side. Routes that swap first go through the periphery's swap entry,
+ * which cannot be checked this way, so they are signed on app.across.to.
+ */
+async function acrossPlan(route: RankedRoute, req: QuoteRequest, signal: AbortSignal): Promise<ExecPlan> {
+  const body = await getJson(acrossSwapUrl(req, req.fromAddress!, req.toAddress!), { signal });
+  if (body.crossSwapType !== 'bridgeableToBridgeable') fail('this Across route swaps first — open it on app.across.to');
+  const tx = body.swapTx;
+  if (!tx?.to || !tx?.data) fail('Across returned no transaction');
+  if (Number(tx.chainId) !== req.fromChain.id) fail('transaction is for another chain');
+  if (!same(body.outputToken?.address, req.toToken.address)) fail('Across quoted another output token');
+  const pool = ACROSS_SPOKE_POOLS[req.fromChain.id];
+  const native = isNativeToken(req.fromChain, req.fromToken);
+  const value = BigInt(tx.value ?? 0);
+  const minOut = BigInt(body.minOutputAmount);
+  const { functionName, args } = decodeFunctionData({ abi: ACROSS_DEPOSIT, data: tx.data });
+  const a = args as readonly any[];
+  // deposit: depositor, recipient, inputToken, outputToken, inputAmount, outputAmount, destinationChainId, …, message
+  // depositNative: spokePool, depositor, recipient, inputToken, inputAmount, outputToken, outputAmount, destinationChainId, …, message
+  const f = native
+    ? { pool: a[0], depositor: bytes32(a[1]), recipient: a[2], input: a[4], outputToken: a[5], output: a[6], dest: a[7], message: a[12] }
+    : { pool: tx.to, depositor: a[0], recipient: a[1], input: a[4], outputToken: a[3], output: a[5], dest: a[6], message: a[11] };
+  if (native ? functionName !== 'depositNative' || !same(tx.to, acrossPeriphery(req.fromChain.id)) : functionName !== 'deposit') {
+    fail('Across asked for an unexpected call');
+  }
+  if (!native && !same(a[2], bytes32(req.fromToken.address))) fail('Across deposit takes a different token');
+  if (!same(f.pool, pool)) fail('Across deposit goes to another SpokePool');
+  if (!same(f.depositor, bytes32(req.fromAddress!))) fail('Across deposit is credited to another address');
+  if (!same(f.recipient, bytes32(req.toAddress!))) fail('Across deposit pays a different receiver');
+  if (!same(f.outputToken, bytes32(body.steps?.bridge?.tokenOut?.address ?? ''))) fail('Across deposit pays a different token');
+  if (f.input !== req.amount) fail('Across deposit takes a different amount');
+  if (f.output !== minOut) fail('Across deposit promises a different amount');
+  if (Number(f.dest) !== req.toChain.id) fail('Across deposit targets another chain');
+  if (f.message !== '0x') fail('Across deposit carries a call on the destination chain');
+  if (value !== (native ? req.amount : 0n)) fail('the transaction sends more native coin than the swap needs');
+  const spender = body.checks?.allowance?.spender;
+  if (!native && !same(spender, pool)) fail('Across asked to approve another contract');
+  return {
+    ...baseFields(route, req),
+    spender: native ? undefined : (pool as Hex),
+    tx: { to: tx.to, data: tx.data, value },
+    extraValue: 0n,
+    toAmount: BigInt(body.expectedOutputAmount),
+    toAmountMin: minOut,
+    status: { kind: 'across', originChainId: req.fromChain.id },
+  };
+}
+
+/** Velora: same chain only, so the simulation checks what reaches the receiver. */
+async function veloraPlan(route: RankedRoute, req: QuoteRequest, signal: AbortSignal): Promise<ExecPlan> {
+  const price = await getJson(veloraPriceUrl(req), { signal });
+  const priceRoute = price.priceRoute;
+  if (!priceRoute?.destAmount) fail('Velora returned no route');
+  if (!same(priceRoute.contractAddress, VELORA_AUGUSTUS) || !same(priceRoute.tokenTransferProxy, VELORA_AUGUSTUS)) {
+    fail('Velora named a contract that is not Augustus v6.2');
+  }
+  if (Number(priceRoute.partnerFee ?? 0) > 0) fail('Velora added a partner fee');
+  const { url, body } = veloraBuild(req, priceRoute);
+  const tx = await getJson(url, {
+    method: 'POST',
+    signal,
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!tx?.to || !tx?.data) fail('Velora did not build a transaction');
+  if (Number(tx.chainId) !== req.fromChain.id) fail('transaction is for another chain');
+  const native = isNativeToken(req.fromChain, req.fromToken);
+  const toAmount = BigInt(priceRoute.destAmount);
+  return {
+    ...baseFields(route, req),
+    spender: native ? undefined : (VELORA_AUGUSTUS as Hex),
+    tx: { to: tx.to, data: tx.data, value: BigInt(tx.value ?? 0) },
+    extraValue: 0n,
+    toAmount,
+    toAmountMin: (toAmount * BigInt(10_000 - req.slippageBps)) / 10_000n,
+    status: { kind: 'none' },
+  };
+}
+
+/** SushiSwap: same chain only, so the simulation checks what reaches the receiver. */
+async function sushiPlan(route: RankedRoute, req: QuoteRequest, signal: AbortSignal): Promise<ExecPlan> {
+  const body = await getJson(sushiUrl(req, true), { signal });
+  if (body.status !== 'Success' || !body.tx?.to || !body.tx?.data) fail('Sushi did not build a transaction');
+  const router = sushiRouter(req.fromChain.id);
+  if (!same(body.tx.to, router)) fail('Sushi named a contract that is not its RedSnwapper');
+  const native = isNativeToken(req.fromChain, req.fromToken);
+  const toAmount = BigInt(body.assumedAmountOut);
+  return {
+    ...baseFields(route, req),
+    spender: native ? undefined : (router as Hex),
+    tx: { to: body.tx.to, data: body.tx.data, value: BigInt(body.tx.value ?? 0) },
+    extraValue: 0n,
+    toAmount,
+    toAmountMin: (toAmount * BigInt(10_000 - req.slippageBps)) / 10_000n,
+    status: { kind: 'none' },
+  };
+}
+
+/**
+ * Maya / THORChain from an EVM wallet: one call to the network's router, which
+ * moves the input to the vault with the memo. The payout always comes later
+ * in a transaction of its own, so even ETH → USDT is tracked as a transfer.
+ */
+async function thorlikePlan(route: RankedRoute, req: QuoteRequest, signal: AbortSignal): Promise<ExecPlan> {
+  const cfg = thorlikeConfig(route.provider);
+  if (!cfg) fail('{provider} cannot be executed here', { provider: route.providerName });
+  const send = await thorlikeEvmSend(cfg, req, route.thorlike?.streaming ?? false, signal);
+  const native = isNativeToken(req.fromChain, req.fromToken);
+  const data = encodeFunctionData({
+    abi: THORLIKE_ROUTER_ABI,
+    functionName: 'depositWithExpiry',
+    args: [send.vault, (native ? ZERO_ADDRESS : req.fromToken.address) as Hex, req.amount, send.memo, send.expiry],
+  });
+  return {
+    ...baseFields(route, req),
+    sameChain: false,
+    spender: native ? undefined : send.router,
+    tx: { to: send.router, data, value: native ? req.amount : 0n },
+    extraValue: 0n,
+    toAmount: send.expectedOut,
+    toAmountMin: send.minOut,
+    status: { kind: 'thorlike', provider: cfg.id },
+  };
+}
+
 export async function buildPlan(route: RankedRoute, req: QuoteRequest, signal: AbortSignal): Promise<ExecPlan> {
   if (!req.fromAddress || !req.toAddress) fail('sender and receiver addresses are required');
   const builders: Partial<Record<ProviderId, typeof relayPlan>> = {
     relay: relayPlan,
     socket: socketPlan,
     kyberswap: kyberPlan,
+    velora: veloraPlan,
+    sushi: sushiPlan,
+    across: acrossPlan,
     debridge: debridgePlan,
     lifi: lifiPlan,
+    maya: thorlikePlan,
+    thorchain: thorlikePlan,
   };
   const build = builders[route.provider];
-  if (!build) fail(`${route.providerName} cannot be executed here`);
+  if (!build) fail('{provider} cannot be executed here', { provider: route.providerName });
   const plan = await build(route, req, signal);
   checkPlan(plan, req);
   return plan;
@@ -295,19 +448,25 @@ export function checkPlan(plan: ExecPlan, req: QuoteRequest): void {
   const allowed = allowedContracts(plan.provider, plan.chainId);
   if (plan.chainId !== req.fromChain.id) fail('transaction is for another chain');
   if (!allowed.has(plan.tx.to.toLowerCase())) {
-    fail(`${plan.providerName} asked to call ${plan.tx.to}, which is not one of its contracts`);
+    fail('{provider} asked to call {address}, which is not one of its contracts', {
+      provider: plan.providerName,
+      address: plan.tx.to,
+    });
   }
   if (plan.token) {
-    if (!plan.spender) fail(`${plan.providerName} did not name a contract to approve`);
+    if (!plan.spender) fail('{provider} did not name a contract to approve', { provider: plan.providerName });
     if (!allowed.has(plan.spender.toLowerCase())) {
-      fail(`${plan.providerName} asked to approve ${plan.spender}, which is not one of its contracts`);
+      fail('{provider} asked to approve {address}, which is not one of its contracts', {
+        provider: plan.providerName,
+        address: plan.spender,
+      });
     }
   }
   const maxValue = (plan.token ? 0n : plan.amount) + plan.extraValue;
   if (plan.tx.value > maxValue) fail('the transaction sends more native coin than the swap needs');
   // Fees in the native coin on top (deBridge, some LI.FI bridges) are a few dollars.
   const extraUSD = (Number(plan.extraValue) / 1e18) * req.fromNativePriceUSD;
-  if (extraUSD > MAX_EXTRA_FEE_USD) fail(`fixed fee of ${extraUSD.toFixed(2)}$ is unusually high`);
+  if (extraUSD > MAX_EXTRA_FEE_USD) fail('fixed fee of {usd}$ is unusually high', { usd: extraUSD.toFixed(2) });
   if (plan.toAmountMin > plan.toAmount) fail('minimum received is above the quote');
   if (plan.toAmountMin <= 0n) fail('no minimum amount to receive');
 }

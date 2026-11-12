@@ -82,6 +82,9 @@ pub struct AppSettings {
     /// Global: write the diagnostic log to Logs/ (Settings → Debug mode).
     #[serde(default)]
     pub debug_mode: Option<bool>,
+    /// Global: the Dash Core folder (Exchange → Connect wallet → Dash Core).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dash_core: Option<Value>,
     /// Per-user (per-database) settings keyed by database filename stem.
     #[serde(default)]
     pub users: HashMap<String, UserSettings>,
@@ -246,6 +249,16 @@ pub fn update_debug_mode<R: Runtime>(app: &AppHandle<R>, enabled: bool) {
 
 pub fn logs_dir<R: Runtime>(app: &AppHandle<R>) -> PathBuf {
     base_dir(app).join("Logs")
+}
+
+pub fn load_dash_core<R: Runtime>(app: &AppHandle<R>) -> Value {
+    load(app).dash_core.unwrap_or(Value::Null)
+}
+
+pub fn update_dash_core<R: Runtime>(app: &AppHandle<R>, value: Value) {
+    let mut settings = load(app);
+    settings.dash_core = if value.is_null() { None } else { Some(value) };
+    save(app, &settings);
 }
 
 pub fn load_earn_settings<R: Runtime>(app: &AppHandle<R>) -> Value {

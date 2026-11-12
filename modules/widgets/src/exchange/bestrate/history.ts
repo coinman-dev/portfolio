@@ -164,6 +164,57 @@ export class SwapRecorder {
   }
 }
 
+/**
+ * A deposit sent by hand from a UTXO wallet (Maya / THORChain): written down
+ * once the user gives its transaction id, then followed like any transfer.
+ */
+export function recordDeposit(input: {
+  provider: ProviderId;
+  providerName: string;
+  via: string;
+  req: QuoteRequest;
+  expected: bigint;
+  min: bigint;
+  hash: string;
+  statusRef: StatusRef;
+}): SwapRecord {
+  const { req } = input;
+  const record: SwapRecord = {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    provider: input.provider,
+    providerName: input.providerName,
+    via: input.via,
+    from: {
+      chainId: req.fromChain.id,
+      chainName: req.fromChain.name,
+      symbol: req.fromToken.symbol,
+      address: req.fromToken.address,
+      decimals: req.fromToken.decimals,
+      amount: req.amount.toString(),
+    },
+    to: {
+      chainId: req.toChain.id,
+      chainName: req.toChain.name,
+      symbol: req.toToken.symbol,
+      address: req.toToken.address,
+      decimals: req.toToken.decimals,
+      expected: input.expected.toString(),
+      min: input.min.toString(),
+    },
+    // Sent from the user's own wallet, outside the app: no sender to show.
+    user: '',
+    receiver: req.toAddress ?? '',
+    txs: [{ step: 'swap', hash: input.hash }],
+    explorer: req.fromChain.explorer,
+    statusRef: input.statusRef,
+    status: 'pending',
+  };
+  void saveRecord(record);
+  return record;
+}
+
 const resuming = new Set<string>();
 /** A swap left "sending" without its main transaction this long ago never went out. */
 const ABANDONED_MS = 15 * 60_000;

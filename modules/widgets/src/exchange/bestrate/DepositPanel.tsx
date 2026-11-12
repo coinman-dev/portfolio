@@ -1,0 +1,379 @@
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { diag } from '../../diag';
+import { openExternal } from '../../earn/openExternal';
+import { QuoteRequest } from './types';
+import { RankedRoute } from './search';
+import { amountUSD, humanAmount } from './providers/common';
+import { ThorLikeDeposit, thorlikeConfig, thorlikeDeposit } from './providers/thorlike';
+import { formatAmount, formatDuration, formatUSD } from './format';
+import { subSwaps, tr, useT } from './i18n';
+import { recordDeposit, saveRecord } from './history';
+import { Delivery, watchDelivery } from './execute/status';
+import { DashCoreSend } from './DashCoreSend';
+
+const LARGE_USD = 50_000;
+
+/**
+ * Electrum wallets whose "Pay to" field takes one output per line, a script
+ * written as "OP_RETURN <hex>" among them (paytoedit.parse_script). Works
+ * with their hardware-wallet support too.
+ */
+const ELECTRUM_WALLETS: Record<string, string> = { dash: 'Dash Electrum', btc: 'Electrum', ltc: 'Electrum-LTC' };
+
+/** The "Pay to" text: the vault with the amount, then the memo as a 0-value OP_RETURN output. */
+const electrumPayTo = (deposit: ThorLikeDeposit, amount: string) =>
+  `${deposit.vault}, ${amount}\nOP_RETURN ${deposit.memoHex}, 0`;
+
+/** Chains whose Core wallet console can build the OP_RETURN transaction, and its signing command. */
+const CORE_WALLETS: Record<string, { name: string; sign: string }> = {
+  dash: { name: 'Dash Core', sign: 'signrawtransactionwithwallet' },
+  btc: { name: 'Bitcoin Core', sign: 'signrawtransactionwithwallet' },
+  ltc: { name: 'Litecoin Core', sign: 'signrawtransactionwithwallet' },
+  bch: { name: 'Bitcoin Cash Node', sign: 'signrawtransactionwithwallet' },
+  // Dogecoin Core 1.14 predates the rename.
+  doge: { name: 'Dogecoin Core', sign: 'signrawtransaction' },
+};
+
+/**
+ * Console commands for a Core wallet: a raw transaction paying the vault with
+ * the memo as an OP_RETURN output, funded at the vault's fee rate, signed,
+ * checked and sent. Each step takes the hex printed by the one before.
+ */
+function coreCommands(deposit: ThorLikeDeposit, amount: string, sign: string): string[] {
+  // sats/byte → coins per kB, the unit Core's feeRate option takes.
+  const feeRate = ((Math.max(deposit.gasRate, 1) * 1000) / 1e8).toFixed(8);
+  return [
+    `createrawtransaction '[]' '{"${deposit.vault}":${amount},"data":"${deposit.memoHex}"}'`,
+    `fundrawtransaction ${tr('<hex from step {n}>', { n: 1 })} '{"feeRate":${feeRate}}'`,
+    `${sign} ${tr('<hex from step {n}>', { n: 2 })}`,
+    `decoderawtransaction ${tr('<hex from step {n}>', { n: 3 })}`,
+    `sendrawtransaction ${tr('<hex from step {n}>', { n: 3 })}`,
+  ];
+}
+
+const Copy: React.FC<{ value: string }> = ({ value }) => {
+  const t = useT();
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      className="br-link"
+      onClick={() =>
+        void navigator.clipboard.writeText(value).then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        })
+      }
+    >
+      {copied ? t('copied') : t('copy')}
+    </button>
+  );
+};
+
+interface DepositPanelProps {
+  route: RankedRoute;
+  req: QuoteRequest;
+  onClose: () => void;
+}
+
+/**
+ * Maya deposit by hand for UTXO chains: no wallet connection — the user sends
+ * from their own wallet to Maya's vault with the memo. A fresh quote is taken
+ * on opening, since the vault and the price limit are valid for minutes only.
+ */
+export const DepositPanel: React.FC<DepositPanelProps> = (props) => {
+  const [{ route, req }] = useState(() => ({ route: props.route, req: props.req }));
+  const { onClose } = props;
+  const t = useT();
+  // DepositPanel only opens for Maya / THORChain routes.
+  const cfg = thorlikeConfig(route.provider)!;
+  const provider = cfg.name;
+  const [deposit, setDeposit] = useState<ThorLikeDeposit | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [now, setNow] = useState(() => Date.now());
+  const [txid, setTxid] = useState('');
+  /** Set once the user says the deposit went out: the swap is followed from then on. */
+  const [following, setFollowing] = useState(false);
+  const [delivery, setDelivery] = useState<Delivery | null>(null);
+  const abort = useRef<AbortController | null>(null);
+  const watch = useRef(new AbortController());
+
+  useEffect(() => () => watch.current.abort(), []);
+
+  /** Writes the deposit into the history and follows it; closing the window leaves that to the history. */
+  const follow = (hash: string) => {
+    if (!deposit) return;
+    const statusRef = { kind: 'thorlike' as const, provider: cfg.id };
+    const record = recordDeposit({
+      provider: route.provider,
+      providerName: route.providerName,
+      via: route.via,
+      req,
+      expected: deposit.expectedOut,
+      min: deposit.minOut,
+      hash,
+      statusRef,
+    });
+    setFollowing(true);
+    diag('info', 'BESTRATE', `${cfg.name} deposit sent by hand: ${hash}`);
+    void watchDelivery(statusRef, hash, setDelivery, watch.current.signal).then((result) => {
+      if (result.state !== 'pending') void saveRecord({ ...record, status: result.state, detail: result.detail });
+    });
+  };
+
+  const load = useCallback(async () => {
+    abort.current?.abort();
+    const controller = new AbortController();
+    abort.current = controller;
+    setLoading(true);
+    setError(null);
+    setDeposit(null);
+    try {
+      const found = await thorlikeDeposit(cfg, req, route.thorlike?.streaming ?? false, controller.signal);
+      if (controller.signal.aborted) return;
+      setDeposit(found);
+      diag(
+        'info',
+        'BESTRATE',
+        `${cfg.name} deposit ${req.fromToken.symbol} → ${req.toToken.symbol} (${req.toChain.name}): vault ${found.vault}, memo ${found.memo}`
+      );
+    } catch (err: any) {
+      if (controller.signal.aborted) return;
+      setError(err?.message ?? String(err));
+      diag('warn', 'BESTRATE', `${cfg.name} deposit not prepared: ${err?.message ?? err}`);
+    } finally {
+      if (!controller.signal.aborted) setLoading(false);
+    }
+  }, [req, route, cfg]);
+
+  useEffect(() => {
+    void load();
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => {
+      clearInterval(timer);
+      abort.current?.abort();
+    };
+  }, [load]);
+
+  const secondsLeft = deposit ? Math.floor(deposit.expiry - now / 1000) : 0;
+  const expired = !!deposit && deposit.expiry > 0 && secondsLeft <= 0;
+  const amount = humanAmount(req.amount, req.fromToken.decimals);
+  const inputUSD = amountUSD(req.amount, req.fromToken);
+  const core = CORE_WALLETS[req.fromChain.key];
+  const electrum = ELECTRUM_WALLETS[req.fromChain.key];
+  const trackable = /^[0-9a-fA-F]{64}$/.test(txid.trim());
+  // XRP carries the memo in the transaction's MemoData field, UTXO chains in OP_RETURN.
+  const xrp = req.fromChain.type === 'XRPL';
+
+  return (
+    <div className="br-modal" role="dialog" aria-label={t('Deposit to {provider}', { provider })} onMouseDown={onClose}>
+      <div className="br-modal__panel br-exec br-deposit" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="br-modal__head">
+          <h3>
+            {route.providerName} · {req.fromToken.symbol} → {req.toToken.symbol}
+          </h3>
+          <button type="button" className="br-icon-btn" aria-label={t('Close')} onClick={onClose}>
+            ×
+          </button>
+        </div>
+
+        {loading && <div className="br-muted br-pad">{t("Getting a fresh quote and {provider}'s current vault…", { provider })}</div>}
+        {error && <div className="br-exec__sim is-bad">{error}</div>}
+
+        {deposit && (
+          <>
+            <div className={`br-exec__rows${expired ? ' is-expired' : ''}`}>
+              <div>
+                <span className="br-muted">{t('Send exactly')}</span>
+                <strong className="br-mono">
+                  {amount} {req.fromToken.symbol} <Copy value={amount} />
+                </strong>
+                <span className="br-muted">
+                  {t('{usd} from your own {chain} wallet; the network fee is paid on top', {
+                    usd: formatUSD(inputUSD),
+                    chain: req.fromChain.name,
+                  })}
+                </span>
+              </div>
+              <div>
+                <span className="br-muted">{t("To {provider}'s vault", { provider })}</span>
+                <strong className="br-mono">
+                  {deposit.vault} <Copy value={deposit.vault} />
+                </strong>
+                <span className="br-ok">{t('✓ an active {provider} vault, the chain is not halted', { provider })}</span>
+              </div>
+              <div>
+                <span className="br-muted">{xrp ? t('With the memo (MemoData)') : t('With the memo (OP_RETURN)')}</span>
+                <strong className="br-mono">
+                  {deposit.memo} <Copy value={deposit.memo} />
+                </strong>
+                <span className="br-muted br-mono">
+                  hex {deposit.memoHex} <Copy value={deposit.memoHex} />
+                </span>
+              </div>
+              <div>
+                <span className="br-muted">{t('You receive')}</span>
+                <strong>
+                  ≈ {formatAmount(deposit.expectedOut, req.toToken.decimals)} {req.toToken.symbol}
+                </strong>
+                <span className="br-muted">
+                  {t('at least {amount} on {chain}, to', {
+                    amount: formatAmount(deposit.minOut, req.toToken.decimals),
+                    chain: req.toChain.name,
+                  })}{' '}
+                  <span className="br-mono">{req.toAddress}</span>
+                </span>
+              </div>
+              <div>
+                <span className="br-muted">{t('Timing')}</span>
+                <strong>
+                  {expired ? t('Quote expired') : t('Send within {time}', { time: formatDuration(secondsLeft) })}
+                </strong>
+                <span className="br-muted">
+                  {t('then about {time} to arrive{parts}; fee rate at least {rate} {units}', {
+                    time: formatDuration(deposit.durationSec),
+                    parts:
+                      deposit.streamingParts > 1 ? ` (${subSwaps(deposit.streamingParts)})` : '',
+                    rate: deposit.gasRate,
+                    units: deposit.gasRateUnits,
+                  })}
+                </span>
+              </div>
+            </div>
+
+            {deposit.capacityWarning && (
+              <div className="br-exec__sim is-bad">
+                <strong>{t('Thin liquidity')} ({deposit.capacityWarning.available})</strong>.{' '}
+                {deposit.capacityWarning.text}
+              </div>
+            )}
+
+            <ul className="br-deposit__rules">
+              <li>
+                <strong>{t('The memo must be in the transaction.')}</strong>{' '}
+                {t(
+                  xrp
+                    ? 'Without it {provider} cannot tell what to do and refunds the deposit minus fees. Put it in the memo field of your XRP wallet (for example Xaman); no destination tag.'
+                    : 'Without it {provider} cannot tell what to do and refunds the deposit minus fees. A wallet that cannot add OP_RETURN data will not work.',
+                  { provider }
+                )}
+              </li>
+              <li>
+                <strong>{t('Send from your own wallet, not from an exchange.')}</strong>{' '}
+                {t(
+                  xrp
+                    ? 'Refunds — when the price moves past your {pct}% slippage or the memo is wrong — go back to the sending address.'
+                    : 'Refunds — when the price moves past your {pct}% slippage or the memo is wrong — go to the address of the transaction’s first input, one of your wallet’s addresses. That input must be an ordinary single-signature address: a bare multisig one is not credited.',
+                  { pct: req.slippageBps / 100 }
+                )}
+              </li>
+              <li>
+                <strong>{t('Send once, before the timer runs out.')}</strong>{' '}
+                {t('The vault changes from time to time; never reuse this address later — open a new deposit instead.')}
+              </li>
+              {inputUSD >= LARGE_USD && <li>{t('Large amount: send a small test deposit first.')}</li>}
+            </ul>
+
+            {req.fromChain.key === 'dash' && (
+              <DashCoreSend
+                deposit={deposit}
+                disabled={expired || following}
+                onSent={(hash) => {
+                  setTxid(hash);
+                  follow(hash);
+                }}
+              />
+            )}
+            {electrum && !expired && deposit && (
+              <details className="br-deposit__core">
+                <summary>{t('For {wallet}: paste into "Pay to"', { wallet: electrum })}</summary>
+                <ol>
+                  <li>
+                    <code className="br-mono" style={{ whiteSpace: 'pre-wrap' }}>
+                      {electrumPayTo(deposit, amount)}
+                    </code>{' '}
+                    <Copy value={electrumPayTo(deposit, amount)} />
+                  </li>
+                </ol>
+                <p className="br-muted">
+                  {t(
+                    'Two lines, one output each: the vault with the amount, and the memo as an OP_RETURN output of 0. To choose which address pays (and so gets any refund), pick its coins on the Coins tab first (Spend). Before signing, check the preview shows both outputs.'
+                  )}
+                </p>
+              </details>
+            )}
+            {core && !expired && (
+              <details className="br-deposit__core">
+                <summary>{t('Commands for the {wallet} console (Window → Console)', { wallet: core.name })}</summary>
+                <ol>
+                  {coreCommands(deposit, amount, core.sign).map((command, i) => (
+                    <li key={i}>
+                      <code className="br-mono">{command}</code> <Copy value={command} />
+                    </li>
+                  ))}
+                </ol>
+                <p className="br-muted">
+                  {t(
+                    'Unlock the wallet first if it is encrypted (walletpassphrase). In step 4 check that one output pays {amount} {symbol} to {vault} and one is nulldata (OP_RETURN) with the memo hex; only then send.',
+                    { amount, symbol: req.fromToken.symbol, vault: deposit.vault }
+                  )}
+                </p>
+              </details>
+            )}
+
+            <label className="br-address">
+              <span className="br-side__label">{t('After sending: your transaction ID')}</span>
+              <input
+                className="br-input br-mono"
+                placeholder={t('txid, to follow the swap on {tracker}', { tracker: cfg.tracker.name })}
+                spellCheck={false}
+                value={txid}
+                disabled={following}
+                onChange={(e) => setTxid(e.target.value)}
+              />
+            </label>
+            {following && (
+              <div className={`br-exec__sim${delivery?.state === 'done' ? ' br-ok' : delivery?.state === 'refunded' ? ' br-warn' : ''}`}>
+                {delivery?.state === 'done'
+                  ? t('Done — the funds have arrived.')
+                  : delivery?.state === 'refunded'
+                    ? t('{provider} refunded the deposit to the sending address.', { provider })
+                    : t('Following the swap{detail}… You can close this window; it stays in History.', {
+                        detail: delivery?.detail ? ` (${delivery.detail})` : '',
+                      })}{' '}
+                {delivery?.detail && delivery.state === 'done' ? `(${delivery.detail})` : ''}
+              </div>
+            )}
+          </>
+        )}
+
+        <div className="br-exec__actions">
+          {deposit && (
+            <button
+              type="button"
+              className="br-btn br-btn--ghost"
+              disabled={!trackable}
+              onClick={() => openExternal(cfg.tracker.tx(txid.trim().toUpperCase()))}
+            >
+              {t('Track on {tracker}', { tracker: cfg.tracker.name })} ↗
+            </button>
+          )}
+          {deposit && trackable && !following && (
+            <button type="button" className="br-btn br-btn--primary" onClick={() => follow(txid.trim())}>
+              {t('I sent it — follow the swap')}
+            </button>
+          )}
+          {(expired || error) && !following && (
+            <button type="button" className="br-btn br-btn--primary" onClick={() => void load()}>
+              {t('New quote')}
+            </button>
+          )}
+          <button type="button" className="br-btn br-btn--ghost" onClick={onClose}>
+            {t('Close')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};

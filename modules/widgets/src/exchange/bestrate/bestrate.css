@@ -71,6 +71,30 @@
 
 .br-form__head h2 {
   flex: 1;
+  white-space: nowrap;
+}
+
+/* RU / EN switch, styled like the slippage choice. */
+.br-lang {
+  display: inline-flex;
+  border: 1px solid var(--br-line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.br-lang button {
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  color: var(--br-muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.br-lang button.is-active {
+  background: rgba(255, 140, 0, 0.18);
+  color: var(--br-accent);
 }
 
 .br-results__head {
@@ -693,6 +717,71 @@
   gap: 10px;
 }
 
+/* Maya deposit by hand: long addresses and memos wrap instead of overflowing. */
+.br-deposit .br-exec__rows > div {
+  grid-template-columns: 150px 1fr;
+}
+
+.br-deposit .br-mono {
+  overflow-wrap: anywhere;
+}
+
+.br-exec__rows.is-expired {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+
+.br-deposit__rules {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0 0 0 18px;
+  font-size: 13px;
+}
+
+.br-deposit__core {
+  font-size: 13px;
+}
+
+/* Send from Dash Core: one framed block above the copy-by-hand options. */
+.br-dashcore {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--br-accent);
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.br-dashcore__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.br-dashcore select.br-input {
+  width: 100%;
+}
+
+.br-deposit__core summary {
+  cursor: pointer;
+}
+
+.br-deposit__core ol {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.br-deposit__core code {
+  font-size: 12px;
+}
+
 .br-side__row {
   display: flex;
   justify-content: space-between;
@@ -724,6 +813,7 @@
   color: var(--br-text);
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 12px;
+  white-space: nowrap;
   cursor: pointer;
 }
 

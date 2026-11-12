@@ -12,6 +12,7 @@ import { Delivery, watchDelivery } from './execute/status';
 import { explainRevert, readBalance } from './execute/balance';
 import { SwapRecorder } from './history';
 import { formatAmount, formatUSD, shortAddress } from './format';
+import { tr, useT } from './i18n';
 
 /** A plan older than this is rebuilt before signing — quotes go stale. */
 const PLAN_TTL_MS = 60_000;
@@ -37,6 +38,7 @@ export const ExecutePanel: React.FC<ExecutePanelProps> = (props) => {
   // plan the user is in the middle of signing.
   const [{ route, req }] = useState(() => ({ route: props.route, req: props.req }));
   const { onClose } = props;
+  const t = useT();
   const [phase, setPhase] = useState<Phase>('building');
   const [plan, setPlan] = useState<ExecPlan | null>(null);
   const [simulation, setSimulation] = useState<SimulationResult | null>(null);
@@ -68,23 +70,31 @@ export const ExecutePanel: React.FC<ExecutePanelProps> = (props) => {
       const held = nativeInput ? nativeBalance : tokenBalance;
       if (held < req.amount) {
         throw new Error(
-          `Not enough ${req.fromToken.symbol}: the wallet holds ${formatAmount(held, req.fromToken.decimals)}, ` +
-            `the swap needs ${formatAmount(req.amount, req.fromToken.decimals)}.`
+          tr('Not enough {symbol}: the wallet holds {held}, the swap needs {needed}.', {
+            symbol: req.fromToken.symbol,
+            held: formatAmount(held, req.fromToken.decimals),
+            needed: formatAmount(req.amount, req.fromToken.decimals),
+          })
         );
       }
 
       const built = await buildPlan(route, req, abort.current.signal);
       const nativeNeeded = (nativeInput ? req.amount : 0n) + built.extraValue;
       if (nativeBalance < nativeNeeded) {
-        throw new Error(`Not enough ${req.fromChain.nativeSymbol} for the amount plus the service's fixed fee.`);
+        throw new Error(
+          tr("Not enough {symbol} for the amount plus the service's fixed fee.", { symbol: req.fromChain.nativeSymbol })
+        );
       }
       const gasNative =
         route.gasUSD && req.fromNativePriceUSD > 0 ? route.gasUSD / req.fromNativePriceUSD : 0;
       const spare = Number(nativeBalance - nativeNeeded) / 1e18;
       if (gasNative > 0 && spare < gasNative) {
         setGasWarning(
-          `The wallet has ${spare.toFixed(5)} ${req.fromChain.nativeSymbol} left for gas; ` +
-            `about ${gasNative.toFixed(5)} is needed.`
+          tr('The wallet has {spare} {symbol} left for gas; about {needed} is needed.', {
+            spare: spare.toFixed(5),
+            symbol: req.fromChain.nativeSymbol,
+            needed: gasNative.toFixed(5),
+          })
         );
       }
       const [sim, approvals] = await Promise.all([
@@ -143,12 +153,14 @@ export const ExecutePanel: React.FC<ExecutePanelProps> = (props) => {
       const result = await watchDelivery(current.status, hash, setDelivery, abort.current.signal);
       if (result.state !== 'pending') recorder.finish(result.state, result.detail);
       setPhase(result.state === 'done' ? 'done' : result.state === 'refunded' ? 'refunded' : result.state === 'failed' ? 'error' : 'delivering');
-      if (result.state === 'failed') setError(`The transfer failed on ${current.providerName}'s side: ${result.detail ?? ''}`);
+      if (result.state === 'failed') {
+        setError(tr("The transfer failed on {provider}'s side: {detail}", { provider: current.providerName, detail: result.detail ?? '' }));
+      }
       diag('info', 'BESTRATE', `${current.providerName} delivery: ${result.state} ${result.detail ?? ''}`);
     } catch (err: any) {
       const message = err?.shortMessage ?? err?.message ?? String(err);
       const rejected = /reject|denied|cancel/i.test(message);
-      const shown = rejected ? 'Cancelled in the wallet. Nothing more was sent.' : explainRevert(message, req.fromToken.symbol);
+      const shown = rejected ? tr('Cancelled in the wallet. Nothing more was sent.') : explainRevert(message, req.fromToken.symbol);
       recorder.finish(rejected ? 'cancelled' : 'failed', shown);
       setError(shown);
       setPhase('error');
@@ -174,7 +186,7 @@ export const ExecutePanel: React.FC<ExecutePanelProps> = (props) => {
   const busy = phase === 'building' || phase === 'running';
 
   return (
-    <div className="br-modal" role="dialog" aria-label="Confirm swap" onMouseDown={() => !busy && onClose(phase === 'done')}>
+    <div className="br-modal" role="dialog" aria-label={t('Confirm swap')} onMouseDown={() => !busy && onClose(phase === 'done')}>
       <div className="br-modal__panel br-exec" onMouseDown={(e) => e.stopPropagation()}>
         <div className="br-modal__head">
           <h3>
@@ -183,7 +195,7 @@ export const ExecutePanel: React.FC<ExecutePanelProps> = (props) => {
           <button
             type="button"
             className="br-icon-btn"
-            aria-label="Close"
+            aria-label={t('Close')}
             disabled={phase === 'running'}
             onClick={() => onClose(phase === 'done')}
           >
@@ -191,46 +203,52 @@ export const ExecutePanel: React.FC<ExecutePanelProps> = (props) => {
           </button>
         </div>
 
-        {phase === 'building' && <div className="br-muted br-pad">Building the transaction and simulating it…</div>}
+        {phase === 'building' && <div className="br-muted br-pad">{t('Building the transaction and simulating it…')}</div>}
 
         {plan && phase !== 'building' && (
           <div className="br-exec__rows">
             <div>
-              <span className="br-muted">You send</span>
+              <span className="br-muted">{t('You send')}</span>
               <strong>
                 {formatAmount(plan.amount, req.fromToken.decimals)} {req.fromToken.symbol}
               </strong>
               <span className="br-muted">
-                {formatUSD(inputUSD)} on {req.fromChain.name}
+                {t('{usd} on {chain}', { usd: formatUSD(inputUSD), chain: req.fromChain.name })}
               </span>
             </div>
             <div>
-              <span className="br-muted">You receive</span>
+              <span className="br-muted">{t('You receive')}</span>
               <strong>
                 ≈ {formatAmount(plan.toAmount, req.toToken.decimals)} {req.toToken.symbol}
               </strong>
               <span className="br-muted">
-                at least {formatAmount(plan.toAmountMin, req.toToken.decimals)} on {req.toChain.name}
+                {t('at least {amount} on {chain}', {
+                  amount: formatAmount(plan.toAmountMin, req.toToken.decimals),
+                  chain: req.toChain.name,
+                })}
               </span>
             </div>
             <div>
-              <span className="br-muted">Receiver</span>
+              <span className="br-muted">{t('Receiver')}</span>
               <strong className="br-mono">{plan.receiver}</strong>
               {plan.receiver.toLowerCase() !== plan.user.toLowerCase() && (
-                <span className="br-warn">Not the sending wallet — check every character.</span>
+                <span className="br-warn">{t('Not the sending wallet — check every character.')}</span>
               )}
             </div>
             <div>
-              <span className="br-muted">Contract</span>
+              <span className="br-muted">{t('Contract')}</span>
               <strong className="br-mono">{plan.tx.to}</strong>
-              <span className="br-ok">✓ on {plan.providerName}'s published list</span>
+              <span className="br-ok">{t("✓ on {provider}'s published list", { provider: plan.providerName })}</span>
             </div>
             <div>
-              <span className="br-muted">Route</span>
+              <span className="br-muted">{t('Route')}</span>
               <strong>{plan.via}</strong>
               {plan.extraValue > 0n && (
                 <span className="br-muted">
-                  plus a fee of {formatAmount(plan.extraValue, 18)} {req.fromChain.nativeSymbol} paid on top
+                  {t('plus a fee of {amount} {symbol} paid on top', {
+                    amount: formatAmount(plan.extraValue, 18),
+                    symbol: req.fromChain.nativeSymbol,
+                  })}
                 </span>
               )}
             </div>
@@ -245,13 +263,19 @@ export const ExecutePanel: React.FC<ExecutePanelProps> = (props) => {
               return (
                 <li key={step} className={`is-${state}`}>
                   <span>
-                    {STEP_LABELS[step]}
+                    {t(STEP_LABELS[step])}
                     {step === 'approve' && plan.spender && (
-                      <span className="br-muted"> to {shortAddress(plan.spender)}</span>
+                      <span className="br-muted"> {t('to {address}', { address: shortAddress(plan.spender) })}</span>
                     )}
                   </span>
                   <span className="br-muted">
-                    {state === 'wallet' ? 'confirm in wallet…' : state === 'pending' ? 'waiting for the block…' : state === 'done' ? 'done' : ''}
+                    {state === 'wallet'
+                      ? t('confirm in wallet…')
+                      : state === 'pending'
+                        ? t('waiting for the block…')
+                        : state === 'done'
+                          ? t('done')
+                          : ''}
                   </span>
                   {txLink(p?.hash)}
                 </li>
@@ -263,13 +287,20 @@ export const ExecutePanel: React.FC<ExecutePanelProps> = (props) => {
         {phase === 'review' && simulation && (
           <div className={simulation.supported && !simulation.ok ? 'br-exec__sim is-bad' : 'br-exec__sim'}>
             {!simulation.supported &&
-              `Full simulation is not available on ${req.fromChain.name}; the swap is dry-run right before it is sent.`}
+              t('Full simulation is not available on {chain}; the swap is dry-run right before it is sent.', {
+                chain: req.fromChain.name,
+              })}
             {simulation.supported && simulation.ok &&
               (simulation.received != null
-                ? `Simulated from your wallet: you receive ${formatAmount(simulation.received, req.toToken.decimals)} ${req.toToken.symbol}.`
-                : 'Simulated from your wallet: approval and transaction go through.')}
+                ? t('Simulated from your wallet: you receive {amount} {symbol}.', {
+                    amount: formatAmount(simulation.received, req.toToken.decimals),
+                    symbol: req.toToken.symbol,
+                  })
+                : t('Simulated from your wallet: approval and transaction go through.'))}
             {simBlocks &&
-              `Simulation failed — nothing will be sent: ${explainRevert(simulation.error ?? 'reverted', req.fromToken.symbol)}`}
+              t('Simulation failed — nothing will be sent: {reason}', {
+                reason: explainRevert(simulation.error ?? 'reverted', req.fromToken.symbol),
+              })}
           </div>
         )}
         {phase === 'review' && gasWarning && <div className="br-warn">{gasWarning}</div>}
@@ -278,44 +309,50 @@ export const ExecutePanel: React.FC<ExecutePanelProps> = (props) => {
           <label className="br-check br-warn">
             <input type="checkbox" checked={receiverAck} onChange={(e) => setReceiverAck(e.target.checked)} />
             <span>
-              I checked the receiver {shortAddress(plan.receiver)} on {req.toChain.name} — funds sent there cannot be
-              returned.
+              {t('I checked the receiver {address} on {chain} — funds sent there cannot be returned.', {
+                address: shortAddress(plan.receiver),
+                chain: req.toChain.name,
+              })}
             </span>
           </label>
         )}
         {phase === 'review' && needsLossAck && (
           <label className="br-check br-warn">
             <input type="checkbox" checked={acceptLoss} onChange={(e) => setAcceptLoss(e.target.checked)} />
-            <span>You receive {lossPct.toFixed(2)}% less than you send in value. I understand.</span>
+            <span>{t('You receive {pct}% less than you send in value. I understand.', { pct: lossPct.toFixed(2) })}</span>
           </label>
         )}
         {phase === 'review' && inputUSD >= LARGE_USD && (
-          <div className="br-muted">Large amount: consider a small test swap on this route first.</div>
+          <div className="br-muted">{t('Large amount: consider a small test swap on this route first.')}</div>
         )}
 
         {phase === 'delivering' && (
           <div className="br-exec__sim">
-            Sent. Waiting for {req.toChain.name} to receive it
-            {delivery?.detail ? ` (${delivery.detail})` : ''}… You can close this window; the transfer continues.
+            {t('Sent. Waiting for {chain} to receive it{detail}… You can close this window; the transfer continues.', {
+              chain: req.toChain.name,
+              detail: delivery?.detail ? ` (${delivery.detail})` : '',
+            })}
           </div>
         )}
         {phase === 'done' && (
-          <div className="br-exec__sim br-ok">Done — the funds have arrived. {txLink(swapHash ?? undefined)}</div>
+          <div className="br-exec__sim br-ok">
+            {t('Done — the funds have arrived.')} {txLink(swapHash ?? undefined)}
+          </div>
         )}
         {phase === 'refunded' && (
-          <div className="br-exec__sim br-warn">The transfer was not filled and was refunded to your wallet.</div>
+          <div className="br-exec__sim br-warn">{t('The transfer was not filled and was refunded to your wallet.')}</div>
         )}
         {phase === 'error' && error && <div className="br-exec__sim is-bad">{error}</div>}
 
         <div className="br-exec__actions">
           {phase === 'review' && (
             <button type="button" className="br-btn br-btn--primary" disabled={!canConfirm} onClick={() => void confirm()}>
-              {steps.length > 1 ? `Approve and swap (${steps.length} transactions)` : 'Swap'}
+              {steps.length > 1 ? t('Approve and swap ({count} transactions)', { count: steps.length }) : t('Swap')}
             </button>
           )}
           {phase === 'error' && (
             <button type="button" className="br-btn br-btn--ghost" onClick={() => void prepare()}>
-              Try again
+              {t('Try again')}
             </button>
           )}
           <button
@@ -324,7 +361,7 @@ export const ExecutePanel: React.FC<ExecutePanelProps> = (props) => {
             disabled={phase === 'running'}
             onClick={() => onClose(phase === 'done')}
           >
-            {phase === 'done' || phase === 'delivering' || phase === 'refunded' ? 'Close' : 'Cancel'}
+            {phase === 'done' || phase === 'delivering' || phase === 'refunded' ? t('Close') : t('Cancel')}
           </button>
         </div>
       </div>
