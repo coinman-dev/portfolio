@@ -1,0 +1,10 @@
+{
+    "$schema": "../gen/schemas/desktop-schema.json",
+    "identifier": "cow-swap",
+    "description": "swap.cow.fi in the CoW Swap view (Linux, macOS) may only ask for the wallet state and pass wallet calls to the app",
+    "webviews": ["cowswap"],
+    "remote": {
+        "urls": ["https://swap.cow.fi/*"]
+    },
+    "permissions": ["cow-bridge:default"]
+}

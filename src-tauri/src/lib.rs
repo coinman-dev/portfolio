@@ -2,6 +2,8 @@ mod approvals;
 mod dash_core;
 mod diag_log;
 mod exchange_history;
+mod child_view;
+mod cow_view;
 mod jumper;
 mod jumper_storage;
 mod settings;
@@ -556,6 +558,8 @@ fn now_unix_ms() -> u64 {
 pub fn run() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(cow_view::plugin())
+        .plugin(jumper::plugin())
         .manage(StorageLock::default())
         .manage(SessionPassword::default())
         .manage(WindowSizeCalibration::default())
@@ -615,7 +619,11 @@ pub fn run() {
             jumper::jumper_show,
             jumper::jumper_hide,
             jumper::jumper_wallet_response,
-            jumper::jumper_wallet_state
+            jumper::jumper_wallet_state,
+            cow_view::cow_show,
+            cow_view::cow_hide,
+            cow_view::cow_wallet_response,
+            cow_view::cow_wallet_state
         ])
         .register_asynchronous_uri_scheme_protocol(jumper::PROTOCOL, jumper::handle)
         .setup(|app| {

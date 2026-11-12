@@ -13,10 +13,19 @@
     if (location.hostname !== "jumper.xyz" || window.__coinmanJumper) return;
     window.__coinmanJumper = true;
 
-    var BRIDGE = navigator.userAgent.indexOf("Windows") !== -1
-        ? "https://coinman-wallet.localhost"
-        : "coinman-wallet://localhost";
+    // Windows: the coinman-wallet protocol at https://coinman-wallet.localhost.
+    // Linux and macOS: it would be coinman-wallet://, which the site's CSP
+    // refuses, so calls go over Tauri's IPC (the jumper-bridge plugin).
+    var VIA_PROTOCOL = navigator.userAgent.indexOf("Windows") !== -1;
+    var BRIDGE = "https://coinman-wallet.localhost";
     var realFetch = window.fetch.bind(window);
+    function ipc(command, args) {
+        var tauri = window.__TAURI_INTERNALS__;
+        if (!tauri || typeof tauri.invoke !== "function") {
+            return Promise.reject(new Error("CoinMan wallet bridge is not ready"));
+        }
+        return tauri.invoke("plugin:jumper-bridge|" + command, args || {});
+    }
 
     // ── 0. Settings kept between sessions ───────────────────────────────────
     // The view is private, so the site's local storage is gone after a
@@ -49,12 +58,15 @@
             var body = JSON.stringify(items);
             if (body === lastSaved) return;
             lastSaved = body;
-            realFetch(BRIDGE + "/storage", {
-                method: "POST",
-                headers: { "content-type": "text/plain" },
-                body: body,
-                keepalive: !!keepalive
-            }).catch(function () { lastSaved = null; });
+            var sent = VIA_PROTOCOL
+                ? realFetch(BRIDGE + "/storage", {
+                    method: "POST",
+                    headers: { "content-type": "text/plain" },
+                    body: body,
+                    keepalive: !!keepalive
+                })
+                : ipc("storage", { items: items });
+            sent.catch(function () { lastSaved = null; });
         } catch (e) { /* try again next round */ }
     }
     setInterval(function () { saveSettings(false); }, 5000);
@@ -206,18 +218,22 @@
         });
     }
     function rpc(method, params) {
-        return realFetch(BRIDGE + "/rpc", {
-            method: "POST",
-            // text/plain keeps this a simple request: no CORS preflight.
-            headers: { "content-type": "text/plain" },
-            body: JSON.stringify({
-                method: method,
-                params: params === undefined ? [] : params,
-                hints: method === "eth_sendTransaction" || method === "eth_signTypedData_v4" ? hints() : undefined
+        var call = {
+            method: method,
+            params: params === undefined ? [] : params,
+            hints: method === "eth_sendTransaction" || method === "eth_signTypedData_v4" ? hints() : undefined
+        };
+        var answer = VIA_PROTOCOL
+            ? realFetch(BRIDGE + "/rpc", {
+                method: "POST",
+                // text/plain keeps this a simple request: no CORS preflight.
+                headers: { "content-type": "text/plain" },
+                body: JSON.stringify(call)
+            }).then(function (res) {
+                return res.json();
             })
-        }).then(function (res) {
-            return res.json();
-        }).then(function (body) {
+            : ipc("rpc", call);
+        return answer.then(function (body) {
             if (body && body.error) {
                 var err = new Error(body.error.message || "Request failed");
                 err.code = body.error.code || 4001;
@@ -250,9 +266,10 @@
     // Account and network come from the app; changes are passed on as events.
     var state = { accounts: [], chainId: null };
     function poll() {
-        realFetch(BRIDGE + "/state").then(function (res) {
-            return res.json();
-        }).then(function (next) {
+        var asked = VIA_PROTOCOL
+            ? realFetch(BRIDGE + "/state").then(function (res) { return res.json(); })
+            : ipc("state");
+        asked.then(function (next) {
             var accounts = Array.isArray(next.accounts) ? next.accounts : [];
             var chainChanged = next.chainId !== state.chainId;
             var accountsChanged = accounts.join() !== state.accounts.join();

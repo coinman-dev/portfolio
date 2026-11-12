@@ -11,7 +11,14 @@
 //! Wallet calls travel page → `coinman-wallet` protocol (here) → event to the
 //! main webview → safety check and WalletConnect there → `jumper_wallet_response`
 //! → page. Only the "jumper" webview on https://jumper.xyz may use the
-//! protocol; the site gets no Tauri IPC at all.
+//! protocol.
+//!
+//! That is Windows, where the protocol is https://coinman-wallet.localhost.
+//! On Linux and macOS it would be coinman-wallet://, which jumper.xyz's CSP
+//! (`connect-src 'self' data: https: wss:`) refuses, so there the page uses
+//! Tauri's IPC instead: the `jumper-bridge` plugin's `rpc`, `state` and
+//! `storage` commands, granted to https://jumper.xyz in the "jumper" webview
+//! only (capabilities/jumper.json). No other command is reachable from the site.
 //!
 //! Webviews are created from async commands only: on Windows, creating one
 //! from a synchronous command deadlocks WebView2.
@@ -20,15 +27,18 @@ use serde_json::{json, Value};
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::mpsc::{channel, Sender};
 use std::sync::{LazyLock, Mutex};
 use std::time::Duration;
 use tauri::http::{Request, Response, StatusCode};
+use tauri::plugin::TauriPlugin;
 use tauri::webview::{NewWindowResponse, WebviewBuilder};
 use tauri::{
     AppHandle, Emitter, EventTarget, LogicalPosition, LogicalSize, Manager, Runtime, UriSchemeContext,
     UriSchemeResponder, Url, WebviewUrl,
 };
 
+use crate::child_view::Bounds;
 use crate::{jumper_storage, webview_profile};
 
 pub const LABEL: &str = "jumper";
@@ -42,7 +52,13 @@ const MAX_BODY: usize = 256 * 1024;
 const PAGE_SCRIPT: &str = include_str!("jumper_page.js");
 
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
-static PENDING: LazyLock<Mutex<HashMap<u64, UriSchemeResponder>>> = LazyLock::new(Default::default);
+/// Who waits for a wallet call's answer: the protocol (Windows) or an IPC call.
+enum Waiter {
+    Http(UriSchemeResponder),
+    Ipc(Sender<Value>),
+}
+
+static PENDING: LazyLock<Mutex<HashMap<u64, Waiter>>> = LazyLock::new(Default::default);
 /// `{ accounts, chainId }` as last pushed by the main webview.
 static WALLET_STATE: Mutex<Option<Value>> = Mutex::new(None);
 
@@ -50,14 +66,6 @@ fn is_jumper(url: &Url) -> bool {
     url.scheme() == "https" && url.host_str() == Some("jumper.xyz")
 }
 
-/// Area of the main window the Jumper view covers, in CSS (logical) pixels.
-#[derive(serde::Deserialize, Clone, Copy)]
-pub struct Bounds {
-    x: f64,
-    y: f64,
-    width: f64,
-    height: f64,
-}
 
 /// Shows the Jumper view over `bounds`, creating it on first use; `url`, if
 /// given, must be on jumper.xyz and is opened in it.
@@ -84,7 +92,7 @@ fn show<R: Runtime>(app: &AppHandle<R>, bounds: Bounds, url: Option<String>) -> 
             webview.navigate(url).map_err(|e| e.to_string())?;
         }
         #[cfg(target_os = "linux")]
-        linux_overlay::place(&webview, bounds);
+        crate::child_view::place_linux(&webview, bounds);
         webview.show().map_err(|e| e.to_string())?;
         return Ok(());
     }
@@ -118,57 +126,9 @@ fn show<R: Runtime>(app: &AppHandle<R>, bounds: Bounds, url: Option<String>) -> 
     let webview = window.add_child(builder, position, size).map_err(|e| e.to_string())?;
     let _ = webview.set_zoom(zoom);
     #[cfg(target_os = "linux")]
-    linux_overlay::place(&webview, bounds);
+    crate::child_view::place_linux(&webview, bounds);
     log::info!("[jumper] view created");
     Ok(())
-}
-
-/// On Linux Tauri packs every webview of a window into one vertical GtkBox,
-/// so the Jumper view lands below the main webview (off screen) and
-/// `set_position` / `set_size` do nothing. On first use this moves both into a
-/// GtkOverlay — main webview underneath, Jumper on top — and places Jumper
-/// with margins and a size request.
-#[cfg(target_os = "linux")]
-mod linux_overlay {
-    use super::Bounds;
-    use gtk::prelude::*;
-    use tauri::Runtime;
-
-    pub fn place<R: Runtime>(webview: &tauri::Webview<R>, bounds: Bounds) {
-        let result = webview.with_webview(move |platform| {
-            let view = platform.inner();
-            let widget: &gtk::Widget = view.upcast_ref();
-
-            if let Some(vbox) = widget.parent().and_then(|p| p.downcast::<gtk::Box>().ok()) {
-                let main = vbox
-                    .children()
-                    .into_iter()
-                    .find(|c| c != widget && c.is::<webkit2gtk::WebView>());
-                if let Some(main) = main {
-                    let overlay = gtk::Overlay::new();
-                    vbox.remove(widget);
-                    vbox.remove(&main);
-                    overlay.add(&main);
-                    overlay.add_overlay(widget);
-                    vbox.pack_start(&overlay, true, true, 0);
-                    overlay.show_all();
-                    main.grab_focus();
-                }
-            }
-
-            widget.set_halign(gtk::Align::Start);
-            widget.set_valign(gtk::Align::Start);
-            widget.set_margin_start(bounds.x.max(0.0).round() as i32);
-            widget.set_margin_top(bounds.y.max(0.0).round() as i32);
-            widget.set_size_request(
-                bounds.width.max(1.0).round() as i32,
-                bounds.height.max(1.0).round() as i32,
-            );
-        });
-        if let Err(e) = result {
-            log::warn!("[jumper] cannot place the view: {e}");
-        }
-    }
 }
 
 /// Jumper keeps its Simple/Advanced switch and the advanced layout for pages
@@ -269,7 +229,7 @@ pub fn handle<R: Runtime>(ctx: UriSchemeContext<'_, R>, request: Request<Vec<u8>
                 "params": call.get("params").cloned().unwrap_or(json!([])),
                 "hints": call.get("hints").cloned().unwrap_or(Value::Null),
             });
-            PENDING.lock().unwrap_or_else(|p| p.into_inner()).insert(id, responder);
+            PENDING.lock().unwrap_or_else(|p| p.into_inner()).insert(id, Waiter::Http(responder));
             if let Err(e) = ctx.app_handle().emit_to(EventTarget::webview("main"), "jumper-wallet-request", payload) {
                 log::error!("[jumper] cannot reach the main window: {e}");
                 finish(id, rpc_error(4900, "CoinMan is not ready"));
@@ -286,9 +246,83 @@ pub fn handle<R: Runtime>(ctx: UriSchemeContext<'_, R>, request: Request<Vec<u8>
 
 /// Sends the answer for wallet call `id` back to the page, if it still waits.
 fn finish(id: u64, response: Value) {
-    let responder = PENDING.lock().unwrap_or_else(|p| p.into_inner()).remove(&id);
-    if let Some(responder) = responder {
-        respond_json(responder, StatusCode::OK, &response);
+    let waiter = PENDING.lock().unwrap_or_else(|p| p.into_inner()).remove(&id);
+    match waiter {
+        Some(Waiter::Http(responder)) => respond_json(responder, StatusCode::OK, &response),
+        Some(Waiter::Ipc(tx)) => {
+            let _ = tx.send(response);
+        }
+        None => {}
+    }
+}
+
+// ─── IPC bridge (Linux, macOS) ───────────────────────────────────────────────
+
+/// The `jumper-bridge` plugin: what the Jumper page may call over IPC.
+pub fn plugin<R: Runtime>() -> TauriPlugin<R> {
+    tauri::plugin::Builder::new("jumper-bridge")
+        .invoke_handler(tauri::generate_handler![rpc, state, storage])
+        .build()
+}
+
+/// Calls from anything but the Jumper view on jumper.xyz are refused (the
+/// capability already limits them; this keeps it so if that file changes).
+fn from_jumper_view<R: Runtime>(webview: &tauri::Webview<R>) -> bool {
+    webview.label() == LABEL && webview.url().map(|u| is_jumper(&u)).unwrap_or(false)
+}
+
+#[tauri::command]
+fn state<R: Runtime>(webview: tauri::Webview<R>) -> Value {
+    let empty = json!({ "accounts": [], "chainId": null });
+    if !from_jumper_view(&webview) {
+        return empty;
+    }
+    WALLET_STATE.lock().unwrap_or_else(|p| p.into_inner()).clone().unwrap_or(empty)
+}
+
+#[tauri::command]
+fn storage<R: Runtime>(app: AppHandle<R>, webview: tauri::Webview<R>, items: Value) -> Result<(), String> {
+    if !from_jumper_view(&webview) {
+        return Err("not allowed".into());
+    }
+    if items.to_string().len() > MAX_BODY * 2 {
+        return Err("too large".into());
+    }
+    let items = items.as_object().cloned().ok_or("expected an object")?;
+    jumper_storage::save(&app, items)
+}
+
+#[tauri::command]
+async fn rpc<R: Runtime>(
+    app: AppHandle<R>,
+    webview: tauri::Webview<R>,
+    method: String,
+    params: Option<Value>,
+    hints: Option<Value>,
+) -> Value {
+    if !from_jumper_view(&webview) {
+        log::warn!("[jumper] wallet call refused from webview {}", webview.label());
+        return rpc_error(4100, "not allowed");
+    }
+    let params = params.unwrap_or_else(|| json!([]));
+    if params.to_string().len() > MAX_BODY {
+        return rpc_error(-32600, "request too large");
+    }
+    let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
+    let (tx, rx) = channel();
+    PENDING.lock().unwrap_or_else(|p| p.into_inner()).insert(id, Waiter::Ipc(tx));
+    // `hints`: swap amounts from the site's routes, so approvals can be held to them.
+    let payload = json!({ "id": id, "method": method, "params": params, "hints": hints.unwrap_or(Value::Null) });
+    if let Err(e) = app.emit_to(EventTarget::webview("main"), "jumper-wallet-request", payload) {
+        log::error!("[jumper] cannot reach the main window: {e}");
+        PENDING.lock().unwrap_or_else(|p| p.into_inner()).remove(&id);
+        return rpc_error(4900, "CoinMan is not ready");
+    }
+    let answer = tauri::async_runtime::spawn_blocking(move || rx.recv_timeout(CALL_TIMEOUT)).await;
+    PENDING.lock().unwrap_or_else(|p| p.into_inner()).remove(&id);
+    match answer {
+        Ok(Ok(response)) => response,
+        _ => rpc_error(4001, "no answer from the wallet in time"),
     }
 }
 
