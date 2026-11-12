@@ -536,6 +536,7 @@ dependencies = [
  "argon2",
  "base64 0.22.1",
  "chrono",
+ "gtk",
  "log",
  "rand",
  "reqwest 0.12.28",
@@ -546,6 +547,7 @@ dependencies = [
  "tauri-plugin-dialog",
  "tauri-plugin-single-instance",
  "tokio",
+ "webkit2gtk",
 ]
 
 [[package]]

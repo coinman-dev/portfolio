@@ -83,6 +83,8 @@ fn show<R: Runtime>(app: &AppHandle<R>, bounds: Bounds, url: Option<String>) -> 
         if let Some(url) = target {
             webview.navigate(url).map_err(|e| e.to_string())?;
         }
+        #[cfg(target_os = "linux")]
+        linux_overlay::place(&webview, bounds);
         webview.show().map_err(|e| e.to_string())?;
         return Ok(());
     }
@@ -115,8 +117,58 @@ fn show<R: Runtime>(app: &AppHandle<R>, bounds: Bounds, url: Option<String>) -> 
     }
     let webview = window.add_child(builder, position, size).map_err(|e| e.to_string())?;
     let _ = webview.set_zoom(zoom);
+    #[cfg(target_os = "linux")]
+    linux_overlay::place(&webview, bounds);
     log::info!("[jumper] view created");
     Ok(())
+}
+
+/// On Linux Tauri packs every webview of a window into one vertical GtkBox,
+/// so the Jumper view lands below the main webview (off screen) and
+/// `set_position` / `set_size` do nothing. On first use this moves both into a
+/// GtkOverlay — main webview underneath, Jumper on top — and places Jumper
+/// with margins and a size request.
+#[cfg(target_os = "linux")]
+mod linux_overlay {
+    use super::Bounds;
+    use gtk::prelude::*;
+    use tauri::Runtime;
+
+    pub fn place<R: Runtime>(webview: &tauri::Webview<R>, bounds: Bounds) {
+        let result = webview.with_webview(move |platform| {
+            let view = platform.inner();
+            let widget: &gtk::Widget = view.upcast_ref();
+
+            if let Some(vbox) = widget.parent().and_then(|p| p.downcast::<gtk::Box>().ok()) {
+                let main = vbox
+                    .children()
+                    .into_iter()
+                    .find(|c| c != widget && c.is::<webkit2gtk::WebView>());
+                if let Some(main) = main {
+                    let overlay = gtk::Overlay::new();
+                    vbox.remove(widget);
+                    vbox.remove(&main);
+                    overlay.add(&main);
+                    overlay.add_overlay(widget);
+                    vbox.pack_start(&overlay, true, true, 0);
+                    overlay.show_all();
+                    main.grab_focus();
+                }
+            }
+
+            widget.set_halign(gtk::Align::Start);
+            widget.set_valign(gtk::Align::Start);
+            widget.set_margin_start(bounds.x.max(0.0).round() as i32);
+            widget.set_margin_top(bounds.y.max(0.0).round() as i32);
+            widget.set_size_request(
+                bounds.width.max(1.0).round() as i32,
+                bounds.height.max(1.0).round() as i32,
+            );
+        });
+        if let Err(e) = result {
+            log::warn!("[jumper] cannot place the view: {e}");
+        }
+    }
 }
 
 /// Jumper keeps its Simple/Advanced switch and the advanced layout for pages
