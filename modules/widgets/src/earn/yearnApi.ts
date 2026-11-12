@@ -12,6 +12,7 @@ import {
   YBOLD_STAKING_ADDRESS,
   YBOLD_VAULT_ADDRESS,
   YDAEMON_BASE_URL,
+  YEARN_API_TIMEOUT_MS,
   YVUSD_LOCKED_ADDRESS,
   YVUSD_UNLOCKED_ADDRESS,
 } from './constants';
@@ -274,7 +275,7 @@ function mapVault(v: any, chainId: number, ctx: MapContext = {}): YearnVault {
 
 async function fetchRawYDaemonVaults(chainId: number): Promise<any[]> {
   try {
-    const res = await fetch(`${YDAEMON_BASE_URL}/${chainId}/vaults/all?limit=2500`);
+    const res = await fetch(`${YDAEMON_BASE_URL}/${chainId}/vaults/all?limit=2500`, { signal: AbortSignal.timeout(YEARN_API_TIMEOUT_MS) });
     if (!res.ok) throw new Error(`Failed to fetch Yearn vaults: ${res.statusText}`);
     const body = await res.json();
     return Array.isArray(body) ? body.filter((v) => v?.address && v.token) : [];
@@ -356,7 +357,7 @@ export async function fetchYearnVault(
   address: string
 ): Promise<YearnVault | null> {
   try {
-    const res = await fetch(`${YDAEMON_BASE_URL}/${chainId}/vaults/${address}`);
+    const res = await fetch(`${YDAEMON_BASE_URL}/${chainId}/vaults/${address}`, { signal: AbortSignal.timeout(YEARN_API_TIMEOUT_MS) });
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
     const raw = await res.json();
     if (!raw || !raw.address || !raw.token) return null;
@@ -377,7 +378,7 @@ export async function fetchYearnVault(
 
 async function fetchRawVault(chainId: number, address: string): Promise<any | null> {
   try {
-    const res = await fetch(`${YDAEMON_BASE_URL}/${chainId}/vaults/${address}`);
+    const res = await fetch(`${YDAEMON_BASE_URL}/${chainId}/vaults/${address}`, { signal: AbortSignal.timeout(YEARN_API_TIMEOUT_MS) });
     if (!res.ok) return null;
     return await res.json();
   } catch {
