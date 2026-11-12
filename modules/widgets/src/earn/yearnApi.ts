@@ -13,6 +13,7 @@ import {
   YBOLD_VAULT_ADDRESS,
   YDAEMON_BASE_URL,
   YEARN_API_TIMEOUT_MS,
+  YDAEMON_GRACE_MS,
   YVUSD_LOCKED_ADDRESS,
   YVUSD_UNLOCKED_ADDRESS,
 } from './constants';
@@ -304,16 +305,27 @@ function mapYDaemonVaults(rawVaults: any[], chainId: number): YearnVault[] {
  * what is listed.
  */
 export async function fetchAllChainsVaults(): Promise<YearnVault[]> {
-  const [kongList, ydaemonLists] = await Promise.all([
-    fetchKongVaultList().catch((err) => {
-      console.warn('[YearnApi] Kong vault list unavailable, falling back to yDaemon:', err);
-      return null;
-    }),
-    Promise.all(SUPPORTED_CHAINS.map((chain) => fetchRawYDaemonVaults(chain.id))),
-  ]);
+  const ydaemonAll = Promise.all(SUPPORTED_CHAINS.map((chain) => fetchRawYDaemonVaults(chain.id)));
+  const kongList = await fetchKongVaultList().catch((err) => {
+    console.warn('[YearnApi] Kong vault list unavailable, falling back to yDaemon:', err);
+    return null;
+  });
 
   if (!kongList) {
-    return ydaemonLists.flatMap((raw, index) => mapYDaemonVaults(raw, SUPPORTED_CHAINS[index].id));
+    const lists = await ydaemonAll;
+    return lists.flatMap((raw, index) => mapYDaemonVaults(raw, SUPPORTED_CHAINS[index].id));
+  }
+
+  // Kong alone makes the list; yDaemon only adds icons, descriptions and
+  // hidden vaults. When it is slow (it sometimes hangs until the request
+  // timeout), the list does not wait for it.
+  const noYDaemon = SUPPORTED_CHAINS.map(() => [] as any[]);
+  const ydaemonLists = await Promise.race([
+    ydaemonAll,
+    new Promise<any[][]>((resolve) => setTimeout(() => resolve(noYDaemon), YDAEMON_GRACE_MS)),
+  ]);
+  if (ydaemonLists === noYDaemon) {
+    console.warn(`[YearnApi] yDaemon did not answer within ${YDAEMON_GRACE_MS} ms; listing vaults from Kong only`);
   }
 
   const key = (chainId: number, address: string) => `${chainId}:${address.toLowerCase()}`;

@@ -8,6 +8,8 @@ export const KONG_BASE_URL = 'https://kong.yearn.fi';
 /** Yearn's APIs sometimes accept the connection and never answer; without a
  *  limit the vault list would wait on them forever. */
 export const YEARN_API_TIMEOUT_MS = 30_000;
+/** Once Kong's list is in, yDaemon's extras are waited for this long at most. */
+export const YDAEMON_GRACE_MS = 3_000;
 /** yearn.fi's own portfolio-history API. It runs on a private indexer, so it
  *  cannot be hosted here; it is public and sends `Access-Control-Allow-Origin: *`. */
 export const YEARN_HOLDINGS_API = 'https://yearn.fi/api/holdings';
