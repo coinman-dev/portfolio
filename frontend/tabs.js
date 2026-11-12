@@ -7,7 +7,8 @@
  * widgets stay mounted while hidden. Closing a tab only removes it from the
  * strip; reopening it shows the module as it was left.
  *
- * The open tabs are remembered between launches; a restored tab mounts its
+ * Tabs can be dragged to reorder them. The open tabs and their order are
+ * remembered between launches; a restored tab mounts its
  * module only when it is first clicked.
  *
  * Must be loaded after modules-common.js, exchange.js and earn.js.
@@ -17,15 +18,15 @@ var AppTabs = (function () {
 
     var TABS = {
         portfolio: { title: 'Portfolio', icon: '❤' },
-        'exchange:bestrate': { title: 'Best Rate', icon: '⇄' },
-        'exchange:lifi': { title: 'Li-Fi', icon: '⇄' },
-        'exchange:cowswap': { title: 'CoW Swap', icon: '⇄' },
-        'exchange:jumper': { title: 'Jumper', icon: '⇄' },
+        'exchange:bestrate': { title: 'Best Rate', icon: '◇' },
+        'exchange:lifi': { title: 'Li-Fi', icon: '◇' },
+        'exchange:cowswap': { title: 'CoW Swap', icon: '◇' },
+        'exchange:jumper': { title: 'Jumper', icon: '◇' },
         'exchange:approvals': { title: 'Approvals', icon: '✓' },
         'earn:yearn': { title: 'Yearn Finance', icon: '◈' },
     };
 
-    var openTabs = ['portfolio'];
+    var openTabs = [];
     var activeTab = 'portfolio';
 
     function load() {
@@ -37,13 +38,13 @@ var AppTabs = (function () {
                 });
             }
         } catch (e) {}
+        // Portfolio can be moved but never closed.
+        if (openTabs.indexOf('portfolio') < 0) openTabs.unshift('portfolio');
     }
 
     function save() {
         try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(openTabs.filter(function (k) {
-                return k !== 'portfolio';
-            })));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(openTabs));
         } catch (e) {}
     }
 
@@ -111,11 +112,75 @@ var AppTabs = (function () {
         }
     }
 
+    /* ── drag to reorder ────────────────────────────────────────────────
+       Mouse events, not HTML5 drag-and-drop: the webview's native file drop
+       handling can swallow HTML5 drags. A tab starts moving after 5px; it
+       swaps with a neighbour once the pointer passes that neighbour's middle. */
+
+    var suppressClick = false;
+
+    function initDrag(bar) {
+        var drag = null;
+
+        bar.addEventListener('mousedown', function (e) {
+            if (e.button !== 0 || e.target.closest('[data-close]')) return;
+            var tabEl = e.target.closest('[data-tab]');
+            if (!tabEl) return;
+            // Otherwise the press starts a text selection across the page.
+            e.preventDefault();
+            drag = { key: tabEl.getAttribute('data-tab'), startX: e.clientX, moving: false };
+        });
+
+        document.addEventListener('mousemove', function (e) {
+            if (!drag) return;
+            if (!drag.moving) {
+                if (Math.abs(e.clientX - drag.startX) < 5) return;
+                drag.moving = true;
+                bar.classList.add('dragging');
+                document.body.classList.add('window-tabs-dragging');
+            }
+            e.preventDefault();
+            var from = openTabs.indexOf(drag.key);
+            var els = bar.querySelectorAll('[data-tab]');
+            var to = from;
+            for (var i = 0; i < els.length; i++) {
+                var r = els[i].getBoundingClientRect();
+                var mid = r.left + r.width / 2;
+                if (i < from && e.clientX < mid) { to = i; break; }
+                if (i > from && e.clientX > mid) to = i;
+            }
+            if (to !== from) {
+                openTabs.splice(from, 1);
+                openTabs.splice(to, 0, drag.key);
+                render();
+            }
+            var moved = bar.querySelector('[data-tab="' + drag.key + '"]');
+            if (moved) moved.classList.add('drag-source');
+        });
+
+        document.addEventListener('mouseup', function () {
+            if (!drag) return;
+            if (drag.moving) {
+                suppressClick = true;
+                setTimeout(function () { suppressClick = false; }, 0);
+                bar.classList.remove('dragging');
+                document.body.classList.remove('window-tabs-dragging');
+                save();
+                render();
+            }
+            drag = null;
+        });
+    }
+
     function init() {
         load();
         var bar = document.getElementById('window-tabs');
         if (bar) {
             bar.addEventListener('click', function (e) {
+                if (suppressClick) {
+                    suppressClick = false;
+                    return;
+                }
                 var closeEl = e.target.closest('[data-close]');
                 if (closeEl) {
                     e.stopPropagation();
@@ -125,6 +190,7 @@ var AppTabs = (function () {
                 var tabEl = e.target.closest('[data-tab]');
                 if (tabEl) activate(tabEl.getAttribute('data-tab'));
             });
+            initDrag(bar);
             // Middle click closes a tab, as in a browser.
             bar.addEventListener('auxclick', function (e) {
                 if (e.button !== 1) return;
