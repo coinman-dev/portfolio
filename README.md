@@ -38,12 +38,14 @@ Price refreshes, wallet connections, swaps, approval scans, and Earn features ne
 - Configurable column alignment and table totals; pasted numbers accept comma/period separators and spaces
 - Daily diagnostic logs, enabled in Settings or with `--debug`
 - Window size and position saved between launches
+- Window tabs: Portfolio and every opened Exchange/Earn module get a tab, so several modules stay open with their state; tabs can be closed and reordered, and are remembered between launches
 
 ### Exchange
 
 Open the **Exchange** menu to select a module:
 
-- **Best Rate** compares routes from seven services: LI.FI, Bungee/Socket, Relay, KyberSwap, CoW Protocol, deBridge, and NEAR Intents. Results distinguish routes you can execute in the app from routes completed on a service's website. Supports a different recipient address, slippage settings (including 0.25%), and local swap history.
+- **Best Rate** compares routes from 15 services: LI.FI, Bungee/Socket, Relay, KyberSwap, CoW Protocol, deBridge, NEAR Intents, Maya Protocol, THORChain, Across, SushiSwap, Velora, Jupiter, Cetus, and Mayan, plus a LlamaSwap link for same-chain EVM pairs. Besides EVM chains, Solana, Tron and Sui, it covers native BTC, DASH, ZEC, LTC, DOGE, BCH, and XRP. Results distinguish routes you can execute in the app from routes completed on a service's website. Supports a different recipient address, slippage settings (including 0.25%), an RU/EN switch, and local swap history.
+- **Deposits from UTXO coins** (Maya, THORChain): a deposit panel checks the vault and memo and gives Core console commands and Electrum "Pay to" text; entered txids are followed in History. With **Exchange → Connect wallet → Dash Core**, DASH deposits are built, shown for confirmation and sent from your Dash Core wallet — keys stay in Dash Core.
 - **Li-Fi** provides a swap and bridge widget, including Tron support.
 - **CoW Swap** provides its trading widget and an orders panel.
 - **Jumper Exchange** opens `jumper.xyz` inside the app using the selected CoinMan wallet.
@@ -78,7 +80,7 @@ The shared EVM network list includes Ethereum, Arbitrum, Optimism, Polygon, BNB 
 | Linux (Ubuntu 22.04+) | ✅ Supported |
 | macOS | ✅ Supported |
 
-Download **[v0.8.1-beta](https://github.com/coinman-dev/portfolio/releases/tag/v0.8.1-beta)** from GitHub Releases. This is a prerelease: back up your database before upgrading.
+Download **[v0.9.0-beta](https://github.com/coinman-dev/portfolio/releases/tag/v0.9.0-beta)** from GitHub Releases. This is a prerelease: back up your database before upgrading.
 
 | Platform | Release asset |
 |----------|---------------|
