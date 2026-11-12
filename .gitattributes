@@ -1,0 +1,8 @@
+# Keep line endings LF in the repository and in every working copy, Windows
+# included, so a copy edited or copied on Windows does not show every file as
+# modified. Binary files are detected automatically and left untouched.
+* text=auto eol=lf
+
+# Windows scripts need CRLF to run correctly in cmd.exe.
+*.bat text eol=crlf
+*.cmd text eol=crlf

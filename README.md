@@ -11,6 +11,10 @@ A desktop cryptocurrency portfolio tracker with integrated swaps, bridges, token
 
 ---
 
+**User guide:** [English](doc/en/README.md) · [Русский](doc/ru/README.md)
+
+---
+
 ## Why CoinMan?
 
 CoinMan stores your portfolio records locally in JSON databases, with optional encryption. You can track holdings without creating a CoinMan account.
@@ -80,7 +84,7 @@ The shared EVM network list includes Ethereum, Arbitrum, Optimism, Polygon, BNB 
 | Linux (Ubuntu 22.04+) | ✅ Supported |
 | macOS | ✅ Supported |
 
-Download **[v0.9.0-beta](https://github.com/coinman-dev/portfolio/releases/tag/v0.9.0-beta)** from GitHub Releases. This is a prerelease: back up your database before upgrading.
+Download **[v0.9.1-beta](https://github.com/coinman-dev/portfolio/releases/tag/v0.9.1-beta)** from GitHub Releases. This is a prerelease: back up your database before upgrading.
 
 | Platform | Release asset |
 |----------|---------------|

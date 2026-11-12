@@ -295,8 +295,10 @@ var AppExchange = (function () {
         var titleEl = document.getElementById('exchange-header-title');
         if (titleEl) titleEl.textContent = MODULE_TITLES[module];
 
-        // jumper.xyz is a native view over its box; it leaves with its tab.
+        // jumper.xyz (and swap.cow.fi on Linux/macOS) are native views over
+        // their box; they leave with their tab.
         if (module !== 'jumper' && window.CoinmanJumper) window.CoinmanJumper.hide();
+        if (module !== 'cowswap' && window.CoinmanCowView) window.CoinmanCowView.hide();
 
         ensureBundleLoaded().then(function () {
             if (module === 'bestrate') mountBestRateIfNeeded();
@@ -317,6 +319,11 @@ var AppExchange = (function () {
      * { chainId, sell, buy, sellAmount } with token addresses.
      */
     function openCowSwap(trade) {
+        if (useCowView()) {
+            pendingCowTrade = trade || null;
+            selectExchangeModule('cowswap');
+            return;
+        }
         if (cowswapInstance && trade && typeof cowswapInstance.setTrade === 'function') {
             cowswapInstance.setTrade(trade);
         } else {
@@ -423,9 +430,27 @@ var AppExchange = (function () {
         }
     }
 
+    /**
+     * Linux and macOS: WebKit refuses the CoW widget's iframe (swap.cow.fi only
+     * allows web origins as its parent, not tauri://localhost), so swap.cow.fi
+     * opens in a native view over the tab instead, as Jumper does.
+     */
+    function useCowView() {
+        return !!(window.CoinmanCowView && window.CoinmanCowView.needed());
+    }
+
     async function mountCowSwapIfNeeded() {
         var cowswapContainer = document.getElementById('exchange-cowswap-container');
         if (!cowswapContainer) return;
+
+        if (useCowView()) {
+            var url = window.CoinmanCowView.url(pendingCowTrade || undefined);
+            pendingCowTrade = null;
+            window.CoinmanCowView.show(cowswapContainer, url).catch(function (err) {
+                console.error('[Exchange] Failed to show CoW Swap:', err);
+            });
+            return;
+        }
 
         if (cowswapInstance) {
             return;

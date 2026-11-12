@@ -4,6 +4,7 @@ import { mountCowSwap } from './exchange/cowswap';
 import { BestRateApp } from './exchange/bestrate/BestRateApp';
 import { ApprovalsApp } from './exchange/approvals/ApprovalsApp';
 import { hideJumperView, showJumperView } from './exchange/jumperBridge';
+import { cowSwapUrl, cowViewNeeded, hideCowView, showCowView } from './exchange/cowViewBridge';
 import { YearnApp } from './earn/YearnApp';
 import { EarnMountOptions, EarnInstance } from './earn/types';
 import { ExchangeMountOptions, ExchangeInstance } from './types';
@@ -83,6 +84,12 @@ declare global {
       show: typeof showJumperView;
       hide: typeof hideJumperView;
     };
+    CoinmanCowView?: {
+      needed: typeof cowViewNeeded;
+      url: typeof cowSwapUrl;
+      show: typeof showCowView;
+      hide: typeof hideCowView;
+    };
     CoinmanApprovals?: {
       mount: typeof mountApprovals;
     };
@@ -106,6 +113,13 @@ if (typeof window !== 'undefined') {
   window.CoinmanJumper = {
     show: showJumperView,
     hide: hideJumperView,
+  };
+  // Linux and macOS: CoW Swap in a native view (the widget's iframe is refused there).
+  window.CoinmanCowView = {
+    needed: cowViewNeeded,
+    url: cowSwapUrl,
+    show: showCowView,
+    hide: hideCowView,
   };
   window.CoinmanApprovals = {
     mount: mountApprovals,

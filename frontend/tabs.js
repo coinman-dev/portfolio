@@ -103,8 +103,10 @@ var AppTabs = (function () {
         if (key === 'portfolio' || index < 0) return;
         openTabs.splice(index, 1);
         save();
-        // jumper.xyz is a native view; take it off screen with its tab.
+        // jumper.xyz and swap.cow.fi (Linux/macOS) are native views; take them
+        // off screen with their tab.
         if (key === 'exchange:jumper' && window.CoinmanJumper) window.CoinmanJumper.hide();
+        if (key === 'exchange:cowswap' && window.CoinmanCowView) window.CoinmanCowView.hide();
         if (key === activeTab) {
             activate(openTabs[Math.min(index, openTabs.length - 1)] || 'portfolio');
         } else {

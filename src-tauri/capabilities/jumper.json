@@ -1,0 +1,10 @@
+{
+    "$schema": "../gen/schemas/desktop-schema.json",
+    "identifier": "jumper",
+    "description": "jumper.xyz in the Jumper view (Linux, macOS) may only ask for the wallet state, save its settings and pass wallet calls to the app",
+    "webviews": ["jumper"],
+    "remote": {
+        "urls": ["https://jumper.xyz/*"]
+    },
+    "permissions": ["jumper-bridge:default"]
+}

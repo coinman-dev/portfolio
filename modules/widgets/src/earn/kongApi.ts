@@ -1,4 +1,4 @@
-import { KONG_BASE_URL } from './constants';
+import { KONG_BASE_URL, YEARN_API_TIMEOUT_MS } from './constants';
 
 export interface TimeseriesPoint {
   /** Unix milliseconds. */
@@ -88,7 +88,7 @@ async function cachedJson<T>(url: string): Promise<T | null> {
   if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.value;
 
   try {
-    const res = await fetch(url);
+    const res = await fetch(url, { signal: AbortSignal.timeout(YEARN_API_TIMEOUT_MS) });
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
     const value = (await res.json()) as T;
     cache.set(url, { at: Date.now(), value });
@@ -177,7 +177,7 @@ let kongList: { at: number; promise: Promise<any[]> } | null = null;
  */
 export function fetchKongVaultList(): Promise<any[]> {
   if (kongList && Date.now() - kongList.at < KONG_LIST_TTL_MS) return kongList.promise;
-  const promise = fetch(`${KONG_BASE_URL}/api/rest/list/vaults`).then(async (res) => {
+  const promise = fetch(`${KONG_BASE_URL}/api/rest/list/vaults`, { signal: AbortSignal.timeout(YEARN_API_TIMEOUT_MS) }).then(async (res) => {
     if (!res.ok) throw new Error(`Kong vault list: ${res.status} ${res.statusText}`);
     const body = await res.json();
     return Array.isArray(body) ? body : [];
