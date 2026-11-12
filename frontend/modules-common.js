@@ -102,6 +102,10 @@ var AppModuleKit = (function () {
             typeof window.AppEarn.updateEarnViews === 'function') {
             window.AppEarn.updateEarnViews();
         }
+
+        if (window.AppTabs && typeof window.AppTabs.sync === 'function') {
+            window.AppTabs.sync();
+        }
     }
 
     function getCurrentView() {
