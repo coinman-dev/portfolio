@@ -1382,6 +1382,10 @@ body.show-cur-price .col-cur-price {
 .modal-md .modal-content {
     width: 420px;
 }
+/* 5% wider than .modal-md: the description line did not fit. */
+#modal-unlock-database .modal-content {
+    width: 441px;
+}
 .modal-lg .modal-content {
     width: 440px;
 }
