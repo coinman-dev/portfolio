@@ -46,13 +46,18 @@ export const cowProvider: Provider = {
         signingScheme: 'eip712',
         onchainOrder: false,
         appData: '{}',
-        priceQuality: 'optimal',
+        // Verified: CoW simulates the trade, as its own widget does. An
+        // unverified ("optimal") quote can promise several % more than any
+        // solver will fill (seen: 104.5k vs 99.8k USDT for 100k BOLD).
+        priceQuality: 'verified',
       }),
     });
     const quote = body.quote;
     if (!quote?.buyAmount) throw new NoRoute('no quote');
 
     const toAmount = BigInt(quote.buyAmount);
+    // Not confirmed by simulation: shown for reference, never ranked.
+    const unverified = body.verified !== true;
     const networkFeeUSD = amountUSD(BigInt(quote.feeAmount ?? 0), req.fromToken);
     const protocolFeeBps = Number(body.protocolFeeBps ?? 0);
     const params = new URLSearchParams({ sellAmount: humanAmount(req.amount, req.fromToken.decimals) });
@@ -70,6 +75,7 @@ export const cowProvider: Provider = {
         serviceFeePct: protocolFeeBps / 100,
         fees: [{ label: 'Network fee (from the sold amount)', usd: networkFeeUSD, included: true }],
         reliability: 3,
+        ...(unverified ? { estimateOnly: true } : {}),
         site: {
           // Opens the app's CoW Swap tab on this pair (see openSite).
           name: 'CoW Swap',

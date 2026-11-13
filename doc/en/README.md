@@ -1,6 +1,6 @@
 # CoinMan Portfolio Tracker — user guide
 
-Version 0.9.1-beta. [Русская версия](../ru/README.md)
+Version 0.9.2-beta. [Русская версия](../ru/README.md)
 
 1. [What is CoinMan](01-overview.md) — what the program does, what stays on
    your computer and what goes online.
