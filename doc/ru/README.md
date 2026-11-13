@@ -1,6 +1,6 @@
 # CoinMan Portfolio Tracker — руководство пользователя
 
-Версия 0.9.1-beta. [English version](../en/README.md)
+Версия 0.9.2-beta. [English version](../en/README.md)
 
 Портфель, меню и окна программы — на английском; модули Best Rate и Yearn
 Finance переключаются на русский кнопкой **RU / EN**. В тексте названия
