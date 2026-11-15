@@ -88,7 +88,7 @@
       <div class="dropdown-menu" id="file-dropdown">
 					<div class="dropdown-item" onclick="handleMenuOpenDatabase()"> Open database file </div>
 					<div class="dropdown-item" onclick="handleMenuSaveDbAs()"> Save database as... </div>
-					<div class="dropdown-item" onclick="openClearDatabaseModal()"> Clear the database </div>
+					<div class="dropdown-item" id="menu-clear-database" onclick="openClearDatabaseModal()"> Clear the database </div>
 					<div class="dropdown-divider"></div>
 					<div class="dropdown-item" id="menu-encrypt-database" onclick="handleMenuEncryptDatabase()"> Encrypt database </div>
 					<div class="dropdown-item dropdown-item-disabled" id="menu-decrypt-database" onclick="handleMenuDecryptDatabase()"> Decrypt database </div>
@@ -173,6 +173,25 @@
 					</td>
 				</tr>
 			</table>
+			<!-- LOCKED DATABASE PANEL -->
+			<div id="portfolio-locked-panel" class="portfolio-locked-panel hidden">
+				<div class="modal-content">
+					<div class="modal-header">
+						<span>&#128274; Unlock Database</span>
+					</div>
+					<div class="modal-body">
+						<p class="modal-description" id="portfolio-unlock-desc"> This database is encrypted. Enter the password to open it. </p>
+						<div class="form-group form-group-last">
+							<label class="form-label">Password</label>
+							<input type="password" id="portfolio-unlock-password" class="form-input" placeholder="Enter password..." onkeydown="handlePortfolioUnlockKeydown(event)"/>
+						</div>
+						<div id="portfolio-unlock-error" class="enc-modal-error hidden"> Wrong password. Please try again. </div>
+					</div>
+					<div class="modal-footer modal-footer-right">
+						<button class="btn btn-orange" onclick="handleDoPortfolioUnlockDatabase()"> UNLOCK </button>
+					</div>
+				</div>
+			</div>
 			<!-- ACTION BAR -->
 			<table id="portfolio-action-bar-table" class="action-bar-table">
 				<tr>
@@ -1016,25 +1035,6 @@
 	<div class="ie-statusbar-panel" id="market-status">{{MARKET_STATUS}}</div>
 </div>
 <div class="ie-statusbar-panel ie-statusbar-panel-update" id="update-status" style="display: none" onclick="UpdateChecker.openRelease()"> Update available </div>
-</div>
-<!-- MODAL: Unlock encrypted database -->
-<div id="modal-unlock-database" class="modal modal-md">
-	<div class="modal-content">
-		<div class="modal-header">
-			<span>&#128274; Unlock Database</span>
-		</div>
-		<div class="modal-body">
-			<p class="modal-description"> This database is encrypted. Enter the password to open it. </p>
-			<div class="form-group form-group-last">
-				<label class="form-label">Password</label>
-				<input type="password" id="unlock-db-password" class="form-input" placeholder="Enter password..." onkeydown="handleUnlockKeydown(event)"/>
-			</div>
-			<div id="unlock-db-error" class="enc-modal-error hidden"> Wrong password. Please try again. </div>
-		</div>
-		<div class="modal-footer modal-footer-right">
-			<button class="btn btn-orange" onclick="handleDoUnlockDatabase()"> UNLOCK </button>
-		</div>
-	</div>
 </div>
 <!-- MODAL: Save database as -->
 <div id="modal-save-db-as" class="modal modal-md">
