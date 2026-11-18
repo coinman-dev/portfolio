@@ -165,6 +165,7 @@ export async function mountCowSwap(options: CowSwapMountOptions): Promise<CowSwa
   };
 
   let widgetProvider = withDedupedRequests(currentProvider);
+  let destroyed = false;
 
   // Toasts cover the order lifecycle (created, signing error, filled, expired,
   // on-chain tx failed) and are the only view into errors inside the iframe.
@@ -189,27 +190,42 @@ export async function mountCowSwap(options: CowSwapMountOptions): Promise<CowSwa
   diag('info', 'COW', `mount, wallet provider ${widgetProvider ? 'present' : 'missing'}`);
   let handler: CowSwapWidgetHandler = createCowSwapWidget(container, widgetProps);
 
+  const rebuildWidget = () => {
+    if (destroyed) return;
+    try {
+      if (typeof handler?.destroy === 'function') {
+        handler.destroy();
+      } else if (container) {
+        container.innerHTML = '';
+      }
+    } catch (e) {
+      console.warn('[CoinMan CoW Swap] Error rebuilding widget:', e);
+    }
+    handler = createCowSwapWidget(container, { ...widgetProps, params, provider: widgetProvider });
+  };
+
   // Each wallet has its own provider object; account and chain changes within a
   // wallet reach the widget through that provider's events. Another wallet, or
   // none, means a fresh widget: the iframe only learns whether it has a provider
   // when it loads, and handler.updateProvider() leaks a forwarder each time
   // (see withDedupedRequests).
   const setWidgetProvider = (provider?: any) => {
+    if (destroyed) return;
     const next = withDedupedRequests(provider);
     if (next === widgetProvider) return;
     diag('info', 'COW', `wallet ${next ? 'changed' : 'disconnected'}, reloading the widget`);
     widgetProvider = next;
-    handler.destroy();
-    handler = createCowSwapWidget(container, { ...widgetProps, provider: next });
+    rebuildWidget();
   };
 
   // Keep CoW Swap provider in sync with OneKey HD / WalletConnect
   const unsubscribeWallet = subscribeWalletStatus((status: WalletStatus) => {
+    if (destroyed) return;
     if (status.isConnected) {
       getEthereumProvider()
         .then((provider) => {
           // Skip an answer that arrives after the wallet already disconnected.
-          if (provider && getWalletStatus().isConnected) {
+          if (!destroyed && provider && getWalletStatus().isConnected) {
             setWidgetProvider(provider);
           }
         })
@@ -223,6 +239,8 @@ export async function mountCowSwap(options: CowSwapMountOptions): Promise<CowSwa
 
   return {
     unmount: () => {
+      if (destroyed) return;
+      destroyed = true;
       diag('info', 'COW', 'unmount');
       try {
         unsubscribeWallet();
@@ -240,11 +258,14 @@ export async function mountCowSwap(options: CowSwapMountOptions): Promise<CowSwa
     updateProvider: setWidgetProvider,
     getHandler: () => handler,
     setTrade: (next: CowTrade) => {
+      if (destroyed) return;
       diag('info', 'COW', `open pair ${next.sell} → ${next.buy} on chain ${next.chainId}`);
-      // Kept in the props too, so a widget rebuilt for another wallet stays on the pair.
+      // Rebuild the widget cleanly so swap.cow.fi loads directly on the new
+      // hash route (#/<chainId>/widget/swap/<sell>/<buy>?sellAmount=...), avoiding
+      // Xdr's UPDATE_PARAMS dedupe and qli's post-mount chain reset.
       params = { ...params, ...tradeParams(next) };
       widgetProps.params = params;
-      handler.updateParams(params);
+      rebuildWidget();
     },
   };
 }

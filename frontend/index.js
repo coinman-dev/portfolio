@@ -97,6 +97,7 @@ var state = {
     addCatalogId: "",
     editCatalogId: "",
     bulkSellSortDir: "asc",
+    dbLocked: false,
 };
 
 var AppBridge = {
@@ -1044,6 +1045,7 @@ var ServerSync = {
     },
 
     savePortfolios: function () {
+        if (state.dbLocked) return;
         if (ServerSync.saveInProgress) {
             ServerSync.saveQueued = true;
             return;
@@ -3665,6 +3667,7 @@ function updateBulkSellSellAllText() {
 }
 
 function openBulkSellModal(symbol, catalogId) {
+    if (state.dbLocked) return;
     var p = Portfolio.getActive();
     if (!p) return;
 
@@ -3928,6 +3931,7 @@ function handleCreatePortfolio() {
 }
 
 function openCreatePortfolioModal(useDefaults) {
+    if (state.dbLocked) return;
     var withDefaults = useDefaults === true;
     var nameInput = document.getElementById("create-p-name");
     var descInput = document.getElementById("create-p-desc");
@@ -3948,6 +3952,7 @@ function openCreatePortfolioModal(useDefaults) {
 }
 
 function openEditPortfolioModal() {
+    if (state.dbLocked) return;
     var p = Portfolio.getActive();
     if (!p) return;
     document.getElementById("edit-p-name").value = p.name;
@@ -3981,6 +3986,7 @@ function handleDeletePortfolio() {
 }
 
 function openAddCoinModal() {
+    if (state.dbLocked) return;
     var p = Portfolio.getActive();
     var now = new Date();
     state.addCatalogId = "";
@@ -4090,6 +4096,7 @@ function switchEditTab(tab) {
 }
 
 function openEditCoinModal(id) {
+    if (state.dbLocked) return;
     var p = Portfolio.getActive();
     var tx = Tx.find(p, id);
     if (!tx) return;
@@ -4261,6 +4268,7 @@ function handleDeleteTransaction() {
 
 function openClearDatabaseModal() {
     window.closeAllDropdowns();
+    if (state.dbLocked) return;
     UI.applyModalSize("modal-clear-database", "DEFAULT");
     UI.openModal("modal-clear-database");
 }
@@ -4455,7 +4463,31 @@ var PortfolioTabsDnD = {
     },
 };
 
+function renderLockedState() {
+    var isLocked = !!state.dbLocked;
+    var view = document.getElementById("portfolio-view");
+    var panel = document.getElementById("portfolio-locked-panel");
+    var desc = document.getElementById("portfolio-unlock-desc");
+    var clearItem = document.getElementById("menu-clear-database");
+    if (view) view.classList.toggle("portfolio-is-locked", isLocked);
+    if (panel) panel.classList.toggle("hidden", !isLocked);
+    if (clearItem) clearItem.classList.toggle("dropdown-item-disabled", isLocked);
+    if (isLocked && desc) {
+        var dbFile = ServerSync.user ? ServerSync.user + ".json" : "database";
+        desc.textContent =
+            'Database "' +
+            dbFile +
+            '" is encrypted. Enter the password to open it.';
+    } else if (!isLocked) {
+        var pwEl = document.getElementById("portfolio-unlock-password");
+        var errEl = document.getElementById("portfolio-unlock-error");
+        if (pwEl) pwEl.value = "";
+        if (errEl) errEl.classList.add("hidden");
+    }
+}
+
 function renderApp() {
+    renderLockedState();
     Market.clearDetailsCache();
     var p = Portfolio.getActive();
     if (!p && portfolios.length) {
@@ -5287,11 +5319,16 @@ var DbSelector = {
             return;
         }
         if (item.encrypted) {
-            // We know the file is encrypted — update user context immediately,
-            // then ask for the password before attempting to load.
+            // We know the file is encrypted — switch to locked state in Portfolio
+            // so the user can enter the password on the page (or use other tabs).
+            state.dbLocked = true;
+            portfolios = [];
             window.SERVER_CONFIG.user = item.name;
             ServerSync.user = item.name;
             Market.setDbStatus(item.name);
+            Market.setEncStatus(true);
+            Market.setStatus("Market data: database locked", "#888");
+            renderApp();
             DbEncryption.promptUnlock(function (pw) {
                 DbSelector._loadByName(item.name, pw);
             });
@@ -5310,6 +5347,7 @@ var DbSelector = {
         );
         ServerSync.loadPortfolios(password || null)
             .then(function () {
+                state.dbLocked = false;
                 if (AppBridge.isTauri()) {
                     AppBridge.invoke("check_db_encrypted", { user: name })
                         .then(function (enc) {
@@ -5444,6 +5482,11 @@ var DbSelector = {
                 var msg = String(e);
                 if (msg.indexOf("DB_ENCRYPTED") !== -1) {
                     // Fallback: file turned out to be encrypted without us knowing
+                    state.dbLocked = true;
+                    portfolios = [];
+                    Market.setEncStatus(true);
+                    Market.setStatus("Market data: database locked", "#888");
+                    renderApp();
                     DbEncryption.promptUnlock(function (pw) {
                         DbSelector._loadByName(name, pw);
                     });
@@ -5594,23 +5637,31 @@ window.handleOpenSelectedDatabase = function () {
 var DbEncryption = {
     _unlockCallback: null,
 
-    // Open the unlock modal. onSuccess(password) is called when user unlocks.
+    // Show the on-page unlock form in Portfolio. onSuccess(password) runs after unlocking.
     promptUnlock: function (onSuccess) {
-        DbEncryption._unlockCallback = onSuccess;
-        var pwEl = document.getElementById("unlock-db-password");
-        var errEl = document.getElementById("unlock-db-error");
+        DbEncryption._unlockCallback = onSuccess || null;
+        var pwEl = document.getElementById("portfolio-unlock-password");
+        var errEl = document.getElementById("portfolio-unlock-error");
         if (pwEl) pwEl.value = "";
         if (errEl) errEl.classList.add("hidden");
-        UI.openModal("modal-unlock-database");
-        if (pwEl)
+        if (
+            window.AppModuleKit &&
+            typeof window.AppModuleKit.switchView === "function" &&
+            window.AppModuleKit.getCurrentView() !== "portfolio"
+        ) {
+            window.AppModuleKit.switchView("portfolio");
+        }
+        renderLockedState();
+        if (pwEl) {
             setTimeout(function () {
                 pwEl.focus();
             }, 80);
+        }
     },
 
     doUnlock: function () {
-        var pwEl = document.getElementById("unlock-db-password");
-        var errEl = document.getElementById("unlock-db-error");
+        var pwEl = document.getElementById("portfolio-unlock-password");
+        var errEl = document.getElementById("portfolio-unlock-error");
         var pw = pwEl ? pwEl.value : "";
         if (!pw) {
             if (errEl) {
@@ -5629,17 +5680,22 @@ var DbEncryption = {
                 portfolios = Array.isArray(payload.data.portfolios)
                     ? payload.data.portfolios
                     : [];
-                UI.closeModal("modal-unlock-database");
+                state.dbLocked = false;
+                if (pwEl) pwEl.value = "";
+                if (errEl) errEl.classList.add("hidden");
                 Market.setEncStatus(true);
                 var cb = DbEncryption._unlockCallback;
                 DbEncryption._unlockCallback = null;
-                if (cb) cb(pw);
+                if (cb) {
+                    cb(pw);
+                } else {
+                    DbSelector._loadByName(user, pw);
+                }
             })
             .catch(function (e) {
                 var msg = String(e);
                 var encVer = parseUnsupportedEncVersion(msg);
                 if (encVer) {
-                    UI.closeModal("modal-unlock-database");
                     showUnsupportedEncryptionError(ServerSync.user, encVer);
                     return;
                 }
@@ -5659,8 +5715,12 @@ var DbEncryption = {
     },
 };
 
-window.handleUnlockKeydown = function (e) {
-    if (e.key === "Enter") handleDoUnlockDatabase();
+window.handlePortfolioUnlockKeydown = function (e) {
+    if (e.key === "Enter") handleDoPortfolioUnlockDatabase();
+};
+
+window.handleDoPortfolioUnlockDatabase = function () {
+    DbEncryption.doUnlock();
 };
 
 window.handleEncryptKeydown = function (e) {
@@ -5673,10 +5733,6 @@ window.handleDecryptKeydown = function (e) {
 
 window.handleChangePwKeydown = function (e) {
     if (e.key === "Enter") handleDoChangePassword();
-};
-
-window.handleDoUnlockDatabase = function () {
-    DbEncryption.doUnlock();
 };
 
 window.handleMenuEncryptDatabase = function () {
@@ -5735,6 +5791,9 @@ window.handleDoDecryptDatabase = function () {
         .then(function () {
             UI.closeModal("modal-decrypt-database");
             Market.setEncStatus(false);
+            if (state.dbLocked) {
+                DbSelector._loadByName(ServerSync.user);
+            }
         })
         .catch(function (e) {
             var msg = String(e);
@@ -6071,6 +6130,7 @@ window.onload = function () {
             }
 
             function afterLoad() {
+                state.dbLocked = false;
                 if (AppBridge.isTauri()) {
                     AppBridge.invoke("check_db_encrypted", {
                         user: ServerSync.user,
@@ -6216,8 +6276,14 @@ window.onload = function () {
                     .catch(function (e) {
                         var msg = String(e);
                         if (msg.indexOf("DB_ENCRYPTED") !== -1) {
+                            state.dbLocked = true;
+                            portfolios = [];
                             Market.setEncStatus(true);
-                            // Render empty app (0/$0 everywhere) so placeholders are gone
+                            Market.setStatus(
+                                "Market data: database locked",
+                                "#888",
+                            );
+                            // Render empty app + inline unlock form in Portfolio
                             initUiAndRender({ locked: true });
                             DbEncryption.promptUnlock(function (pw) {
                                 doInitLoad(pw);

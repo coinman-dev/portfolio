@@ -1382,9 +1382,24 @@ body.show-cur-price .col-cur-price {
 .modal-md .modal-content {
     width: 420px;
 }
-/* 5% wider than .modal-md: the description line did not fit. */
-#modal-unlock-database .modal-content {
+/* Inline unlock card inside Portfolio (5% wider than .modal-md so the description fits) */
+.portfolio-locked-panel {
+    display: flex;
+    justify-content: center;
+    padding: 48px 16px;
+}
+.portfolio-locked-panel .modal-content {
     width: 441px;
+    border: 1px solid var(--color-border);
+}
+#portfolio-view.portfolio-is-locked #brand-header-table .add-portfolio-btn,
+#portfolio-view.portfolio-is-locked #portfolio-action-bar-table,
+#portfolio-view.portfolio-is-locked #portfolio-metrics-table,
+#portfolio-view.portfolio-is-locked #portfolio-controls-table,
+#portfolio-view.portfolio-is-locked #portfolio-transactions-table,
+#portfolio-view.portfolio-is-locked .table-footer-bar,
+#portfolio-view.portfolio-is-locked .bottom-refresh-container {
+    display: none;
 }
 .modal-lg .modal-content {
     width: 440px;

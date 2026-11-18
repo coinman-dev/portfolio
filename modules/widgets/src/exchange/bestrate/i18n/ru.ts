@@ -91,6 +91,7 @@ export const RU: Record<string, string> = {
   'Get the address and memo to send from your own wallet': 'Получить адрес и memo для отправки из своего кошелька',
   Deposit: 'Депозит',
   'What arrives, minus gas and fees paid on top': 'Что придёт, минус газ и комиссии сверху',
+  Rate: 'Курс',
   Net: 'Итого',
   'Service fee': 'Комиссия сервиса',
   'Not quoted by the service; typical gas on this chain': 'Сервис не указал; обычный газ в этой сети',

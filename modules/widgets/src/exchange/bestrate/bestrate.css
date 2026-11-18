@@ -468,6 +468,17 @@
   color: var(--br-muted);
 }
 
+.br-route__rate {
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--br-muted);
+}
+
+.br-route__rate strong {
+  color: var(--br-text);
+  font-weight: 600;
+}
+
 .br-route__facts {
   display: flex;
   flex-wrap: wrap;

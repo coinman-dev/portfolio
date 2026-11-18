@@ -14,7 +14,36 @@ var AppExchange = (function () {
     var approvalsInstance = null;
     var lifiInstance = null;
     var cowswapInstance = null;
+    var cowswapMountPromise = null;
     var walletSubscription = null;
+
+    var pendingJumperUrl = null;
+    var pendingCowTrade = null;
+    var latestBestRatePair = { cowTrade: null, jumperUrl: null };
+    var bestRateVersion = 0;
+    var appliedCowVersion = 0;
+    var appliedJumperVersion = 0;
+
+    function sameCowTrade(a, b) {
+        if (!a && !b) return true;
+        if (!a || !b) return false;
+        return a.chainId === b.chainId &&
+            a.sell === b.sell &&
+            a.buy === b.buy &&
+            (a.sellAmount || '') === (b.sellAmount || '');
+    }
+
+    /** Records the pair currently chosen in Best Rate so menu/tab switches can apply it. */
+    function setBestRatePair(pair) {
+        var cowTrade = (pair && pair.cowTrade) || null;
+        var jumperUrl = (pair && pair.jumperUrl) || null;
+        if (sameCowTrade(latestBestRatePair.cowTrade, cowTrade) &&
+            latestBestRatePair.jumperUrl === jumperUrl) {
+            return;
+        }
+        latestBestRatePair = { cowTrade: cowTrade, jumperUrl: jumperUrl };
+        bestRateVersion += 1;
+    }
 
     function ensureBundleLoaded() {
         if (window.CoinmanExchangeLiFi && window.CoinmanExchangeCowSwap && window.CoinmanWallet) {
@@ -251,6 +280,19 @@ var AppExchange = (function () {
     function selectExchangeModule(moduleName) {
         activeModule = moduleName || 'lifi';
 
+        // If Best Rate has a newer pair than the one last applied to CoW Swap or
+        // Jumper, pre-fill it when opening via menu/tab as well as via route buttons.
+        if (activeModule === 'cowswap' && !pendingCowTrade &&
+            latestBestRatePair.cowTrade && appliedCowVersion !== bestRateVersion) {
+            pendingCowTrade = latestBestRatePair.cowTrade;
+            appliedCowVersion = bestRateVersion;
+        }
+        if (activeModule === 'jumper' && !pendingJumperUrl &&
+            latestBestRatePair.jumperUrl && appliedJumperVersion !== bestRateVersion) {
+            pendingJumperUrl = latestBestRatePair.jumperUrl;
+            appliedJumperVersion = bestRateVersion;
+        }
+
         if (typeof window.closeAllDropdowns === 'function') {
             window.closeAllDropdowns();
         }
@@ -311,24 +353,13 @@ var AppExchange = (function () {
         });
     }
 
-    var pendingJumperUrl = null;
-    var pendingCowTrade = null;
-
     /**
      * Opens the CoW Swap tab on a pair (Best Rate routes):
      * { chainId, sell, buy, sellAmount } with token addresses.
      */
     function openCowSwap(trade) {
-        if (useCowView()) {
-            pendingCowTrade = trade || null;
-            selectExchangeModule('cowswap');
-            return;
-        }
-        if (cowswapInstance && trade && typeof cowswapInstance.setTrade === 'function') {
-            cowswapInstance.setTrade(trade);
-        } else {
-            pendingCowTrade = trade || null;
-        }
+        pendingCowTrade = trade || null;
+        if (trade) appliedCowVersion = bestRateVersion;
         selectExchangeModule('cowswap');
     }
 
@@ -338,6 +369,7 @@ var AppExchange = (function () {
         var url = pendingJumperUrl;
         pendingJumperUrl = null;
         window.CoinmanJumper.show(container, url || undefined).catch(function (err) {
+            if (url && !pendingJumperUrl) pendingJumperUrl = url;
             console.error('[Exchange] Failed to show Jumper:', err);
         });
     }
@@ -345,6 +377,7 @@ var AppExchange = (function () {
     /** Opens the Jumper Exchange tab, at a jumper.xyz address if given (Best Rate links). */
     function openJumper(url) {
         pendingJumperUrl = url || null;
+        if (url) appliedJumperVersion = bestRateVersion;
         selectExchangeModule('jumper');
     }
 
@@ -444,37 +477,60 @@ var AppExchange = (function () {
         if (!cowswapContainer) return;
 
         if (useCowView()) {
-            var url = window.CoinmanCowView.url(pendingCowTrade || undefined);
+            var cowTrade = pendingCowTrade;
             pendingCowTrade = null;
+            var url = window.CoinmanCowView.url(cowTrade || undefined);
             window.CoinmanCowView.show(cowswapContainer, url).catch(function (err) {
+                if (cowTrade && !pendingCowTrade) pendingCowTrade = cowTrade;
                 console.error('[Exchange] Failed to show CoW Swap:', err);
             });
             return;
         }
 
         if (cowswapInstance) {
+            var nextTrade = pendingCowTrade;
+            pendingCowTrade = null;
+            if (nextTrade && typeof cowswapInstance.setTrade === 'function') {
+                cowswapInstance.setTrade(nextTrade);
+            }
             return;
         }
 
-        try {
-            if (window.CoinmanExchangeCowSwap && typeof window.CoinmanExchangeCowSwap.mount === 'function') {
-                var trade = pendingCowTrade;
-                pendingCowTrade = null;
-                cowswapInstance = await window.CoinmanExchangeCowSwap.mount({
-                    container: cowswapContainer,
-                    initialSettings: exchangeSettings || {},
-                    trade: trade || undefined,
-                    onSettingsChange: function (updated) {
-                        exchangeSettings = Object.assign({}, exchangeSettings || {}, updated);
-                        saveExchangeSettings(exchangeSettings);
-                    },
-                });
-            } else {
-                console.warn('[Exchange] CoinmanExchangeCowSwap.mount is not available');
-            }
-        } catch (err) {
-            console.error('[Exchange] Error mounting CoW Swap:', err);
+        if (cowswapMountPromise) {
+            return cowswapMountPromise;
         }
+
+        var initialTrade = pendingCowTrade;
+        pendingCowTrade = null;
+        cowswapMountPromise = (async function () {
+            try {
+                if (window.CoinmanExchangeCowSwap && typeof window.CoinmanExchangeCowSwap.mount === 'function') {
+                    cowswapInstance = await window.CoinmanExchangeCowSwap.mount({
+                        container: cowswapContainer,
+                        initialSettings: exchangeSettings || {},
+                        trade: initialTrade || undefined,
+                        onSettingsChange: function (updated) {
+                            exchangeSettings = Object.assign({}, exchangeSettings || {}, updated);
+                            saveExchangeSettings(exchangeSettings);
+                        },
+                    });
+                    if (pendingCowTrade && cowswapInstance && typeof cowswapInstance.setTrade === 'function') {
+                        var queuedTrade = pendingCowTrade;
+                        pendingCowTrade = null;
+                        cowswapInstance.setTrade(queuedTrade);
+                    }
+                } else {
+                    console.warn('[Exchange] CoinmanExchangeCowSwap.mount is not available');
+                }
+            } catch (err) {
+                if (initialTrade && !pendingCowTrade) pendingCowTrade = initialTrade;
+                console.error('[Exchange] Error mounting CoW Swap:', err);
+            } finally {
+                cowswapMountPromise = null;
+            }
+        })();
+
+        return cowswapMountPromise;
     }
 
     async function loadExchangeSettings() {
@@ -546,6 +602,7 @@ var AppExchange = (function () {
         updateExchangeViews: updateExchangeViews,
         openJumper: openJumper,
         openCowSwap: openCowSwap,
+        setBestRatePair: setBestRatePair,
     };
 })();
 

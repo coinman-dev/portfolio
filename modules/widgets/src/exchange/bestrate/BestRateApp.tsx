@@ -17,6 +17,9 @@ import {
   searchRoutes,
 } from './search';
 import { addressKey, addressName, formatAmount, formatUSD, isAddressFor, shortAddress } from './format';
+import { cowTradeForPair } from './providers/cow';
+import { jumperPairUrl } from './providers/lifi';
+import { humanAmount } from './providers/common';
 import { Logo, TokenSelect } from './TokenSelect';
 import { RouteCard, RouteSection } from './RouteCard';
 import { ExecutePanel } from './ExecutePanel';
@@ -234,6 +237,25 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
   }, [fromChain, fromToken, evmAddress, refreshTick]);
 
   const amount = fromToken ? parseAmount(amountText, fromToken.decimals) : null;
+
+  useEffect(() => {
+    if (!fromChain || !toChain || !fromToken || !toToken) return;
+    const sameToken =
+      fromChain.id === toChain.id && fromToken.address.toLowerCase() === toToken.address.toLowerCase();
+    const sellAmount = amount ? humanAmount(amount, fromToken.decimals) : undefined;
+    const cow = sameToken ? null : cowTradeForPair(fromChain, fromToken, toChain, toToken, sellAmount);
+    const jumper = sameToken
+      ? null
+      : jumperPairUrl({
+          fromChainId: fromChain.id,
+          fromToken: fromToken.address,
+          toChainId: toChain.id,
+          toToken: toToken.address,
+          fromAmount: sellAmount,
+        });
+    (window as any).AppExchange?.setBestRatePair?.({ cowTrade: cow, jumperUrl: jumper });
+  }, [fromChain, toChain, fromToken, toToken, amount]);
+
   const addresses = settings.addresses ?? {};
   const typedAddress = (chain: BrChain) => {
     const key = addressKey(chain);
@@ -699,6 +721,8 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
                   <RouteCard
                     key={route.id}
                     route={route}
+                    fromToken={request.fromToken}
+                    fromAmount={request.amount}
                     toToken={toToken}
                     bestNetUSD={bestNet}
                     onOpenSite={openSite}
@@ -723,6 +747,8 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
                     <RouteCard
                       key={route.id}
                       route={route}
+                      fromToken={request.fromToken}
+                      fromAmount={request.amount}
                       toToken={toToken}
                       bestNetUSD={bestNet}
                       onOpenSite={openSite}
@@ -745,6 +771,8 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
                   <RouteCard
                     key={route.id}
                     route={route}
+                    fromToken={request.fromToken}
+                    fromAmount={request.amount}
                     toToken={toToken}
                     bestNetUSD={bestNet}
                     onOpenSite={openSite}

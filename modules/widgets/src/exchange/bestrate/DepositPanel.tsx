@@ -5,7 +5,7 @@ import { QuoteRequest } from './types';
 import { RankedRoute } from './search';
 import { amountUSD, humanAmount } from './providers/common';
 import { ThorLikeDeposit, thorlikeConfig, thorlikeDeposit } from './providers/thorlike';
-import { formatAmount, formatDuration, formatUSD } from './format';
+import { formatAmount, formatDuration, formatExchangeRates, formatUSD } from './format';
 import { subSwaps, tr, useT } from './i18n';
 import { recordDeposit, saveRecord } from './history';
 import { Delivery, watchDelivery } from './execute/status';
@@ -160,6 +160,9 @@ export const DepositPanel: React.FC<DepositPanelProps> = (props) => {
   const expired = !!deposit && deposit.expiry > 0 && secondsLeft <= 0;
   const amount = humanAmount(req.amount, req.fromToken.decimals);
   const inputUSD = amountUSD(req.amount, req.fromToken);
+  const depositRates = deposit
+    ? formatExchangeRates(req.amount, req.fromToken, deposit.expectedOut, req.toToken)
+    : null;
   const core = CORE_WALLETS[req.fromChain.key];
   const electrum = ELECTRUM_WALLETS[req.fromChain.key];
   const trackable = /^[0-9a-fA-F]{64}$/.test(txid.trim());
@@ -225,6 +228,15 @@ export const DepositPanel: React.FC<DepositPanelProps> = (props) => {
                   <span className="br-mono">{req.toAddress}</span>
                 </span>
               </div>
+              {depositRates && (
+                <div>
+                  <span className="br-muted">{t('Rate')}</span>
+                  <span>
+                    <strong>{depositRates.direct}</strong> <span className="br-muted">·</span>{' '}
+                    <strong>{depositRates.inverse}</strong>
+                  </span>
+                </div>
+              )}
               <div>
                 <span className="br-muted">{t('Timing')}</span>
                 <strong>

@@ -11,7 +11,7 @@ import { RunProgress, RunStep, pendingApprovals, runPlan } from './execute/run';
 import { Delivery, watchDelivery } from './execute/status';
 import { explainRevert, readBalance } from './execute/balance';
 import { SwapRecorder } from './history';
-import { formatAmount, formatUSD, shortAddress } from './format';
+import { formatAmount, formatExchangeRates, formatUSD, shortAddress } from './format';
 import { tr, useT } from './i18n';
 
 /** A plan older than this is rebuilt before signing — quotes go stale. */
@@ -177,6 +177,7 @@ export const ExecutePanel: React.FC<ExecutePanelProps> = (props) => {
     ) : null;
 
   const outUSD = plan ? amountUSD(plan.toAmount, req.toToken) : 0;
+  const planRates = plan ? formatExchangeRates(plan.amount, req.fromToken, plan.toAmount, req.toToken) : null;
   const lossPct = inputUSD > 0 && outUSD > 0 ? ((inputUSD - outUSD) / inputUSD) * 100 : 0;
   const needsLossAck = lossPct > LOSS_WARN_PCT;
   const simBlocks = !!simulation && simulation.supported && !simulation.ok;
@@ -228,6 +229,15 @@ export const ExecutePanel: React.FC<ExecutePanelProps> = (props) => {
                 })}
               </span>
             </div>
+            {planRates && (
+              <div>
+                <span className="br-muted">{t('Rate')}</span>
+                <span>
+                  <strong>{planRates.direct}</strong> <span className="br-muted">·</span>{' '}
+                  <strong>{planRates.inverse}</strong>
+                </span>
+              </div>
+            )}
             <div>
               <span className="br-muted">{t('Receiver')}</span>
               <strong className="br-mono">{plan.receiver}</strong>

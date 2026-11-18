@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { BrToken } from './types';
 import { RankedRoute } from './search';
-import { formatAmount, formatDuration, formatPct, formatUSD } from './format';
+import { formatAmount, formatDuration, formatExchangeRates, formatPct, formatUSD } from './format';
 import { useT } from './i18n';
 
 const BADGE_LABELS = {
@@ -18,6 +18,8 @@ const RELIABILITY_TITLES = {
 
 interface RouteCardProps {
   route: RankedRoute;
+  fromToken: BrToken;
+  fromAmount: bigint;
   toToken: BrToken;
   /** Net USD of the top route, for the "−$x vs best" line. */
   bestNetUSD?: number;
@@ -32,6 +34,8 @@ interface RouteCardProps {
 
 export const RouteCard: React.FC<RouteCardProps> = ({
   route,
+  fromToken,
+  fromAmount,
   toToken,
   bestNetUSD,
   onOpenSite,
@@ -43,6 +47,7 @@ export const RouteCard: React.FC<RouteCardProps> = ({
   const t = useT();
   const [open, setOpen] = useState(false);
   const behind = bestNetUSD != null ? bestNetUSD - route.netUSD : 0;
+  const rates = formatExchangeRates(fromAmount, fromToken, route.toAmount, toToken);
   const classes = [
     'br-route',
     route.badges.includes('recommended') ? 'is-recommended' : '',
@@ -85,6 +90,11 @@ export const RouteCard: React.FC<RouteCardProps> = ({
           <div className="br-muted">
             {formatUSD(route.toUSD)} · <strong>{route.providerName}</strong> {t('via')} {route.via}
           </div>
+          {rates && (
+            <div className="br-route__rate">
+              {t('Rate')}: <strong>{rates.direct}</strong> · <strong>{rates.inverse}</strong>
+            </div>
+          )}
         </div>
         <div className="br-route__actions">
           {swapBlocker !== undefined && (
