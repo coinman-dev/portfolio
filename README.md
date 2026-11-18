@@ -84,7 +84,7 @@ The shared EVM network list includes Ethereum, Arbitrum, Optimism, Polygon, BNB 
 | Linux (Ubuntu 22.04+) | ✅ Supported |
 | macOS | ✅ Supported |
 
-Download **[v0.9.2-beta](https://github.com/coinman-dev/portfolio/releases/tag/v0.9.2-beta)** from GitHub Releases. This is a prerelease: back up your database before upgrading.
+Download **[v0.9.3-beta](https://github.com/coinman-dev/portfolio/releases/tag/v0.9.3-beta)** from GitHub Releases. This is a prerelease: back up your database before upgrading.
 
 | Platform | Release asset |
 |----------|---------------|
