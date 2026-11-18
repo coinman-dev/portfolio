@@ -5,7 +5,7 @@ import { getWalletStatus, subscribeWalletStatus, wagmiConfig } from '../../walle
 import { openExternal } from '../../earn/openExternal';
 import { diag } from '../../diag';
 import { BrChain, BrToken, ProviderId, QuoteRequest, RouteQuote } from './types';
-import { fetchChains, fetchToken, fetchTokens, isNative } from './catalog';
+import { chainsAreFallback, fetchChains, fetchToken, fetchTokens, isNative, seedChains } from './catalog';
 import {
   CLOSE_PCT,
   FEE_CAP_PCT,
@@ -195,10 +195,30 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
     []
   );
 
-  useEffect(() => {
+  const savedChainsRef = useRef<unknown>(initialSettings?.bestRateChains);
+  const [chainsFallback, setChainsFallback] = useState(false);
+  const [chainsLoading, setChainsLoading] = useState(false);
+  const loadChains = useCallback(() => {
+    setChainsLoading(true);
     fetchChains()
-      .then(setChains)
-      .catch((err) => setLoadError(tr('Could not load networks: {error}', { error: err?.message ?? err })));
+      .then((list) => {
+        setChains(list);
+        setLoadError(null);
+        const fallback = chainsAreFallback();
+        setChainsFallback(fallback);
+        // Kept in the app's data folder: Best Rate still opens when LI.FI is down.
+        if (!fallback && JSON.stringify(list) !== JSON.stringify(savedChainsRef.current)) {
+          savedChainsRef.current = list;
+          onSettingsChange?.({ bestRateChains: list });
+        }
+      })
+      .catch((err) => setLoadError(tr('Could not load networks: {error}', { error: err?.message ?? err })))
+      .finally(() => setChainsLoading(false));
+  }, [onSettingsChange]);
+
+  useEffect(() => {
+    seedChains(initialSettings?.bestRateChains);
+    loadChains();
     void resolveToken(saved.from ?? DEFAULT_FROM).then(setFromToken);
     void resolveToken(saved.to ?? DEFAULT_TO).then(setToToken);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -687,7 +707,14 @@ export const BestRateApp: React.FC<ExchangeMountOptions> = ({ initialSettings, o
             </button>
           </div>
 
-          {loadError && <div className="br-warn">{loadError}</div>}
+          {(loadError || chainsFallback) && (
+            <div className="br-warn">
+              {loadError ?? t('LI.FI is not answering: networks are from the last successful load.')}{' '}
+              <button type="button" className="br-btn br-btn--ghost" disabled={chainsLoading} onClick={loadChains}>
+                {chainsLoading ? t('Loading…') : t('Retry')}
+              </button>
+            </div>
+          )}
           {!request && !loadError && <div className="br-muted br-pad">{t('Enter an amount to compare routes.')}</div>}
           {request && !ranking?.ranked.length && pending > 0 && <div className="br-muted br-pad">{t('Searching…')}</div>}
           {request && !ranking?.ranked.length && pending === 0 && updatedAt && (

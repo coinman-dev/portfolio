@@ -58,14 +58,48 @@ export const isExtraChain = (chainId: number) => Boolean(extraOf(chainId));
 const POPULAR = [1, 42161, 8453, 56, 10, 137, 43114, 728126428, 1151111081099710, 20000000000001, DASH_CHAIN_ID, LTC_CHAIN_ID];
 
 let chainsCache: { at: number; promise: Promise<BrChain[]> } | null = null;
+/** The last list LI.FI returned (or the one saved by a previous run): used while LI.FI is down. */
+let lastGoodChains: BrChain[] | null = null;
+let servedFallback = false;
+
+/** Seeds the fallback with the list saved by a previous run, if nothing newer is known. */
+export function seedChains(saved: unknown): void {
+  if (lastGoodChains || !Array.isArray(saved)) return;
+  const valid = saved.filter(
+    (c: any) => c && typeof c.id === 'number' && typeof c.key === 'string' && typeof c.name === 'string' && typeof c.nativeAddress === 'string'
+  );
+  if (valid.length) lastGoodChains = valid as BrChain[];
+}
+
+const CHAIN_ATTEMPT_TIMEOUT_MS = 15_000;
+const CHAIN_RETRY_DELAYS_MS = [2_000, 5_000];
+/** LI.FI answers these when it is overloaded or slow; worth asking again. */
+const isTransientStatus = (status: number) => status === 408 || status === 425 || status === 429 || status >= 500;
+
+async function fetchChainsBody(): Promise<any> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= CHAIN_RETRY_DELAYS_MS.length; attempt++) {
+    if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, CHAIN_RETRY_DELAYS_MS[attempt - 1]));
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), CHAIN_ATTEMPT_TIMEOUT_MS);
+    try {
+      const res = await fetch(`${LIFI_API}/chains?chainTypes=EVM,SVM,UTXO,MVM,TVM`, { signal: controller.signal });
+      if (res.ok) return await res.json();
+      lastError = new Error(`chains: ${res.status}`);
+      if (!isTransientStatus(res.status)) break;
+    } catch (err: any) {
+      // Network failure or our own timeout: both are worth a retry.
+      lastError = err?.name === 'AbortError' ? new Error('chains: timeout') : err;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  throw lastError;
+}
 
 export function fetchChains(): Promise<BrChain[]> {
   if (chainsCache && Date.now() - chainsCache.at < CACHE_MS) return chainsCache.promise;
-  const promise = fetch(`${LIFI_API}/chains?chainTypes=EVM,SVM,UTXO,MVM,TVM`)
-    .then((res) => {
-      if (!res.ok) throw new Error(`chains: ${res.status}`);
-      return res.json();
-    })
+  const promise = fetchChainsBody()
     .then((body) => {
       const chains: BrChain[] = (body.chains ?? [])
         .filter((c: any) => c.mainnet !== false)
@@ -84,14 +118,26 @@ export function fetchChains(): Promise<BrChain[]> {
         const i = POPULAR.indexOf(id);
         return i === -1 ? POPULAR.length : i;
       };
-      return chains.sort((a, b) => rank(a.id) - rank(b.id) || a.name.localeCompare(b.name));
+      const sorted = chains.sort((a, b) => rank(a.id) - rank(b.id) || a.name.localeCompare(b.name));
+      lastGoodChains = sorted;
+      servedFallback = false;
+      return sorted;
+    })
+    .catch((err) => {
+      // Forget the failure so the next call asks LI.FI again.
+      if (chainsCache?.promise === promise) chainsCache = null;
+      if (lastGoodChains) {
+        servedFallback = true;
+        return lastGoodChains;
+      }
+      throw err;
     });
   chainsCache = { at: Date.now(), promise };
-  promise.catch(() => {
-    if (chainsCache?.promise === promise) chainsCache = null;
-  });
   return promise;
 }
+
+/** True when the last fetchChains() answer was the saved fallback, not LI.FI's fresh list. */
+export const chainsAreFallback = () => servedFallback;
 
 const tokensCache = new Map<number, { at: number; promise: Promise<BrToken[]> }>();
 

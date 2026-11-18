@@ -3,6 +3,9 @@ export const RU: Record<string, string> = {
   // ---------- form ----------
   'Switch language': 'Сменить язык',
   'Could not load networks: {error}': 'Не удалось загрузить сети: {error}',
+  'LI.FI is not answering: networks are from the last successful load.':
+    'LI.FI не отвечает: список сетей взят из последней удачной загрузки.',
+  Retry: 'Повторить',
   ' and ': ' и ',
   'Best rate': 'Лучший курс',
   ' — view only, reconnect to sign': ' — только просмотр, переподключите для подписи',
