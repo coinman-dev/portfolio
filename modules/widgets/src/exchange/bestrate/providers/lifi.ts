@@ -1,18 +1,44 @@
 import { FeeLine, Provider, QuoteRequest, RouteQuote } from '../types';
+import { isExtraChain } from '../catalog';
 import { getJson, humanAmount, reliabilityOf } from './common';
 
 /** LI.FI's own cut on every integration but Jumper. */
 const LIFI_FEE_NAME = 'LIFI Fixed Fee';
 
-export function jumperUrl(req: QuoteRequest): string {
-  const params = new URLSearchParams({
-    fromAmount: humanAmount(req.amount, req.fromToken.decimals),
-    fromChain: String(req.fromChain.id),
-    fromToken: req.fromToken.address,
-    toChain: String(req.toChain.id),
-    toToken: req.toToken.address,
-  });
+/** Builds the jumper.xyz URL for a pair (and optional human amount), or null for custom non-LI.FI chains. */
+export function jumperPairUrl(input: {
+  fromChainId: number;
+  fromToken: string;
+  toChainId: number;
+  toToken: string;
+  fromAmount?: string;
+}): string | null {
+  if (isExtraChain(input.fromChainId) || isExtraChain(input.toChainId)) return null;
+  if (
+    input.fromChainId === input.toChainId &&
+    input.fromToken.toLowerCase() === input.toToken.toLowerCase()
+  ) {
+    return null;
+  }
+  const params = new URLSearchParams();
+  if (input.fromAmount) params.set('fromAmount', input.fromAmount);
+  params.set('fromChain', String(input.fromChainId));
+  params.set('fromToken', input.fromToken);
+  params.set('toChain', String(input.toChainId));
+  params.set('toToken', input.toToken);
   return `https://jumper.xyz/?${params}`;
+}
+
+export function jumperUrl(req: QuoteRequest): string {
+  return (
+    jumperPairUrl({
+      fromChainId: req.fromChain.id,
+      fromToken: req.fromToken.address,
+      toChainId: req.toChain.id,
+      toToken: req.toToken.address,
+      fromAmount: humanAmount(req.amount, req.fromToken.decimals),
+    }) ?? 'https://jumper.xyz/'
+  );
 }
 
 export function lifiRoutesBody(req: QuoteRequest) {

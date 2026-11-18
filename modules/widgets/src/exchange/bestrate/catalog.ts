@@ -52,6 +52,7 @@ const EXTRA_COINS: ExtraCoin[] = [
   extraCoin(XRP_CHAIN_ID, 'xrp', 'XRP Ledger', 'XRP', `${CG_IMAGES}/44/standard/xrp-symbol-white-128.png`, 'https://xrpscan.com', 'ripple', 'XRPL', 6),
 ];
 const extraOf = (chainId: number) => EXTRA_COINS.find((coin) => coin.chain.id === chainId);
+export const isExtraChain = (chainId: number) => Boolean(extraOf(chainId));
 
 /** Shown first, in this order; the rest follow by name. */
 const POPULAR = [1, 42161, 8453, 56, 10, 137, 43114, 728126428, 1151111081099710, 20000000000001, DASH_CHAIN_ID, LTC_CHAIN_ID];

@@ -195,6 +195,7 @@ let pendingUrl: string | undefined;
 let shown = false;
 let lastBounds = '';
 let frame = 0;
+let viewEpoch = 0;
 let cleanup: (() => void) | null = null;
 
 function overlayOpen(): boolean {
@@ -227,6 +228,8 @@ function sync(): void {
   pendingUrl = undefined;
   void invoke('cow_show', { bounds, url: url ?? null }).catch((err) => {
     shown = false;
+    lastBounds = '';
+    if (url && !pendingUrl) pendingUrl = url;
     diag('error', 'COW', `cannot show the CoW Swap view: ${err}`);
   });
 }
@@ -237,9 +240,11 @@ function scheduleSync(): void {
 
 /** Shows swap.cow.fi over `el` (opening `url` if given) and keeps it placed there. */
 export async function showCowView(el: HTMLElement, url?: string): Promise<void> {
-  await startBridge();
-  container = el;
+  const epoch = ++viewEpoch;
   if (url) pendingUrl = url;
+  await startBridge();
+  if (epoch !== viewEpoch) return;
+  container = el;
   if (!cleanup) {
     const mutations = new MutationObserver(scheduleSync);
     mutations.observe(document.body, {
@@ -267,9 +272,15 @@ export async function showCowView(el: HTMLElement, url?: string): Promise<void> 
 
 /** Takes the CoW Swap view off screen (it keeps its page for next time). */
 export function hideCowView(): void {
+  ++viewEpoch;
+  if (frame) {
+    cancelAnimationFrame(frame);
+    frame = 0;
+  }
   cleanup?.();
   cleanup = null;
   container = null;
   shown = false;
+  lastBounds = '';
   void invoke('cow_hide', {}).catch(() => undefined);
 }

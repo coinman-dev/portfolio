@@ -1,4 +1,4 @@
-import { NoRoute, Provider } from '../types';
+import { BrChain, BrToken, NoRoute, Provider } from '../types';
 import { amountUSD, getJson, humanAmount, isNativeToken, receiverOf, sameChain, senderOf } from './common';
 import { tr } from '../i18n';
 
@@ -7,7 +7,7 @@ import { tr } from '../i18n';
  * sold amount, so nothing is paid on top; the protocol's volume fee
  * (0.3 bp on stable pairs, 2 bp otherwise) arrives with each quote.
  */
-const NETWORKS: Record<number, string> = {
+export const COW_NETWORKS: Record<number, string> = {
   1: 'mainnet',
   100: 'xdai',
   42161: 'arbitrum_one',
@@ -19,13 +19,33 @@ const NETWORKS: Record<number, string> = {
   9745: 'plasma',
 };
 
-const COW_NATIVE = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
+export const COW_NATIVE = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
+
+/** Builds the CoW Swap tab trade payload for a Best Rate pair, or null if unsupported. */
+export function cowTradeForPair(
+  fromChain: BrChain,
+  fromToken: BrToken,
+  toChain: BrChain,
+  toToken: BrToken,
+  sellAmount?: string
+): { chainId: number; sell: string; buy: string; sellAmount?: string } | null {
+  if (fromChain.id !== toChain.id || !COW_NETWORKS[fromChain.id]) return null;
+  if (fromToken.address.toLowerCase() === toToken.address.toLowerCase()) return null;
+  const sell = isNativeToken(fromChain, fromToken) ? COW_NATIVE : fromToken.address;
+  const buy = isNativeToken(toChain, toToken) ? COW_NATIVE : toToken.address;
+  return {
+    chainId: fromChain.id,
+    sell,
+    buy,
+    ...(sellAmount ? { sellAmount } : {}),
+  };
+}
 
 export const cowProvider: Provider = {
   id: 'cow',
   name: 'CoW Swap',
   async quote(req, signal) {
-    const network = NETWORKS[req.fromChain.id];
+    const network = COW_NETWORKS[req.fromChain.id];
     if (!sameChain(req)) throw new NoRoute('same-chain swaps only');
     if (!network) throw new NoRoute(tr('{chain} is not supported', { chain: req.fromChain.name }));
     if (isNativeToken(req.fromChain, req.fromToken)) {

@@ -13,6 +13,37 @@ export function formatAmount(amount: bigint, decimals: number): string {
   return value.toLocaleString('en-US', { maximumFractionDigits: digits });
 }
 
+/** Exchange rate: keeps both large values and tiny fractions (e.g. 0.00001234) readable. */
+export function formatRateValue(rate: number): string {
+  if (!Number.isFinite(rate) || rate <= 0) return '—';
+  if (rate >= 1000) return rate.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  if (rate >= 1) return rate.toLocaleString('en-US', { maximumFractionDigits: 4 });
+  if (rate >= 0.001) return rate.toLocaleString('en-US', { maximumFractionDigits: 6 });
+  return rate.toLocaleString('en-US', { maximumSignificantDigits: 4 });
+}
+
+export interface ExchangeRates {
+  direct: string;
+  inverse: string;
+}
+
+/** Direct (1 FROM = X TO) and inverse (1 TO = Y FROM) exchange rates. */
+export function formatExchangeRates(
+  fromAmount: bigint,
+  fromToken: { decimals: number; symbol: string },
+  toAmount: bigint,
+  toToken: { decimals: number; symbol: string }
+): ExchangeRates | null {
+  if (fromAmount <= 0n || toAmount <= 0n) return null;
+  const fromNum = Number(fromAmount) / 10 ** fromToken.decimals;
+  const toNum = Number(toAmount) / 10 ** toToken.decimals;
+  if (!Number.isFinite(fromNum) || !Number.isFinite(toNum) || fromNum <= 0 || toNum <= 0) return null;
+  return {
+    direct: `1 ${fromToken.symbol} = ${formatRateValue(toNum / fromNum)} ${toToken.symbol}`,
+    inverse: `1 ${toToken.symbol} = ${formatRateValue(fromNum / toNum)} ${fromToken.symbol}`,
+  };
+}
+
 export function formatPct(value: number | null): string {
   if (value == null) return tr('not disclosed');
   if (value === 0) return '0%';

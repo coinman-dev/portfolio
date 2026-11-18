@@ -89,7 +89,11 @@ fn show<R: Runtime>(app: &AppHandle<R>, bounds: Bounds, url: Option<String>) -> 
         webview.set_size(size).map_err(|e| e.to_string())?;
         let _ = webview.set_zoom(zoom);
         if let Some(url) = target {
-            webview.navigate(url).map_err(|e| e.to_string())?;
+            if webview.url().ok().as_ref() == Some(&url) {
+                webview.reload().map_err(|e| e.to_string())?;
+            } else {
+                webview.navigate(url).map_err(|e| e.to_string())?;
+            }
         }
         #[cfg(target_os = "linux")]
         crate::child_view::place_linux(&webview, bounds);
