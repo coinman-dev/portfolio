@@ -18,6 +18,7 @@ const SIMULATION_RPC: Record<number, string> = {
 const MULTICALL3 = '0xcA11bde05977b3631167028862bE2a173976CA11';
 const ERC20_ABI = parseAbi([
   'function approve(address spender, uint256 amount)',
+  'function allowance(address owner, address spender) view returns (uint256)',
   'function balanceOf(address owner) view returns (uint256)',
 ]);
 const MULTICALL_ABI = parseAbi(['function getEthBalance(address addr) view returns (uint256)']);
@@ -60,21 +61,36 @@ export async function simulatePlan(plan: ExecPlan, outToken: Hex | null, signal?
   const calls: { to: Hex; data?: Hex; value?: bigint }[] = [];
   const checkOutput = plan.sameChain;
   if (checkOutput) calls.push(balanceCall(outToken, receiver));
-  if (plan.token && plan.spender) {
-    calls.push({
-      to: plan.token,
-      data: encodeFunctionData({ abi: ERC20_ABI, functionName: 'approve', args: [plan.spender, plan.amount] }),
-    });
-  }
-  const mainIndex = calls.length;
-  calls.push({ to: plan.tx.to, data: plan.tx.data, value: plan.tx.value });
-  if (checkOutput) calls.push(balanceCall(outToken, receiver));
+  const firstApproval = calls.length;
 
   try {
+    if (plan.token && plan.spender) {
+      // The same steps the swap itself takes (see pendingApprovals): an
+      // allowance already in place is used as is, and a smaller one is reset
+      // first — USDT reverts when a non-zero allowance is changed directly.
+      const allowance = (await client.readContract({
+        address: plan.token,
+        abi: ERC20_ABI,
+        functionName: 'allowance',
+        args: [plan.user, plan.spender],
+      })) as bigint;
+      const approve = (amount: bigint) => ({
+        to: plan.token as Hex,
+        data: encodeFunctionData({ abi: ERC20_ABI, functionName: 'approve', args: [plan.spender as Hex, amount] }),
+      });
+      if (allowance < plan.amount) {
+        if (allowance > 0n) calls.push(approve(0n));
+        calls.push(approve(plan.amount));
+      }
+    }
+    const swapIndex = calls.length;
+    calls.push({ to: plan.tx.to, data: plan.tx.data, value: plan.tx.value });
+    if (checkOutput) calls.push(balanceCall(outToken, receiver));
+
     const { results } = await client.simulateCalls({ account: plan.user, calls });
     const failed = results.findIndex((r) => r.status !== 'success');
     if (failed !== -1) {
-      const what = failed === mainIndex ? 'the swap' : failed < mainIndex ? 'the approval' : 'a balance check';
+      const what = failed === swapIndex ? 'the swap' : failed >= firstApproval && failed < swapIndex ? 'the approval' : 'a balance check';
       return { supported: true, ok: false, error: `${what} would fail: ${results[failed].error?.message ?? 'reverted'}` };
     }
     if (!checkOutput) return { supported: true, ok: true };
