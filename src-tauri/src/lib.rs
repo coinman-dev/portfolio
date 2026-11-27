@@ -1,5 +1,6 @@
 mod approvals;
 mod dash_core;
+mod dash_tor;
 mod diag_log;
 mod exchange_history;
 mod child_view;
@@ -665,8 +666,11 @@ pub fn run() {
         .expect("error while building tauri application");
 
     let env = app.env();
+    let handle = app.handle().clone();
     let exit_code = app.run_return(|_, _| {});
     log::info!("Exit, code {exit_code}");
+    // Dash Core's dash.conf goes back to the user's own lines.
+    dash_tor::sync(&handle, None);
     tor_builtin::stop();
     webview_profile::remove();
     if privacy::restart_requested() {

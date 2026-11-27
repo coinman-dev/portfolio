@@ -71,6 +71,11 @@ fn layout(dir: &Path) -> Layout {
     Layout { exe, datadir }
 }
 
+/// The data folder (with dash.conf) for a folder the user picked.
+pub(crate) fn data_dir(dir: &Path) -> Option<PathBuf> {
+    layout(dir).datadir
+}
+
 /// `dash.conf` values for mainnet: lines before any section and in `[main]`.
 fn read_conf(datadir: &Path) -> Option<Vec<(String, String)>> {
     let text = fs::read_to_string(datadir.join("dash.conf")).ok()?;
@@ -194,7 +199,7 @@ async fn call(
     Ok(body.get("result").cloned().unwrap_or(Value::Null))
 }
 
-fn saved_dir<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
+pub(crate) fn saved_dir<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
     settings::load_dash_core(app)
         .get("dir")
         .and_then(Value::as_str)
@@ -345,15 +350,13 @@ pub async fn dash_core_inspect(app: AppHandle, dir: Option<String>) -> Result<Va
                         .unwrap_or(false);
                     let blocks = info.get("blocks").and_then(Value::as_u64).unwrap_or(0);
                     let headers = info.get("headers").and_then(Value::as_u64).unwrap_or(0);
-                    let version = call(&rpc, None, "getnetworkinfo", json!([]))
-                        .await
-                        .ok()
-                        .and_then(|n| {
-                            n.get("subversion")
-                                .and_then(Value::as_str)
-                                .map(str::to_string)
-                        })
-                        .unwrap_or_default();
+                    let network = call(&rpc, None, "getnetworkinfo", json!([])).await.ok();
+                    let version = network
+                        .as_ref()
+                        .and_then(|n| n.get("subversion").and_then(Value::as_str))
+                        .unwrap_or_default()
+                        .to_string();
+                    tor_check(&mut checks, network.as_ref(), &conf);
                     checks.push(check(
                         true,
                         true,
@@ -441,6 +444,45 @@ pub async fn dash_core_inspect(app: AppHandle, dir: Option<String>) -> Result<Va
     )
 }
 
+/// Whether the running node goes through CoinMan's Tor (Privacy → Tor network).
+fn tor_check(checks: &mut Vec<Check>, network: Option<&Value>, conf: &[(String, String)]) {
+    let proxy = network
+        .and_then(|n| n.get("networks"))
+        .and_then(Value::as_array)
+        .and_then(|nets| {
+            nets.iter()
+                .find(|n| n.get("name").and_then(Value::as_str) == Some("ipv4"))
+                .and_then(|n| n.get("proxy").and_then(Value::as_str))
+        })
+        .unwrap_or("")
+        .to_string();
+    let tor = crate::privacy::active().map(|e| e.address());
+    match (tor, proxy.is_empty()) {
+        (Some(_), _) if conf_get(conf, "masternodeblsprivkey").is_some() => checks.push(check(
+            false,
+            false,
+            "Through Tor",
+            "a masternode needs direct connections, so its dash.conf is left without Tor",
+        )),
+        (Some(addr), false) if proxy == addr => {
+            checks.push(check(true, false, "Through Tor", format!("peers are reached through Tor ({proxy})")))
+        }
+        (Some(addr), _) => checks.push(check(
+            false,
+            false,
+            "Through Tor",
+            format!("dash.conf is set to use Tor ({addr}) — restart Dash-Qt so it connects through it"),
+        )),
+        (None, false) => checks.push(check(
+            true,
+            false,
+            "Proxy",
+            format!("Dash-Qt still uses the proxy {proxy}; Tor is off in CoinMan, so restart Dash-Qt to connect directly"),
+        )),
+        (None, true) => {}
+    }
+}
+
 /// The folder picker for "Choose folder…".
 #[tauri::command]
 pub async fn dash_core_pick_folder(app: AppHandle) -> Result<Option<String>, String> {
@@ -467,7 +509,12 @@ pub fn dash_core_save(app: AppHandle, dir: Option<String>) {
         Some(d) => json!({ "dir": d.trim() }),
         None => Value::Null,
     };
+    // Tor lines follow the chosen node: out of the old dash.conf, into the new one.
+    crate::dash_tor::sync(&app, None);
     settings::update_dash_core(&app, value);
+    if let Some(tor) = crate::privacy::active() {
+        crate::dash_tor::sync(&app, Some(&tor.address()));
+    }
 }
 
 #[tauri::command]

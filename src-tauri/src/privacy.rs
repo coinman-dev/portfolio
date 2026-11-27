@@ -99,6 +99,9 @@ pub fn init<R: Runtime>(app: &AppHandle<R>) {
     }
     let _ = STARTUP.set(saved);
     let _ = ACTIVE.set(endpoint);
+    // Dash Core follows: Tor lines in its dash.conf while Tor is on, none otherwise
+    // (also clears lines left by a CoinMan that was killed).
+    crate::dash_tor::sync(app, active().map(|e| e.address()).as_deref());
 }
 
 fn resolve<R: Runtime>(app: &AppHandle<R>, saved: &PrivacySettings) -> Endpoint {
