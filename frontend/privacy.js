@@ -106,17 +106,24 @@ var AppPrivacy = (function () {
         if (!box || !status) return;
         var d = status.detected || {};
         var b = status.builtin || {};
+        var source = status.active && !status.active.missing ? status.active.source : null;
+        var IN_USE = ' <strong class="privacy-in-use">— in use</strong>';
         var builtinHint = !b.supported
             ? 'not available for this system'
             : !b.installed
-                ? 'not installed'
-                : 'version ' + b.version + (b.running
-                    ? ' — running, ' + (b.bootstrap >= 100 ? 'connected' : 'connecting ' + b.bootstrap + '%') + ' (127.0.0.1:' + b.port + ')'
-                    : ' — starts when Tor is on');
+                ? 'not installed — use the button below'
+                : 'version ' + esc(b.version) + (b.running
+                    ? ', ' + (b.bootstrap >= 100 ? 'connected' : 'connecting ' + b.bootstrap + '%') + ' (127.0.0.1:' + b.port + ')'
+                    : ', starts when Tor is on') + (source === 'built-in' ? IN_USE : '');
+        // The other two are alternatives: only worth a mention when they run or nothing else is there.
+        var other = function (running, addr, kind) {
+            if (running) return 'running (' + addr + ')' + (source === kind ? IN_USE : source ? ', not needed' : '');
+            return source ? 'not running — not needed' : 'not running (' + addr + ')';
+        };
         var rows =
-            line(b.installed ? true : null, 'CoinMan\'s Tor', esc(builtinHint)) +
-            line(d.torBrowser ? true : null, 'Tor Browser', d.torBrowser ? 'running — 127.0.0.1:9150' : 'not running (127.0.0.1:9150)') +
-            line(d.torService ? true : null, 'Tor service', d.torService ? 'running — 127.0.0.1:9050' : 'not found (127.0.0.1:9050)');
+            line(b.installed ? true : null, 'CoinMan\'s Tor', builtinHint) +
+            line(d.torBrowser ? true : null, 'Tor Browser', other(d.torBrowser, '127.0.0.1:9150', 'tor-browser')) +
+            line(d.torService ? true : null, 'Tor service, installed separately', other(d.torService, '127.0.0.1:9050', 'tor-service'));
 
         var now;
         var active = status.active;
@@ -152,6 +159,8 @@ var AppPrivacy = (function () {
         var box = el('privacy-builtin');
         if (!box) return;
         box.style.display = b.supported ? '' : 'none';
+        var path = el('privacy-builtin-path');
+        if (path) path.textContent = b.path || 'data/tor';
         var install = el('privacy-builtin-install');
         var update = el('privacy-builtin-update');
         var remove = el('privacy-builtin-remove');

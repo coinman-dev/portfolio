@@ -610,9 +610,9 @@
 				the Tor network, so services see a Tor exit address instead of yours.
 			</p>
 			<p class="wallet-modal-intro wallet-modal-note">
-				CoinMan does not include Tor. It uses
-				<a href="#" onclick="AppPrivacy.openLink('browser'); return false;">Tor Browser</a> while it is open, or the
-				<a href="#" onclick="AppPrivacy.openLink('service'); return false;">Tor service (Tor Expert Bundle)</a>.
+				One Tor is enough: CoinMan's own (download it below), or
+				<a href="#" onclick="AppPrivacy.openLink('browser'); return false;">Tor Browser</a> while it is open, or a
+				<a href="#" onclick="AppPrivacy.openLink('service'); return false;">Tor service</a> you run yourself.
 			</p>
 			<div id="privacy-status" class="dashcore-result"></div>
 			<div id="privacy-builtin" class="privacy-builtin" style="display: none">
@@ -623,8 +623,8 @@
 				</div>
 				<p class="wallet-modal-intro wallet-modal-note">
 					CoinMan's own Tor: the Tor Expert Bundle from torproject.org (about 24 MB), checked against the Tor Project's
-					signing key and kept in the <code>data/tor</code> folder. Nothing is installed in the system and no
-					administrator rights are needed; CoinMan starts it while Tor is on and stops it on exit.
+					signing key and kept in <code id="privacy-builtin-path">data/tor</code>. Nothing is installed in the system
+					and no administrator rights are needed; CoinMan starts it while Tor is on and stops it on exit.
 				</p>
 				<p id="privacy-builtin-msg" class="privacy-builtin-msg"></p>
 			</div>

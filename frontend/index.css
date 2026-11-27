@@ -1812,3 +1812,10 @@ body.show-cur-price .col-cur-price {
 }
 .privacy-builtin-msg.is-ok { color: #4caf50; }
 .privacy-builtin-msg.is-bad { color: #e57373; }
+
+.privacy-in-use {
+    color: #4caf50;
+}
+#privacy-builtin-path {
+    word-break: break-all;
+}

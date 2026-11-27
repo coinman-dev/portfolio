@@ -107,6 +107,7 @@ pub fn status<R: Runtime>(app: &AppHandle<R>) -> Value {
         "bootstrap": bootstrap(),
         "lastLine": LAST_LINE.lock().unwrap_or_else(|p| p.into_inner()).clone(),
         "port": PORT,
+        "path": root(app).display().to_string(),
     })
 }
 
@@ -294,7 +295,10 @@ fn extract(archive: &[u8], dest: &Path) -> Result<(), String> {
         let mut entry = entry.map_err(|e| e.to_string())?;
         let path = entry.path().map_err(|e| e.to_string())?.into_owned();
         let name = path.to_string_lossy().replace('\\', "/");
-        let wanted = (name.starts_with("tor/") && !name.starts_with("tor/pluggable_transports"))
+        // tor-gencert is for directory authorities; pluggable transports are not used.
+        let wanted = (name.starts_with("tor/")
+            && !name.starts_with("tor/pluggable_transports")
+            && !name.starts_with("tor/tor-gencert"))
             || name == "data/geoip"
             || name == "data/geoip6";
         if !wanted || !entry.header().entry_type().is_file() {
@@ -518,6 +522,7 @@ mod tests {
             assert!(exe(&dir).is_file());
             assert!(dir.join("data").join("geoip").is_file());
             assert!(!dir.join("tor").join("pluggable_transports").exists());
+            assert!(!dir.join("tor").join("tor-gencert.exe").exists() && !dir.join("tor").join("tor-gencert").exists());
             println!("Tor {version} verified and unpacked into {}", dir.display());
             let _ = std::fs::remove_dir_all(&dir);
         });
