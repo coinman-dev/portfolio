@@ -1713,7 +1713,7 @@ body.show-cur-price .col-cur-price {
 
 /* --- PRIVACY → TOR NETWORK (privacy.js) --- */
 .privacy-modal {
-    width: 620px;
+    width: 680px;
     max-width: calc(100vw - 40px);
 }
 .privacy-toggle,
@@ -1818,4 +1818,18 @@ body.show-cur-price .col-cur-price {
 }
 #privacy-builtin-path {
     word-break: break-all;
+}
+/* One line per Tor: name on the left, its state pressed to the right. */
+.privacy-modal .dashcore-checks li {
+    grid-template-columns: 18px auto 1fr;
+    gap: 10px;
+}
+.privacy-modal .dashcore-checks li > span:nth-child(2) {
+    white-space: nowrap;
+}
+.privacy-modal .dashcore-checks .dashcore-hint {
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
