@@ -457,6 +457,10 @@ mod tests {
     fn bundled_key_is_the_tor_browser_key() {
         let (key, _) = SignedPublicKey::from_string(SIGNING_KEY).unwrap();
         assert_eq!(hex(key.primary_key.fingerprint().as_bytes()), SIGNING_FINGERPRINT);
+        // A Windows checkout may turn the key file into CRLF lines.
+        let crlf = SIGNING_KEY.replace("\r\n", "\n").replace('\n', "\r\n");
+        let (key, _) = SignedPublicKey::from_string(&crlf).unwrap();
+        assert_eq!(hex(key.primary_key.fingerprint().as_bytes()), SIGNING_FINGERPRINT);
     }
 
     #[test]
