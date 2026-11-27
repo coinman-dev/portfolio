@@ -632,7 +632,7 @@
 					<input type="radio" name="privacy-mode" id="privacy-mode-manual" onchange="AppPrivacy.syncForm()"/>
 					<span>Use this SOCKS5 proxy:</span>
 				</label>
-				<input type="text" id="privacy-address" class="form-input privacy-address" placeholder="host:port, e.g. 192.168.1.10:9050" spellcheck="false"/>
+				<input type="text" id="privacy-address" class="form-input privacy-address" oninput="AppPrivacy.syncForm()" placeholder="host:port, e.g. 192.168.1.10:9050" spellcheck="false"/>
 				<p class="wallet-modal-intro wallet-modal-note">
 					For Tor on another port or on another device in your home network (router, NAS, Raspberry Pi). Between this
 					computer and that device the traffic is not protected by Tor. Another SOCKS5 proxy works too — Check tells
@@ -640,19 +640,15 @@
 				</p>
 			</details>
 			<p class="wallet-modal-intro wallet-modal-note">
-				Changes apply after a restart. While Tor is on, nothing is sent around it: if Tor stops, requests fail until it
+				CoinMan restarts to switch Tor on or off. While Tor is on, nothing is sent around it: if Tor stops, requests fail until it
 				is back. Some services slow down or block Tor, so quotes can take longer or be missing. Links opened in your
 				web browser use that browser's connection; Dash Core is reached on this computer and does not need Tor.
 			</p>
 			<p id="privacy-message" class="dashcore-summary"></p>
-			<p id="privacy-restart" class="dashcore-summary is-bad" style="display: none">
-				The saved setting is not in use yet — restart CoinMan to apply it.
-			</p>
 		</div>
 		<div class="modal-footer privacy-modal-footer">
 			<button class="btn btn-outline" onclick="AppPrivacy.check()">CHECK</button>
-			<button class="btn btn-orange" onclick="AppPrivacy.save()">SAVE</button>
-			<button id="privacy-restart-btn" class="btn btn-orange" style="display: none" onclick="AppPrivacy.restart()">RESTART NOW</button>
+			<button id="privacy-save-btn" class="btn btn-orange" onclick="AppPrivacy.save()">SAVE</button>
 			<button class="btn btn-outline" onclick="AppPrivacy.close()">CLOSE</button>
 		</div>
 	</div>

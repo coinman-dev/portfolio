@@ -145,11 +145,27 @@ var AppPrivacy = (function () {
         if (addr) addr.disabled = !(man && man.checked);
         var note = el('privacy-unsupported');
         if (note) note.style.display = supported ? 'none' : '';
-        var restart = el('privacy-restart');
-        var needed = !!(status && status.restartNeeded);
-        if (restart) restart.style.display = needed ? '' : 'none';
-        var restartBtn = el('privacy-restart-btn');
-        if (restartBtn) restartBtn.style.display = needed ? '' : 'none';
+        // The button says what it will do: a change to what this run uses means a restart.
+        var btn = el('privacy-save-btn');
+        if (btn && status) {
+            var v = formValues();
+            var now = status.startup || {};
+            var restart = changesStartup(v, now);
+            btn.textContent = !restart
+                ? 'SAVE'
+                : v.torEnabled && !now.torEnabled
+                    ? 'TURN ON TOR & RESTART'
+                    : !v.torEnabled && now.torEnabled
+                        ? 'TURN OFF TOR & RESTART'
+                        : 'SAVE & RESTART';
+        }
+    }
+
+    function changesStartup(v, now) {
+        if (!!v.torEnabled !== !!now.torEnabled) return true;
+        if (!v.torEnabled) return false;
+        if (!!v.manual !== !!now.manual) return true;
+        return !!v.manual && (v.address || '').toLowerCase() !== (now.address || '').toLowerCase();
     }
 
     function message(text, ok) {
@@ -235,9 +251,11 @@ var AppPrivacy = (function () {
             status = await invoke('privacy_save', v);
             renderStatus();
             syncForm();
-            message(status.restartNeeded
-                ? 'Saved. Restart CoinMan to apply it.'
-                : 'Saved.', true);
+            if (status.restartNeeded) {
+                restart();
+                return;
+            }
+            close();
         } catch (err) {
             message(String(err && err.message || err), false);
         } finally {
@@ -246,7 +264,7 @@ var AppPrivacy = (function () {
     }
 
     function restart() {
-        message('Restarting…', null);
+        message('Restarting CoinMan to apply the setting…', null);
         invoke('privacy_restart').catch(function (err) {
             message(String(err && err.message || err), false);
         });

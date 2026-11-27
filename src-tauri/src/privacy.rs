@@ -234,6 +234,7 @@ pub async fn privacy_status(app: AppHandle) -> Value {
         "platformSupported": platform_supported(),
         "saved": saved,
         "active": active,
+        "startup": startup,
         // The saved choice differs from what this process runs with.
         "restartNeeded": saved != startup,
         "detected": {
