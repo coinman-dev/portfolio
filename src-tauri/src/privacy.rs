@@ -1,9 +1,10 @@
 //! Privacy → Tor network.
 //!
-//! CoinMan does not ship Tor. It uses one the user already runs: Tor Browser
-//! (SOCKS port 9150 while it is open) or the standalone Tor service from the
-//! Tor Expert Bundle (9050), or a SOCKS5 address typed by hand (another port,
-//! another machine on the home network).
+//! CoinMan does not ship Tor. It can download its own copy on request (the Tor
+//! Expert Bundle, see tor_builtin.rs) and run it, or use one the user already
+//! runs: Tor Browser (SOCKS port 9150 while it is open), the standalone Tor
+//! service (9050), or a SOCKS5 address typed by hand (another port, another
+//! machine on the home network).
 //!
 //! With Tor switched on, everything the app sends goes through that proxy:
 //! the main webview, the CoW Swap and Jumper views and the Rust HTTP clients.
@@ -51,7 +52,7 @@ pub struct PrivacySettings {
 pub struct Endpoint {
     pub host: String,
     pub port: u16,
-    /// "tor-browser", "tor-service" or "manual".
+    /// "built-in", "tor-browser", "tor-service" or "manual".
     pub source: &'static str,
     /// Auto mode found nothing at start-up; Tor Browser's port is used so
     /// that nothing goes out directly.
@@ -81,7 +82,7 @@ pub const fn platform_supported() -> bool {
 pub fn init<R: Runtime>(app: &AppHandle<R>) {
     let saved = settings::load_global(app).privacy.unwrap_or_default();
     let endpoint = if saved.tor_enabled && platform_supported() {
-        Some(resolve(&saved))
+        Some(resolve(app, &saved))
     } else {
         if saved.tor_enabled {
             log::warn!("Tor is switched on in the settings but not supported on this platform");
@@ -100,12 +101,26 @@ pub fn init<R: Runtime>(app: &AppHandle<R>) {
     let _ = ACTIVE.set(endpoint);
 }
 
-fn resolve(saved: &PrivacySettings) -> Endpoint {
+fn resolve<R: Runtime>(app: &AppHandle<R>, saved: &PrivacySettings) -> Endpoint {
     if saved.manual {
         if let Some((host, port)) = saved.address.as_deref().and_then(|a| parse_address(a).ok()) {
             return Endpoint { host, port, source: "manual", missing: false };
         }
         log::warn!("The saved Tor address is not valid; looking for Tor on the usual ports");
+    }
+    // CoinMan's own Tor first: it runs as long as CoinMan does.
+    if crate::tor_builtin::installed_version(app).is_some() {
+        match crate::tor_builtin::start(app) {
+            Ok(()) => {
+                return Endpoint {
+                    host: "127.0.0.1".into(),
+                    port: crate::tor_builtin::PORT,
+                    source: "built-in",
+                    missing: false,
+                }
+            }
+            Err(e) => log::warn!("CoinMan's Tor did not start ({e}); looking for another Tor"),
+        }
     }
     for ((host, port), source) in [(TOR_BROWSER, "tor-browser"), (TOR_SERVICE, "tor-service")] {
         if port_open(host, port) {
@@ -241,6 +256,7 @@ pub async fn privacy_status(app: AppHandle) -> Value {
             "torBrowser": port_open(TOR_BROWSER.0, TOR_BROWSER.1),
             "torService": port_open(TOR_SERVICE.0, TOR_SERVICE.1),
         },
+        "builtin": crate::tor_builtin::status(&app),
     })
 }
 

@@ -40,6 +40,11 @@ rand = "0.8"
 base64 = "0.22"
 reqwest = { version = "0.12", features = ["json", "socks"] }
 tokio = { version = "1", features = ["rt"] }
+# Privacy → Tor: the built-in Tor (Expert Bundle) is checked against the Tor
+# Browser Developers signing key and unpacked from its .tar.gz.
+pgp = { version = "0.21", default-features = false }
+flate2 = "1"
+tar = "0.4"
 
 # Linux: Tauri packs child webviews into the window's GtkBox under the main one
 # and ignores their position; jumper.rs moves the Jumper view into a GtkOverlay.

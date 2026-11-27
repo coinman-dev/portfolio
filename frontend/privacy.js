@@ -42,13 +42,16 @@ var AppPrivacy = (function () {
     function renderIndicators() {
         var active = status && status.active;
         var mark = el('menu-tor-status');
+        var top = el('menu-privacy-mark');
         var bar = el('tor-status');
         if (!active) {
             if (mark) mark.innerHTML = '';
+            if (top) top.innerHTML = '';
             if (bar) bar.style.display = 'none';
             return;
         }
         var done = live && live !== 'checking';
+        var boot = active.source === 'built-in' && status.builtin ? status.builtin.bootstrap : 100;
         var ok = done && live.isTor;
         // A SOCKS5 proxy that works but is not Tor (manual address): used as chosen.
         var proxyOnly = done && !live.isTor && !live.error && !active.missing;
@@ -58,17 +61,27 @@ var AppPrivacy = (function () {
                 ? '<span class="wallet-check-green" title="Traffic goes through Tor">✓</span>'
                 : '<span class="wallet-check-view" title="Tor is on but not confirmed">◉</span>';
         }
+        // Top menu bar: a green tick while traffic is confirmed to go through Tor.
+        if (top) {
+            top.innerHTML = ok
+                ? '<span class="wallet-check-green" title="Tor is active">✓</span>'
+                : bad
+                    ? '<span class="privacy-mark-bad" title="Tor is on but not connected">✗</span>'
+                    : '';
+        }
         if (bar) {
             bar.style.display = '';
             bar.classList.toggle('is-ok', !!ok);
             bar.classList.toggle('is-bad', !!bad);
             bar.textContent = ok
-                ? 'Tor ✓'
+                ? '✓ Tor active'
                 : proxyOnly
                     ? 'Proxy (not Tor)'
                     : bad
-                    ? 'Tor: no connection'
-                    : 'Tor: checking…';
+                    ? '✗ Tor: no connection'
+                    : boot < 100
+                        ? 'Tor: connecting ' + boot + '%…'
+                        : 'Tor: connecting…';
             bar.title = ok
                 ? 'All traffic goes through Tor (' + active.address + '), exit address ' + (live.ip || '?')
                 : proxyOnly
@@ -92,7 +105,16 @@ var AppPrivacy = (function () {
         var box = el('privacy-status');
         if (!box || !status) return;
         var d = status.detected || {};
+        var b = status.builtin || {};
+        var builtinHint = !b.supported
+            ? 'not available for this system'
+            : !b.installed
+                ? 'not installed'
+                : 'version ' + b.version + (b.running
+                    ? ' — running, ' + (b.bootstrap >= 100 ? 'connected' : 'connecting ' + b.bootstrap + '%') + ' (127.0.0.1:' + b.port + ')'
+                    : ' — starts when Tor is on');
         var rows =
+            line(b.installed ? true : null, 'CoinMan\'s Tor', esc(builtinHint)) +
             line(d.torBrowser ? true : null, 'Tor Browser', d.torBrowser ? 'running — 127.0.0.1:9150' : 'not running (127.0.0.1:9150)') +
             line(d.torService ? true : null, 'Tor service', d.torService ? 'running — 127.0.0.1:9050' : 'not found (127.0.0.1:9050)');
 
@@ -118,6 +140,111 @@ var AppPrivacy = (function () {
                 'Start one of them, then restart CoinMan.</p>';
         }
         box.innerHTML = '<ul class="dashcore-checks">' + rows + '</ul>' + now;
+        renderBuiltin();
+    }
+
+    // ─── CoinMan's own Tor (tor_builtin.rs) ─────────────────────────────────
+
+    var installing = false;
+
+    function renderBuiltin() {
+        var b = (status && status.builtin) || {};
+        var box = el('privacy-builtin');
+        if (!box) return;
+        box.style.display = b.supported ? '' : 'none';
+        var install = el('privacy-builtin-install');
+        var update = el('privacy-builtin-update');
+        var remove = el('privacy-builtin-remove');
+        if (install) {
+            install.style.display = b.installed ? 'none' : '';
+            install.disabled = installing;
+        }
+        if (update) {
+            update.style.display = b.installed ? '' : 'none';
+            update.disabled = installing;
+        }
+        if (remove) {
+            remove.style.display = b.installed ? '' : 'none';
+            remove.disabled = installing;
+        }
+    }
+
+    function builtinMessage(text, ok) {
+        var box = el('privacy-builtin-msg');
+        if (!box) return;
+        box.className = 'privacy-builtin-msg' + (ok === true ? ' is-ok' : ok === false ? ' is-bad' : '');
+        box.textContent = text || '';
+    }
+
+    var STAGES = {
+        version: 'Looking for the latest Tor release…',
+        verify: 'Checking the Tor Project signature…',
+        unpack: 'Unpacking…',
+    };
+
+    async function installBuiltin(isUpdate) {
+        if (installing) return;
+        installing = true;
+        renderBuiltin();
+        var unlisten = null;
+        try {
+            var ev = window.__TAURI__ && window.__TAURI__.event;
+            if (ev && ev.listen) {
+                unlisten = await ev.listen('tor-install-progress', function (e) {
+                    var p = e.payload || {};
+                    if (p.stage === 'download') builtinMessage('Downloading Tor… ' + (p.percent || 0) + '%', null);
+                    else if (STAGES[p.stage]) builtinMessage(STAGES[p.stage], null);
+                });
+            }
+            if (isUpdate) {
+                builtinMessage(STAGES.version, null);
+                var latest = await invoke('tor_builtin_latest');
+                var have = status && status.builtin && status.builtin.version;
+                if (have && latest === have) {
+                    builtinMessage('Tor ' + have + ' is the latest version.', true);
+                    return;
+                }
+            }
+            var b = await invoke('tor_builtin_install');
+            builtinMessage('Tor ' + b.version + ' is installed. The Tor Project signature is valid.', true);
+            log('info', 'installed Tor ' + b.version);
+            await refreshStatus();
+            // First install: offer to switch it on right away.
+            var enabled = el('privacy-tor-enabled');
+            if (!isUpdate && enabled && !enabled.checked) {
+                enabled.checked = true;
+                var auto = el('privacy-mode-auto');
+                if (auto) auto.checked = true;
+            }
+            syncForm();
+        } catch (err) {
+            builtinMessage(String(err && err.message || err), false);
+        } finally {
+            if (unlisten) unlisten();
+            installing = false;
+            renderBuiltin();
+        }
+    }
+
+    async function removeBuiltin() {
+        if (installing) return;
+        try {
+            await invoke('tor_builtin_remove');
+            builtinMessage('CoinMan\'s Tor is removed.', true);
+            await refreshStatus();
+        } catch (err) {
+            builtinMessage(String(err && err.message || err), false);
+        }
+    }
+
+    /** CoinMan's own Tor needs a few seconds to connect before anything can go through it. */
+    async function waitForBootstrap() {
+        for (var i = 0; i < 90; i++) {
+            var b = status && status.builtin;
+            if (!status.active || status.active.source !== 'built-in' || !b || !b.running || b.bootstrap >= 100) return;
+            await new Promise(function (r) { setTimeout(r, 1500); });
+            try { await refreshStatus(); } catch (e) { return; }
+        }
     }
 
     function renderForm() {
@@ -302,6 +429,9 @@ var AppPrivacy = (function () {
             return; // browser preview
         }
         if (!status.active) return;
+        live = 'checking';
+        renderIndicators();
+        await waitForBootstrap();
         await checkActive();
         // Tor is on but does not work: say so once rather than leave every request failing silently.
         if (status.active.missing || (live && live.error)) open();
@@ -319,6 +449,8 @@ var AppPrivacy = (function () {
         check: check,
         save: save,
         restart: restart,
+        installBuiltin: installBuiltin,
+        removeBuiltin: removeBuiltin,
         openLink: openLink,
         syncForm: syncForm,
     };

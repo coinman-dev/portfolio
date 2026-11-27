@@ -151,7 +151,7 @@
 					</div>
 				</div>
 			</div>
-			<div class="menu-item" id="menu-item-privacy" onclick="toggleDropdown('privacy-dropdown', event)"> Privacy
+			<div class="menu-item" id="menu-item-privacy" onclick="toggleDropdown('privacy-dropdown', event)"> Privacy<span class="menu-privacy-mark" id="menu-privacy-mark"></span>
 				<div class="dropdown-menu" id="privacy-dropdown">
 					<div class="dropdown-item dropdown-item-wallet" id="menu-privacy-tor" onclick="AppPrivacy.open(event)">
 						<span class="wallet-menu-label">Tor network</span>
@@ -615,6 +615,19 @@
 				<a href="#" onclick="AppPrivacy.openLink('service'); return false;">Tor service (Tor Expert Bundle)</a>.
 			</p>
 			<div id="privacy-status" class="dashcore-result"></div>
+			<div id="privacy-builtin" class="privacy-builtin" style="display: none">
+				<div class="privacy-builtin-actions">
+					<button id="privacy-builtin-install" class="btn btn-orange" onclick="AppPrivacy.installBuiltin(false)">DOWNLOAD &amp; INSTALL TOR</button>
+					<button id="privacy-builtin-update" class="btn btn-outline" onclick="AppPrivacy.installBuiltin(true)">CHECK FOR UPDATE</button>
+					<button id="privacy-builtin-remove" class="btn btn-outline" onclick="AppPrivacy.removeBuiltin()">REMOVE</button>
+				</div>
+				<p class="wallet-modal-intro wallet-modal-note">
+					CoinMan's own Tor: the Tor Expert Bundle from torproject.org (about 24 MB), checked against the Tor Project's
+					signing key and kept in the <code>data/tor</code> folder. Nothing is installed in the system and no
+					administrator rights are needed; CoinMan starts it while Tor is on and stops it on exit.
+				</p>
+				<p id="privacy-builtin-msg" class="privacy-builtin-msg"></p>
+			</div>
 			<p id="privacy-unsupported" class="dashcore-summary is-bad" style="display: none">
 				Tor is not available on macOS yet.
 			</p>
@@ -626,7 +639,7 @@
 				<summary>Advanced</summary>
 				<label class="privacy-option">
 					<input type="radio" name="privacy-mode" id="privacy-mode-auto" onchange="AppPrivacy.syncForm()"/>
-					<span>Find Tor automatically: Tor Browser (127.0.0.1:9150), then the Tor service (127.0.0.1:9050)</span>
+					<span>Find Tor automatically: CoinMan's own Tor if installed, then Tor Browser (127.0.0.1:9150), then the Tor service (127.0.0.1:9050)</span>
 				</label>
 				<label class="privacy-option">
 					<input type="radio" name="privacy-mode" id="privacy-mode-manual" onchange="AppPrivacy.syncForm()"/>

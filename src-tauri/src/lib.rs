@@ -7,6 +7,7 @@ mod cow_view;
 mod jumper;
 mod jumper_storage;
 mod privacy;
+mod tor_builtin;
 mod settings;
 mod storage;
 mod wallet_store;
@@ -630,7 +631,10 @@ pub fn run() {
             privacy::privacy_status,
             privacy::privacy_check,
             privacy::privacy_save,
-            privacy::privacy_restart
+            privacy::privacy_restart,
+            tor_builtin::tor_builtin_latest,
+            tor_builtin::tor_builtin_install,
+            tor_builtin::tor_builtin_remove
         ])
         .register_asynchronous_uri_scheme_protocol(jumper::PROTOCOL, jumper::handle)
         .setup(|app| {
@@ -663,6 +667,7 @@ pub fn run() {
     let env = app.env();
     let exit_code = app.run_return(|_, _| {});
     log::info!("Exit, code {exit_code}");
+    tor_builtin::stop();
     webview_profile::remove();
     if privacy::restart_requested() {
         // Privacy → Tor: webview proxies are fixed when the views are created.
