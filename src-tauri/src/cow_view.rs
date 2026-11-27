@@ -105,6 +105,12 @@ fn show<R: Runtime>(app: &AppHandle<R>, bounds: Bounds, url: Option<String>) -> 
     if let Some(dir) = webview_profile::current_dir() {
         builder = builder.data_directory(dir);
     }
+    if let Some(args) = crate::privacy::webview2_args() {
+        builder = builder.additional_browser_args(&args);
+    }
+    if let Some(url) = crate::privacy::webview_proxy_url() {
+        builder = builder.proxy_url(url);
+    }
     let webview = window.add_child(builder, position, size).map_err(|e| e.to_string())?;
     #[cfg(target_os = "linux")]
     crate::child_view::place_linux(&webview, bounds);

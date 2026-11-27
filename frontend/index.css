@@ -1710,3 +1710,126 @@ body.show-cur-price .col-cur-price {
 }
 .dashcore-summary.is-ok { color: #4caf50; }
 .dashcore-summary.is-bad { color: #e57373; }
+
+/* --- PRIVACY → TOR NETWORK (privacy.js) --- */
+.privacy-modal {
+    width: 680px;
+    max-width: calc(100vw - 40px);
+}
+.privacy-toggle,
+.privacy-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 12px 0 6px;
+    font-size: 13px;
+    color: var(--color-text);
+    cursor: pointer;
+}
+.privacy-toggle {
+    font-weight: bold;
+}
+.privacy-option {
+    margin: 8px 0 4px;
+    color: var(--color-text-dim);
+}
+.privacy-option input {
+    margin-top: 2px;
+    accent-color: var(--color-accent);
+}
+.privacy-advanced {
+    margin: 10px 0;
+    font-size: 13px;
+}
+.privacy-advanced summary {
+    cursor: pointer;
+    color: var(--color-accent-link);
+}
+.privacy-address {
+    width: 100%;
+    margin: 4px 0 10px;
+    box-sizing: border-box;
+}
+.privacy-modal-footer {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+.privacy-modal-footer > :first-child {
+    margin-right: auto;
+}
+.ie-statusbar-panel-tor {
+    flex: 0 0 auto;
+    cursor: pointer;
+    color: #aaa;
+    padding: 0 10px;
+}
+.ie-statusbar-panel-tor.is-ok {
+    color: #4caf50;
+}
+.ie-statusbar-panel-tor.is-bad {
+    color: #e57373;
+}
+
+.privacy-modal a {
+    color: #4fc3f7;
+    text-decoration: underline;
+}
+.privacy-modal a:hover {
+    color: #81d4fa;
+}
+.menu-privacy-mark {
+    margin-left: 5px;
+}
+.menu-privacy-mark:empty {
+    display: none;
+}
+.privacy-mark-bad {
+    color: #e57373;
+    font-weight: bold;
+    font-size: 13px;
+}
+
+.privacy-builtin {
+    margin: 10px 0 4px;
+}
+.privacy-builtin-actions {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.privacy-builtin-actions .btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+.privacy-builtin-msg {
+    margin: 4px 0 0;
+    font-size: 13px;
+    color: var(--color-text-dim);
+}
+.privacy-builtin-msg:empty {
+    display: none;
+}
+.privacy-builtin-msg.is-ok { color: #4caf50; }
+.privacy-builtin-msg.is-bad { color: #e57373; }
+
+.privacy-in-use {
+    color: #4caf50;
+}
+#privacy-builtin-path {
+    word-break: break-all;
+}
+/* One line per Tor: name on the left, its state pressed to the right. */
+.privacy-modal .dashcore-checks li {
+    grid-template-columns: 18px auto 1fr;
+    gap: 10px;
+}
+.privacy-modal .dashcore-checks li > span:nth-child(2) {
+    white-space: nowrap;
+}
+.privacy-modal .dashcore-checks .dashcore-hint {
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

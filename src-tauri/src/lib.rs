@@ -1,11 +1,14 @@
 mod approvals;
 mod dash_core;
+mod dash_tor;
 mod diag_log;
 mod exchange_history;
 mod child_view;
 mod cow_view;
 mod jumper;
 mod jumper_storage;
+mod privacy;
+mod tor_builtin;
 mod settings;
 mod storage;
 mod wallet_store;
@@ -384,7 +387,9 @@ async fn cmc_fetch_quotes(
         "https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest?id={}&convert={}",
         ids, convert
     );
-    let client = reqwest::Client::new();
+    let client = privacy::client_builder()
+        .build()
+        .map_err(|e| format!("Request failed: {}", e))?;
     let resp = client
         .get(&url)
         .header("X-CMC_PRO_API_KEY", &api_key)
@@ -623,7 +628,14 @@ pub fn run() {
             cow_view::cow_show,
             cow_view::cow_hide,
             cow_view::cow_wallet_response,
-            cow_view::cow_wallet_state
+            cow_view::cow_wallet_state,
+            privacy::privacy_status,
+            privacy::privacy_check,
+            privacy::privacy_save,
+            privacy::privacy_restart,
+            tor_builtin::tor_builtin_latest,
+            tor_builtin::tor_builtin_install,
+            tor_builtin::tor_builtin_remove
         ])
         .register_asynchronous_uri_scheme_protocol(jumper::PROTOCOL, jumper::handle)
         .setup(|app| {
@@ -643,6 +655,7 @@ pub fn run() {
                     },
                 );
             }
+            privacy::init(app.handle());
             if let Err(e) = create_main_window(app, cli_debug) {
                 log::error!("Cannot create the main window: {e}");
                 return Err(e.into());
@@ -652,9 +665,18 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
 
+    let env = app.env();
+    let handle = app.handle().clone();
     let exit_code = app.run_return(|_, _| {});
     log::info!("Exit, code {exit_code}");
+    // Dash Core's dash.conf goes back to the user's own lines.
+    dash_tor::sync(&handle, None);
+    tor_builtin::stop();
     webview_profile::remove();
+    if privacy::restart_requested() {
+        // Privacy → Tor: webview proxies are fixed when the views are created.
+        tauri::process::restart(&env);
+    }
     if exit_code != 0 {
         std::process::exit(exit_code);
     }
@@ -1009,6 +1031,12 @@ fn create_main_window<R: tauri::Runtime>(
     if let Some(dir) = profile {
         log::debug!("Webview profile: {}", dir.display());
         builder = builder.data_directory(dir);
+    }
+    if let Some(args) = crate::privacy::webview2_args() {
+        builder = builder.additional_browser_args(&args);
+    }
+    if let Some(url) = crate::privacy::webview_proxy_url() {
+        builder = builder.proxy_url(url);
     }
 
     if let Some((x, y)) = position {

@@ -85,6 +85,9 @@ pub struct AppSettings {
     /// Global: the Dash Core folder (Exchange → Connect wallet → Dash Core).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dash_core: Option<Value>,
+    /// Global: Privacy → Tor network; applied at start-up (see privacy.rs).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub privacy: Option<crate::privacy::PrivacySettings>,
     /// Per-user (per-database) settings keyed by database filename stem.
     #[serde(default)]
     pub users: HashMap<String, UserSettings>,
@@ -258,6 +261,12 @@ pub fn load_dash_core<R: Runtime>(app: &AppHandle<R>) -> Value {
 pub fn update_dash_core<R: Runtime>(app: &AppHandle<R>, value: Value) {
     let mut settings = load(app);
     settings.dash_core = if value.is_null() { None } else { Some(value) };
+    save(app, &settings);
+}
+
+pub fn update_privacy<R: Runtime>(app: &AppHandle<R>, value: &crate::privacy::PrivacySettings) {
+    let mut settings = load(app);
+    settings.privacy = Some(value.clone());
     save(app, &settings);
 }
 
