@@ -1710,3 +1710,63 @@ body.show-cur-price .col-cur-price {
 }
 .dashcore-summary.is-ok { color: #4caf50; }
 .dashcore-summary.is-bad { color: #e57373; }
+
+/* --- PRIVACY → TOR NETWORK (privacy.js) --- */
+.privacy-modal {
+    width: 620px;
+    max-width: calc(100vw - 40px);
+}
+.privacy-toggle,
+.privacy-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 12px 0 6px;
+    font-size: 13px;
+    color: var(--color-text);
+    cursor: pointer;
+}
+.privacy-toggle {
+    font-weight: bold;
+}
+.privacy-option {
+    margin: 8px 0 4px;
+    color: var(--color-text-dim);
+}
+.privacy-option input {
+    margin-top: 2px;
+    accent-color: var(--color-accent);
+}
+.privacy-advanced {
+    margin: 10px 0;
+    font-size: 13px;
+}
+.privacy-advanced summary {
+    cursor: pointer;
+    color: var(--color-accent-link);
+}
+.privacy-address {
+    width: 100%;
+    margin: 4px 0 10px;
+    box-sizing: border-box;
+}
+.privacy-modal-footer {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+.privacy-modal-footer > :first-child {
+    margin-right: auto;
+}
+.ie-statusbar-panel-tor {
+    flex: 0 0 auto;
+    cursor: pointer;
+    color: #aaa;
+    padding: 0 10px;
+}
+.ie-statusbar-panel-tor.is-ok {
+    color: #4caf50;
+}
+.ie-statusbar-panel-tor.is-bad {
+    color: #e57373;
+}

@@ -151,6 +151,14 @@
 					</div>
 				</div>
 			</div>
+			<div class="menu-item" id="menu-item-privacy" onclick="toggleDropdown('privacy-dropdown', event)"> Privacy
+				<div class="dropdown-menu" id="privacy-dropdown">
+					<div class="dropdown-item dropdown-item-wallet" id="menu-privacy-tor" onclick="AppPrivacy.open(event)">
+						<span class="wallet-menu-label">Tor network</span>
+						<span class="wallet-menu-status" id="menu-tor-status"></span>
+					</div>
+				</div>
+			</div>
 			<div class="menu-item menu-item-right" onclick="toggleDropdown('about-dropdown', event)"> About
       <div class="dropdown-menu dropdown-menu-right" id="about-dropdown">
 					<div class="dropdown-item" onclick="openAboutModal()"> About CoinMan </div>
@@ -586,6 +594,66 @@
 		<div class="modal-footer wallet-modal-footer">
 			<button id="dashcore-forget-btn" class="btn btn-red" onclick="AppDashCore.forget()">DISCONNECT</button>
 			<button class="btn btn-outline" onclick="AppDashCore.close()">CLOSE</button>
+		</div>
+	</div>
+</div>
+<!-- MODAL: Privacy → Tor network (privacy.js) -->
+<div id="modal-privacy" class="modal">
+	<div class="modal-content privacy-modal">
+		<div class="modal-header">
+			<span>&#129477; Tor network</span>
+			<span class="close-btn" onclick="AppPrivacy.close()">&times;</span>
+		</div>
+		<div class="modal-body">
+			<p class="wallet-modal-intro">
+				Send all of CoinMan's traffic — prices, Best Rate, Earn, CoW Swap, Jumper and wallet connections — through
+				the Tor network, so services see a Tor exit address instead of yours.
+			</p>
+			<p class="wallet-modal-intro wallet-modal-note">
+				CoinMan does not include Tor. It uses
+				<a href="#" onclick="AppPrivacy.openLink('browser'); return false;">Tor Browser</a> while it is open, or the
+				<a href="#" onclick="AppPrivacy.openLink('service'); return false;">Tor service (Tor Expert Bundle)</a>.
+			</p>
+			<div id="privacy-status" class="dashcore-result"></div>
+			<p id="privacy-unsupported" class="dashcore-summary is-bad" style="display: none">
+				Tor is not available on macOS yet.
+			</p>
+			<label class="privacy-toggle">
+				<input type="checkbox" id="privacy-tor-enabled" class="bs-check" onchange="AppPrivacy.syncForm()"/>
+				<span>Route all traffic through Tor</span>
+			</label>
+			<details id="privacy-advanced" class="privacy-advanced">
+				<summary>Advanced</summary>
+				<label class="privacy-option">
+					<input type="radio" name="privacy-mode" id="privacy-mode-auto" onchange="AppPrivacy.syncForm()"/>
+					<span>Find Tor automatically: Tor Browser (127.0.0.1:9150), then the Tor service (127.0.0.1:9050)</span>
+				</label>
+				<label class="privacy-option">
+					<input type="radio" name="privacy-mode" id="privacy-mode-manual" onchange="AppPrivacy.syncForm()"/>
+					<span>Use this SOCKS5 proxy:</span>
+				</label>
+				<input type="text" id="privacy-address" class="form-input privacy-address" placeholder="host:port, e.g. 192.168.1.10:9050" spellcheck="false"/>
+				<p class="wallet-modal-intro wallet-modal-note">
+					For Tor on another port or on another device in your home network (router, NAS, Raspberry Pi). Between this
+					computer and that device the traffic is not protected by Tor. Another SOCKS5 proxy works too — Check tells
+					whether it is Tor.
+				</p>
+			</details>
+			<p class="wallet-modal-intro wallet-modal-note">
+				Changes apply after a restart. While Tor is on, nothing is sent around it: if Tor stops, requests fail until it
+				is back. Some services slow down or block Tor, so quotes can take longer or be missing. Links opened in your
+				web browser use that browser's connection; Dash Core is reached on this computer and does not need Tor.
+			</p>
+			<p id="privacy-message" class="dashcore-summary"></p>
+			<p id="privacy-restart" class="dashcore-summary is-bad" style="display: none">
+				The saved setting is not in use yet — restart CoinMan to apply it.
+			</p>
+		</div>
+		<div class="modal-footer privacy-modal-footer">
+			<button class="btn btn-outline" onclick="AppPrivacy.check()">CHECK</button>
+			<button class="btn btn-orange" onclick="AppPrivacy.save()">SAVE</button>
+			<button id="privacy-restart-btn" class="btn btn-orange" style="display: none" onclick="AppPrivacy.restart()">RESTART NOW</button>
+			<button class="btn btn-outline" onclick="AppPrivacy.close()">CLOSE</button>
 		</div>
 	</div>
 </div>
@@ -1034,6 +1102,7 @@
 	<div class="ie-statusbar-divider"></div>
 	<div class="ie-statusbar-panel" id="market-status">{{MARKET_STATUS}}</div>
 </div>
+<div class="ie-statusbar-panel ie-statusbar-panel-tor" id="tor-status" style="display: none" onclick="AppPrivacy.open()"></div>
 <div class="ie-statusbar-panel ie-statusbar-panel-update" id="update-status" style="display: none" onclick="UpdateChecker.openRelease()"> Update available </div>
 </div>
 <!-- MODAL: Save database as -->
@@ -1197,6 +1266,7 @@
 <script src="modules-common.js"></script>
 <script src="exchange.js"></script>
 <script src="dashcore.js"></script>
+<script src="privacy.js"></script>
 <script src="earn.js"></script>
 <script src="tabs.js"></script>
 </body>

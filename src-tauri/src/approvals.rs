@@ -16,7 +16,7 @@ const CHAINS: &[u64] = &[
 ];
 
 static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
-    reqwest::Client::builder()
+    crate::privacy::client_builder()
         .timeout(Duration::from_secs(90))
         .build()
         .unwrap_or_default()
